@@ -48,37 +48,15 @@ if [ "$(printf '%s' "$stdin_content" | head -n 1)" = "NO_MATCHES" ]; then
     index_date="(none)"
     match_count="0"
 else
-    # Parse JSON and render markdown bullets, grouped by category
-    rendered="$(printf '%s' "$stdin_content" | python3 - "$vault_path" <<'PY'
-import json, os, sys
-
-vault_path = sys.argv[1]
-data = json.loads(sys.stdin.read())
-
-cats = data.get("matches_by_category", {})
-if not cats:
-    print("_No matches._")
-    print("__INDEX_DATE__:" + str(data.get("index_date") or "(unknown)"))
-    print("__MATCH_COUNT__:0")
-    sys.exit(0)
-
-lines = []
-for cat in sorted(cats.keys()):
-    lines.append(f"## {cat}")
-    lines.append("")
-    for page in cats[cat]:
-        title = page.get("title", "")
-        rel = page.get("path", "")
-        summary = page.get("summary", "") or "(no summary)"
-        abs_path = os.path.join(vault_path, rel)
-        lines.append(f"- [[{title}]] — `{abs_path}` — {summary}")
-    lines.append("")
-
-print("\n".join(lines).rstrip())
-print("__INDEX_DATE__:" + str(data.get("index_date") or "(unknown)"))
-print("__MATCH_COUNT__:" + str(data.get("match_count", 0)))
-PY
-)"
+    # Parse JSON and render markdown bullets, grouped by category.
+    # Rendering lives in render-matches.py so the stdin pipe doesn't
+    # conflict with an inline heredoc.
+    renderer="$CLAUDE_PLUGIN_ROOT/scripts/render-matches.py"
+    if [ ! -f "$renderer" ]; then
+        printf 'write-context: renderer missing at %s\n' "$renderer" >&2
+        exit 1
+    fi
+    rendered="$(printf '%s' "$stdin_content" | python3 "$renderer" "$vault_path")"
 
     # Split body from metadata footer
     body="$(printf '%s\n' "$rendered" | sed -E '/^__INDEX_DATE__:/,$d')"
@@ -90,19 +68,31 @@ fi
 tmpfile="$(mktemp)"
 trap 'rm -f "$tmpfile"' EXIT
 
+# Body is printed verbatim on the placeholder line. Using gsub for body
+# would mangle any literal `&` (awk treats `&` in the replacement string
+# as "the entire match"), and vault page titles can contain `&` — see
+# e.g. "macOS Recovery Mode, MDM Removal & User Creation".
+body_file="$(mktemp)"
+trap 'rm -f "$tmpfile" "$body_file"' EXIT
+printf '%s' "$body" > "$body_file"
+
 awk -v proj="$project_name" \
     -v dt="$today" \
     -v vp="$vault_path" \
     -v idate="$index_date" \
     -v mcount="$match_count" \
-    -v body="$body" '
+    -v body_file="$body_file" '
 {
     gsub(/<PROJECT_NAME>/, proj)
     gsub(/<DATE>/, dt)
     gsub(/<VAULT_PATH>/, vp)
     gsub(/<INDEX_DATE>/, idate)
     gsub(/<MATCH_COUNT>/, mcount)
-    gsub(/<MATCHES_GROUPED_BY_CATEGORY>/, body)
+    if ($0 == "<MATCHES_GROUPED_BY_CATEGORY>") {
+        while ((getline line < body_file) > 0) print line
+        close(body_file)
+        next
+    }
     print
 }
 ' "$template" > "$tmpfile"
