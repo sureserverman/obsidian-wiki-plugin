@@ -31,31 +31,53 @@ TTL_SECONDS=21600  # 6 hours
 
 # ---------------------------------------------------------------------------
 # Part 1 (SYNC): read the cache and maybe print a nudge.
-# We only print if the cache exists AND is valid AND says update_available=true.
-# Any parse/read failure is silent.
+# We only print if the cache exists AND is valid AND says update_available=true
+# AND the cache's recorded local_sha still matches the marketplace clone's
+# current HEAD. Any parse/read failure is silent.
+#
+# The local_sha cross-check is important: if the user just ran
+# `claude plugin update` (which fast-forwards the marketplace clone to match
+# remote), or any external `git pull` advanced the clone, the cache's verdict
+# is computed against an out-of-date local_sha and is meaningless. We treat
+# such a cache as STALE — we suppress the nudge in this run AND force the
+# Part 2 refresh to run regardless of TTL, so the next session sees the truth.
 # ---------------------------------------------------------------------------
+cache_stale=0
 if [ -f "$CACHE_FILE" ]; then
     # Prefer jq if available for robust parsing; fall back to python3.
     if command -v jq >/dev/null 2>&1; then
         update_available="$(jq -r '.update_available // false' "$CACHE_FILE" 2>/dev/null || printf 'false')"
         commits_ahead="$(jq -r '.commits_ahead // 0' "$CACHE_FILE" 2>/dev/null || printf '0')"
+        cached_local_sha="$(jq -r '.local_sha // empty' "$CACHE_FILE" 2>/dev/null || printf '')"
     elif command -v python3 >/dev/null 2>&1; then
-        read -r update_available commits_ahead < <(
+        read -r update_available commits_ahead cached_local_sha < <(
             python3 -c "
 import json, sys
 try:
     d = json.load(open('$CACHE_FILE'))
-    print(str(d.get('update_available', False)).lower(), d.get('commits_ahead', 0))
+    print(str(d.get('update_available', False)).lower(), d.get('commits_ahead', 0), d.get('local_sha', ''))
 except Exception:
-    print('false 0')
-" 2>/dev/null || printf 'false 0\n'
+    print('false 0 ')
+" 2>/dev/null || printf 'false 0 \n'
         )
     else
         update_available="false"
         commits_ahead="0"
+        cached_local_sha=""
     fi
 
-    if [ "$update_available" = "true" ]; then
+    # Cross-check: cached local_sha vs marketplace clone's actual HEAD.
+    # If they differ, the cache is stale relative to the clone (e.g. user
+    # ran `claude plugin update` since the cache was written), so we cannot
+    # trust update_available — treat the cache as invalid.
+    if [ -d "$MARKETPLACE_DIR/.git" ] && [ -n "$cached_local_sha" ]; then
+        current_head="$(git -C "$MARKETPLACE_DIR" rev-parse HEAD 2>/dev/null || printf '')"
+        if [ -n "$current_head" ] && [ "$current_head" != "$cached_local_sha" ]; then
+            cache_stale=1
+        fi
+    fi
+
+    if [ "$cache_stale" -eq 0 ] && [ "$update_available" = "true" ]; then
         # Print the nudge. Pluralize "commit" correctly.
         if [ "$commits_ahead" = "1" ]; then
             printf '[obsidian-wiki] Update available: 1 commit behind. Run `/obsidian-wiki:update` to see what is new.\n'
@@ -70,7 +92,7 @@ fi
 # Skip refresh if cache is fresh (< TTL) — otherwise spawn a detached fetch.
 # ---------------------------------------------------------------------------
 need_refresh=1
-if [ -f "$CACHE_FILE" ]; then
+if [ -f "$CACHE_FILE" ] && [ "$cache_stale" -eq 0 ]; then
     # stat -c works on Linux (GNU coreutils); -f %m is the BSD/macOS equivalent.
     mtime="$(stat -c %Y "$CACHE_FILE" 2>/dev/null || stat -f %m "$CACHE_FILE" 2>/dev/null || printf '0')"
     now="$(date +%s)"
