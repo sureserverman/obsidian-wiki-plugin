@@ -172,18 +172,27 @@ if parse_cache_file; then
 fi
 
 # ---------------------------------------------------------------------------
-# PHASE 2 (SYNC FAST PATH): if cache is missing or stale, try a 2s-bounded
-# inline refresh so the nudge can appear in THIS session. If anything fails
-# (no `timeout` cmd, offline, slow fetch), we fall through — the async path
-# will handle it and the next session will see the update.
+# PHASE 2 (SYNC FAST PATH): try a 2s-bounded inline refresh on every session
+# start, regardless of cache freshness or staleness state.
+#
+# Why every session, not just "missing or stale": the previous gating left a
+# poisoning hole — a cache written BEFORE the user pushed says
+# update_available=false with a local_sha that still matches the marketplace
+# HEAD (because nothing has moved the clone yet). The staleness check passes,
+# the 6h async TTL hasn't expired, so the false-negative cache silently
+# suppresses the nudge for up to 6 hours after a push. Bounding the fetch at
+# $SYNC_FETCH_TIMEOUT seconds is the only safety net we need; an unchanged
+# origin fetch is one small HTTPS request and finishes in well under a second.
+#
+# If sync_refresh fails (no `timeout` cmd, offline, slow network), we fall
+# through to print whatever the existing cache says — last-known-state is
+# better than nothing — and Phase 4 still spawns the async fallback.
 # ---------------------------------------------------------------------------
 sync_refreshed=0
-if [ ! -f "$CACHE_FILE" ] || [ "$cache_stale" -eq 1 ]; then
-    if sync_refresh; then
-        sync_refreshed=1
-        cache_stale=0
-        parse_cache_file  # re-read the freshly-written values
-    fi
+if sync_refresh; then
+    sync_refreshed=1
+    cache_stale=0
+    parse_cache_file  # re-read the freshly-written values
 fi
 
 # ---------------------------------------------------------------------------
