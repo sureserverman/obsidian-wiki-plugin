@@ -1,23 +1,27 @@
 #!/usr/bin/env bash
 # check-update.sh — SessionStart hook for obsidian-wiki.
 #
-# Two responsibilities, both fast and non-blocking:
+# Three phases, all best-effort, none allowed to crash the host session:
 #
-#   1. SYNC: if /tmp/claude/obsidian-wiki-update-check.json says an update is
-#      available, print a one-line nudge to stdout. Claude Code surfaces stdout
-#      from SessionStart hooks as a session message.
+#   1. READ CACHE: parse /tmp/claude/obsidian-wiki-update-check.json if it
+#      exists. Cross-check the cache's recorded local_sha against the
+#      marketplace clone's actual HEAD; if they differ, treat the cache as
+#      stale (it was written before the clone moved, e.g. by
+#      `claude plugin update`).
 #
-#   2. ASYNC: if the cache is missing or older than TTL (6h), spawn a detached
-#      background process that does `git fetch` in the marketplace clone,
-#      compares HEAD vs origin/HEAD, and rewrites the cache file. The current
-#      session never waits on the network.
+#   2. SYNCHRONOUS FAST REFRESH (bounded): if the cache is missing OR stale,
+#      attempt a 2-second timeout-bounded `git fetch` inline. On success, we
+#      can print the nudge in THIS session — no two-session delay after a push.
+#      If `timeout` is unavailable, or the fetch is slow/offline, we fall
+#      through to the async path so the session still starts without waiting.
 #
-# The script exits silently under any of these conditions (no nudge, no noise):
-#   - marketplace clone doesn't exist at ~/.claude/plugins/marketplaces/obsidian-wiki
-#   - that directory isn't a git work tree
-#   - no `origin` remote, or no upstream set
-#   - jq not available and cache parsing fails
-#   - fetch fails (offline, auth problem, etc.)
+#   3. PRINT: if the cache (freshly written or still valid) says
+#      update_available=true, print a one-line nudge to stdout. Claude Code
+#      surfaces SessionStart stdout as a session message.
+#
+#   4. ASYNC FALLBACK REFRESH: if the sync path didn't write a cache and the
+#      existing cache is missing/stale/expired, spawn a detached background
+#      `git fetch` so the next session has fresh data.
 #
 # The script NEVER modifies any plugin, marketplace, or user file. It only
 # writes its own cache file under /tmp/claude/.
@@ -28,23 +32,18 @@ CACHE_DIR="/tmp/claude"
 CACHE_FILE="$CACHE_DIR/obsidian-wiki-update-check.json"
 MARKETPLACE_DIR="$HOME/.claude/plugins/marketplaces/obsidian-wiki"
 TTL_SECONDS=21600  # 6 hours
+SYNC_FETCH_TIMEOUT=2  # seconds we are willing to block session start on fetch
+
+update_available="false"
+commits_ahead="0"
+cached_local_sha=""
 
 # ---------------------------------------------------------------------------
-# Part 1 (SYNC): read the cache and maybe print a nudge.
-# We only print if the cache exists AND is valid AND says update_available=true
-# AND the cache's recorded local_sha still matches the marketplace clone's
-# current HEAD. Any parse/read failure is silent.
-#
-# The local_sha cross-check is important: if the user just ran
-# `claude plugin update` (which fast-forwards the marketplace clone to match
-# remote), or any external `git pull` advanced the clone, the cache's verdict
-# is computed against an out-of-date local_sha and is meaningless. We treat
-# such a cache as STALE — we suppress the nudge in this run AND force the
-# Part 2 refresh to run regardless of TTL, so the next session sees the truth.
+# parse_cache_file: populate update_available / commits_ahead / cached_local_sha
+# from $CACHE_FILE. Silent on missing or malformed input.
 # ---------------------------------------------------------------------------
-cache_stale=0
-if [ -f "$CACHE_FILE" ]; then
-    # Prefer jq if available for robust parsing; fall back to python3.
+parse_cache_file() {
+    [ -f "$CACHE_FILE" ] || return 1
     if command -v jq >/dev/null 2>&1; then
         update_available="$(jq -r '.update_available // false' "$CACHE_FILE" 2>/dev/null || printf 'false')"
         commits_ahead="$(jq -r '.commits_ahead // 0' "$CACHE_FILE" 2>/dev/null || printf '0')"
@@ -52,7 +51,7 @@ if [ -f "$CACHE_FILE" ]; then
     elif command -v python3 >/dev/null 2>&1; then
         read -r update_available commits_ahead cached_local_sha < <(
             python3 -c "
-import json, sys
+import json
 try:
     d = json.load(open('$CACHE_FILE'))
     print(str(d.get('update_available', False)).lower(), d.get('commits_ahead', 0), d.get('local_sha', ''))
@@ -65,32 +64,150 @@ except Exception:
         commits_ahead="0"
         cached_local_sha=""
     fi
+    return 0
+}
 
+# ---------------------------------------------------------------------------
+# resolve_remote_ref: echo the canonical remote ref for the marketplace clone,
+# trying in order: configured upstream → symbolic origin/HEAD → origin/master
+# → origin/main. Returns non-zero if none of those resolve.
+# ---------------------------------------------------------------------------
+resolve_remote_ref() {
+    local ref
+    if ref="$(git -C "$MARKETPLACE_DIR" rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null)"; then
+        printf '%s' "$ref"; return 0
+    fi
+    if ref="$(git -C "$MARKETPLACE_DIR" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+        printf '%s' "$ref"; return 0
+    fi
+    if git -C "$MARKETPLACE_DIR" rev-parse --verify --quiet origin/master >/dev/null 2>&1; then
+        printf 'origin/master'; return 0
+    fi
+    if git -C "$MARKETPLACE_DIR" rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+        printf 'origin/main'; return 0
+    fi
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# compute_and_write_cache: given that a successful fetch has just been done,
+# compute the verdict and atomically rewrite $CACHE_FILE. Returns non-zero if
+# any step fails (caller falls back to async path).
+# ---------------------------------------------------------------------------
+compute_and_write_cache() {
+    local local_sha remote_ref remote_sha commits upd now tmp
+    local_sha="$(git -C "$MARKETPLACE_DIR" rev-parse HEAD 2>/dev/null)" || return 1
+    remote_ref="$(resolve_remote_ref)" || return 1
+    remote_sha="$(git -C "$MARKETPLACE_DIR" rev-parse "$remote_ref" 2>/dev/null)" || return 1
+
+    if [ "$local_sha" = "$remote_sha" ]; then
+        upd="false"; commits=0
+    else
+        commits="$(git -C "$MARKETPLACE_DIR" rev-list --count "$local_sha..$remote_sha" 2>/dev/null || printf 0)"
+        if [ "$commits" = "0" ]; then upd="false"; else upd="true"; fi
+    fi
+    now="$(date +%s)"
+    tmp="${CACHE_FILE}.tmp.$$"
+    cat > "$tmp" <<EOF
+{
+  "update_available": $upd,
+  "local_sha": "$local_sha",
+  "remote_sha": "$remote_sha",
+  "remote_ref": "$remote_ref",
+  "commits_ahead": $commits,
+  "checked": $now
+}
+EOF
+    mv "$tmp" "$CACHE_FILE" 2>/dev/null || { rm -f "$tmp"; return 1; }
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# sync_refresh: do a BLOCKING, time-bounded fetch + cache rewrite. Returns
+# non-zero if anything fails — the marketplace clone is missing, no `timeout`
+# command is available, the fetch times out or errors, or the verdict cannot
+# be computed. The caller MUST treat failure as "fall through to async".
+# ---------------------------------------------------------------------------
+sync_refresh() {
+    [ -d "$MARKETPLACE_DIR/.git" ] || return 1
+    git -C "$MARKETPLACE_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
+    git -C "$MARKETPLACE_DIR" remote get-url origin >/dev/null 2>&1 || return 1
+
+    # We require a `timeout`-style command so a hung network never blocks
+    # session start beyond $SYNC_FETCH_TIMEOUT seconds. Prefer GNU `timeout`,
+    # fall back to brew `gtimeout`; if neither exists, skip sync refresh.
+    local timeout_cmd=""
+    if command -v timeout >/dev/null 2>&1; then
+        timeout_cmd="timeout"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        timeout_cmd="gtimeout"
+    else
+        return 1
+    fi
+
+    mkdir -p "$CACHE_DIR" 2>/dev/null || return 1
+
+    "$timeout_cmd" "$SYNC_FETCH_TIMEOUT" \
+        git -C "$MARKETPLACE_DIR" fetch --quiet --no-tags --prune origin >/dev/null 2>&1 || return 1
+
+    compute_and_write_cache || return 1
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# PHASE 1: read cache (if any) and detect staleness vs marketplace HEAD.
+# ---------------------------------------------------------------------------
+cache_stale=0
+if parse_cache_file; then
     # Cross-check: cached local_sha vs marketplace clone's actual HEAD.
     # If they differ, the cache is stale relative to the clone (e.g. user
     # ran `claude plugin update` since the cache was written), so we cannot
-    # trust update_available — treat the cache as invalid.
+    # trust update_available.
     if [ -d "$MARKETPLACE_DIR/.git" ] && [ -n "$cached_local_sha" ]; then
         current_head="$(git -C "$MARKETPLACE_DIR" rev-parse HEAD 2>/dev/null || printf '')"
         if [ -n "$current_head" ] && [ "$current_head" != "$cached_local_sha" ]; then
             cache_stale=1
         fi
     fi
+fi
 
-    if [ "$cache_stale" -eq 0 ] && [ "$update_available" = "true" ]; then
-        # Print the nudge. Pluralize "commit" correctly.
-        if [ "$commits_ahead" = "1" ]; then
-            printf '[obsidian-wiki] Update available: 1 commit behind. Run `/obsidian-wiki:update` to see what is new.\n'
-        else
-            printf '[obsidian-wiki] Update available: %s commits behind. Run `/obsidian-wiki:update` to see what is new.\n' "$commits_ahead"
-        fi
+# ---------------------------------------------------------------------------
+# PHASE 2 (SYNC FAST PATH): if cache is missing or stale, try a 2s-bounded
+# inline refresh so the nudge can appear in THIS session. If anything fails
+# (no `timeout` cmd, offline, slow fetch), we fall through — the async path
+# will handle it and the next session will see the update.
+# ---------------------------------------------------------------------------
+sync_refreshed=0
+if [ ! -f "$CACHE_FILE" ] || [ "$cache_stale" -eq 1 ]; then
+    if sync_refresh; then
+        sync_refreshed=1
+        cache_stale=0
+        parse_cache_file  # re-read the freshly-written values
     fi
 fi
 
 # ---------------------------------------------------------------------------
-# Part 2 (ASYNC): decide whether to refresh the cache in the background.
-# Skip refresh if cache is fresh (< TTL) — otherwise spawn a detached fetch.
+# PHASE 3 (PRINT): nudge the user iff the (possibly freshly refreshed) cache
+# says an update is available and we trust it.
 # ---------------------------------------------------------------------------
+if [ "$cache_stale" -eq 0 ] && [ "$update_available" = "true" ]; then
+    if [ "$commits_ahead" = "1" ]; then
+        printf '[obsidian-wiki] Update available: 1 commit behind. Run `/obsidian-wiki:update` to see what is new.\n'
+    else
+        printf '[obsidian-wiki] Update available: %s commits behind. Run `/obsidian-wiki:update` to see what is new.\n' "$commits_ahead"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# PHASE 4 (ASYNC FALLBACK): if the sync path already wrote a fresh cache,
+# nothing to do. Otherwise, decide whether to spawn a detached refresh based
+# on TTL / staleness. This is the original async path — kept verbatim so a
+# `timeout`-less macOS install still benefits from background refreshing.
+# ---------------------------------------------------------------------------
+if [ "$sync_refreshed" -eq 1 ]; then
+    exit 0
+fi
+
 need_refresh=1
 if [ -f "$CACHE_FILE" ] && [ "$cache_stale" -eq 0 ]; then
     # stat -c works on Linux (GNU coreutils); -f %m is the BSD/macOS equivalent.
