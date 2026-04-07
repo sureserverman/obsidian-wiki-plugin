@@ -6,16 +6,16 @@
 
 > Turn Claude into a librarian for your Obsidian vault — without restructuring it.
 
-A Claude Code plugin that brings the [LLM-wiki workflow](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) to an Obsidian vault you already use. Ingest sources, query with `[[wikilink]]` citations, lint for orphans and stale claims, and mine your AI coding sessions for moments worth saving.
+A Claude Code plugin that brings the [LLM-wiki workflow](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) to an Obsidian vault you already use. Ingest sources, query with `[[wikilink]]` citations, lint for orphans and stale claims, and auto-capture vault-worthy moments from your AI coding sessions as they end.
 
 ```text
 /obsidian-wiki:ingest raw/article.md            # file a source into the wiki
 /obsidian-wiki:ask what do I know about X       # cited answer from your notes
 /obsidian-wiki:lint                             # find orphans, broken links, stale pages
-/obsidian-wiki:scan-sessions                    # mine recent agent sessions for lessons
+/obsidian-wiki:review-captures                  # triage what the SessionEnd hook flagged
 ```
 
-14 slash commands. 11 skills. Read-only by default — only `ingest`, `import-session`, `merge`, schema edits, `lint fix`, and `index` ever write to the vault.
+15 slash commands. 12 skills. Read-only by default — only `ingest`, `import-session`, `merge`, schema edits, `lint fix`, and `index` ever write to the vault. A SessionEnd hook auto-queues vault-worthy sessions for review without ever extracting them on its own.
 
 ## Install
 
@@ -99,8 +99,11 @@ The first run generates `<project>/.claude/vault-context.md` listing every vault
 |---|---|
 | `/obsidian-wiki:scan-sessions [tool] [days]` | Scan recent agent sessions for vault-worthy moments |
 | `/obsidian-wiki:import-session <id-or-path>` | Extract one session into `raw/sessions/`, then offer to ingest |
+| `/obsidian-wiki:review-captures` | Review pending captures the SessionEnd hook auto-queued |
 
 Stream-parses head/tail/error windows; never slurps GB into context. Idempotent — re-runs are no-ops unless you pass `--force`.
+
+A SessionEnd hook (`scripts/capture-session.sh`) fires when any Claude Code session ends, scores it via lightweight heuristics, and (if vault-worthy) appends a `session-capture` log entry to `<vault>/log.md`. Nothing is extracted at capture time — `/obsidian-wiki:review-captures` is what later turns the queue into actual `raw/sessions/` files. Opt out per shell with `OBSIDIAN_WIKI_NO_CAPTURE=1`, per project with a `.obsidian-wiki-no-capture` marker file, or tune sensitivity with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`.
 
 </details>
 
@@ -117,7 +120,7 @@ Stream-parses head/tail/error windows; never slurps GB into context. Idempotent 
 | **Wiki** | Hand-curated markdown in your category dirs | Plugin adds and updates pages; never restructures |
 | **Schema** | `CLAUDE.md` — categories, frontmatter, naming, ingest rules | `vault-schema-maintain` skill, surgically, with confirmation |
 
-**Append-only log.** Every write appends to `log.md` with type ∈ `{ingest, query, lint, schema, merge, gaps, session-import}`. Past entries are never edited.
+**Append-only log.** Every write appends to `log.md` with type ∈ `{ingest, query, lint, schema, merge, gaps, session-import, session-capture, index}`. Past entries are never edited.
 
 **Idempotent.** A source has been ingested if its path appears in some page's `sources:` frontmatter — re-runs update rather than duplicate. Session imports are no-ops if either the canonical `raw/sessions/<tool>-<date>-<id>.md` exists or any wiki page already cites the session.
 

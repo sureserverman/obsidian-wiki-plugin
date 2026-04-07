@@ -2,7 +2,7 @@
 
 A Claude Code plugin that implements [Karpathy's LLM-wiki workflow](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) over an existing Obsidian vault.
 
-The plugin provides eleven skills and fourteen slash commands. Claude Code namespaces
+The plugin provides twelve skills and fifteen slash commands. Claude Code namespaces
 all plugin commands as `/<plugin-name>:<command>`, so every command in this plugin is
 invoked as `/obsidian-wiki:<command>` — no risk of collision with built-in commands
 like `/login`. The plugin is built to **adapt to a vault that already has its own
@@ -10,12 +10,12 @@ structure** rather than imposing Karpathy's exact `raw/ + wiki/ + index.md` layo
 
 **Skills**: `vault-ingest`, `vault-query`, `vault-lint`, `vault-schema-maintain`,
 `vault-related`, `vault-gaps`, `vault-home-rebuild`, `vault-merge`,
-`vault-session-scan`, `vault-session-import`, `vault-index`.
+`vault-session-scan`, `vault-session-import`, `vault-capture-review`, `vault-index`.
 
 **Commands**: `/obsidian-wiki:ingest`, `/obsidian-wiki:ask`, `/obsidian-wiki:lint`, `/obsidian-wiki:log`,
 `/obsidian-wiki:stats`, `/obsidian-wiki:related`, `/obsidian-wiki:gaps`, `/obsidian-wiki:rebuild-home`, `/obsidian-wiki:tag`,
 `/obsidian-wiki:merge`, `/obsidian-wiki:scan-sessions`, `/obsidian-wiki:import-session`,
-`/obsidian-wiki:index`, `/obsidian-wiki:update`.
+`/obsidian-wiki:review-captures`, `/obsidian-wiki:index`, `/obsidian-wiki:update`.
 
 ## What it does
 
@@ -173,6 +173,8 @@ Open Claude Code with `~/dev/knowledge` as the working directory.
 | `/obsidian-wiki:scan-sessions claude-code 30` | scan one tool, last 30 days |
 | `/obsidian-wiki:import-session <id-or-path>` | extract one session into `raw/sessions/`, then offer to ingest |
 | `/obsidian-wiki:import-session <id> --no-ingest` | write the raw file but skip the ingest prompt |
+| `/obsidian-wiki:review-captures` | review pending captures the SessionEnd hook queued; pick which to import |
+| `/obsidian-wiki:review-captures all` | show every pending capture, no display cap |
 
 ### Index command
 
@@ -192,6 +194,24 @@ result to `/tmp/claude/obsidian-wiki-update-check.json`, and prints a one-line
 nudge at session start when an update is available. The hook never modifies
 any file — it only reports. Running `/obsidian-wiki:update` is what actually
 applies the update, and it will prompt before changing anything.
+
+### Auto-capture from SessionEnd
+
+A second hook (`scripts/capture-session.sh`) fires on `SessionEnd` from any
+project. It scores the just-ended session via lightweight heuristics — long
+sessions, error clusters, substantive endings, user-satisfaction markers — and
+if the score crosses the threshold (default 3, override with
+`OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`) appends a `session-capture` entry to
+`<vault>/log.md`. The hook spawns a detached background process so the user's
+session-end is never blocked, and never extracts the session content — that's
+the job of `/obsidian-wiki:review-captures` later.
+
+The hook only writes to the vault's `log.md` (under `flock`). It never writes
+to `raw/`, the wiki, or anything in the project the session ran in. Captures
+are idempotent (a session-id is only ever captured once), and the hook
+silently skips if the cwd is the vault itself, the reason is `clear`, the
+project has a `.obsidian-wiki-no-capture` marker file, or
+`OBSIDIAN_WIKI_NO_CAPTURE=1` is set in the shell environment.
 
 For a persistent **statusline badge** instead of the one-off session nudge,
 paste the snippet from `scripts/statusline-snippet.sh` into your own Claude
@@ -229,7 +249,7 @@ obsidian-wiki-plugin/                # marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json
 │   └── hooks/
-│       └── hooks.json           # SessionStart hook registration (update check)
+│       └── hooks.json           # SessionStart + SessionEnd hook registration
 ├── README.md
 ├── skills/
 │   ├── vault-ingest/SKILL.md
@@ -244,7 +264,8 @@ obsidian-wiki-plugin/                # marketplace root
 │   ├── vault-session-scan/
 │   │   ├── SKILL.md
 │   │   └── references/storage-paths.md
-│   └── vault-session-import/SKILL.md
+│   ├── vault-session-import/SKILL.md
+│   └── vault-capture-review/SKILL.md
 ├── commands/
 │   ├── ingest.md
 │   ├── ask.md
@@ -258,11 +279,14 @@ obsidian-wiki-plugin/                # marketplace root
 │   ├── merge.md
 │   ├── scan-sessions.md
 │   ├── import-session.md
+│   ├── review-captures.md
 │   ├── index.md
 │   └── update.md
 ├── scripts/
 │   ├── resolve-vault.sh        # vault path resolver (mirrored in vault-context)
 │   ├── check-update.sh         # SessionStart hook: background marketplace update check
+│   ├── capture-session.sh      # SessionEnd hook: score + queue vault-worthy sessions
+│   ├── score-session.py        # JSONL scorer used by capture-session.sh
 │   └── statusline-snippet.sh   # opt-in snippet for statusline badge
 └── assets/
     ├── vault-CLAUDE.md       # template dropped into the vault
