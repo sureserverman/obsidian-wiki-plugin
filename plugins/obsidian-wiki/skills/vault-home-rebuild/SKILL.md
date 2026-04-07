@@ -2,7 +2,7 @@
 name: vault-home-rebuild
 description: >
   Use when the user asks to refresh, rebuild, or regenerate Home.md in their Obsidian
-  vault, mentions "/vault-rebuild-home", or notices that Home.md has drifted from the
+  vault, mentions "/obsidian-wiki:rebuild-home", or notices that Home.md has drifted from the
   actual files on disk. Trigger on "rebuild the index", "refresh Home.md", "Home is
   out of date", or "the index is stale".
 ---

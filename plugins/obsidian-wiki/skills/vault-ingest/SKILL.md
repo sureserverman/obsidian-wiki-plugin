@@ -3,7 +3,7 @@ name: vault-ingest
 description: >
   Use when the user asks to ingest a source into their Obsidian vault at ~/dev/knowledge,
   add an article/PDF/page to the wiki, process something dropped into raw/, or mentions
-  "/vault-ingest". Trigger on "ingest this", "add this to my notes", "process this article",
+  "/obsidian-wiki:ingest". Trigger on "ingest this", "add this to my notes", "process this article",
   "put this in the wiki", or when a new file appears under ~/dev/knowledge/raw/.
 ---
 

@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh"
+      }
+    ]
+  }
+}

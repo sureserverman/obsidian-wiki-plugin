@@ -147,7 +147,7 @@ Each entry is a level-2 heading followed by optional bullet detail:
 - <detail>
 ```
 
-`<type>` is one of: `ingest`, `query`, `lint`, `schema`, `session-import`.
+`<type>` is one of: `ingest`, `query`, `lint`, `schema`, `merge`, `gaps`, `session-import`, `index`.
 
 `query` entries are only logged when a new page was filed back. Plain queries that
 just produced an answer are not logged.
@@ -209,6 +209,25 @@ refuses to overwrite without `--force`.
 The session import skills never read the entire session file into context — they
 stream-parse and extract only the substantive turns (assistant explanations, errored
 tool results, summaries). Verbose tool input/output is dropped.
+
+---
+
+## Vault index
+
+`<vault root>/index.md` is a **derived, machine-readable digest** of every wiki page:
+title, path, tags, topic mentions, one-line summary, and last-updated date, grouped by
+category. It exists so other tools (notably the `vault-context` plugin used from
+project repos) can find vault pages relevant to their context without having to grep
+the whole vault.
+
+The index is written **only** by the `vault-index` skill (`/obsidian-wiki:index`).
+Hand-edits are pointless — every run is a full rewrite. The skill skips the write if
+the new content is byte-identical to the old one, so the file's mtime tracks real
+content changes. Index runs append a `[YYYY-MM-DD] index |` entry to `log.md`.
+
+`index.md` is **not** part of the wiki layer. It is excluded from lint orphan
+detection, lint broken-link detection, and the index walk itself. Treat it the same
+way as `Home.md` — present at the vault root, but not a wiki page.
 
 ---
 

@@ -2,18 +2,20 @@
 
 A Claude Code plugin that implements [Karpathy's LLM-wiki workflow](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) over an existing Obsidian vault.
 
-The plugin provides ten skills and twelve slash commands, all namespaced under
-`vault-` to avoid collisions with built-in Claude Code commands like `/login`. It is
-built to **adapt to a vault that already has its own structure** rather than imposing
-Karpathy's exact `raw/ + wiki/ + index.md` layout.
+The plugin provides eleven skills and fourteen slash commands. Claude Code namespaces
+all plugin commands as `/<plugin-name>:<command>`, so every command in this plugin is
+invoked as `/obsidian-wiki:<command>` — no risk of collision with built-in commands
+like `/login`. The plugin is built to **adapt to a vault that already has its own
+structure** rather than imposing Karpathy's exact `raw/ + wiki/ + index.md` layout.
 
 **Skills**: `vault-ingest`, `vault-query`, `vault-lint`, `vault-schema-maintain`,
 `vault-related`, `vault-gaps`, `vault-home-rebuild`, `vault-merge`,
-`vault-session-scan`, `vault-session-import`.
+`vault-session-scan`, `vault-session-import`, `vault-index`.
 
-**Commands**: `/vault-ingest`, `/vault-ask`, `/vault-lint`, `/vault-log`,
-`/vault-stats`, `/vault-related`, `/vault-gaps`, `/vault-rebuild-home`, `/vault-tag`,
-`/vault-merge`, `/vault-scan-sessions`, `/vault-import-session`.
+**Commands**: `/obsidian-wiki:ingest`, `/obsidian-wiki:ask`, `/obsidian-wiki:lint`, `/obsidian-wiki:log`,
+`/obsidian-wiki:stats`, `/obsidian-wiki:related`, `/obsidian-wiki:gaps`, `/obsidian-wiki:rebuild-home`, `/obsidian-wiki:tag`,
+`/obsidian-wiki:merge`, `/obsidian-wiki:scan-sessions`, `/obsidian-wiki:import-session`,
+`/obsidian-wiki:index`, `/obsidian-wiki:update`.
 
 ## What it does
 
@@ -29,6 +31,10 @@ Karpathy's exact `raw/ + wiki/ + index.md` layout.
   contradictions, and possibly stale claims. Report-only by default.
 - **Schema maintenance**: evolve the vault's `CLAUDE.md` rules over time as
   conventions are corrected.
+
+- **Vault index**: regenerate `<vault>/index.md`, a machine-readable digest of every
+  page (title, path, tags, topics, one-line summary, updated date) for downstream tools
+  like the `vault-context` companion plugin.
 
 **Maintenance helpers** (the work Karpathy says "humans abandon"):
 
@@ -136,37 +142,62 @@ Open Claude Code with `~/dev/knowledge` as the working directory.
 
 | Command | What happens |
 |---|---|
-| `/vault-ingest raw/article.md` | process a source into a wiki page |
-| `/vault-ingest` | list files in `raw/` and ask which to ingest |
-| `/vault-ask what do I know about Tor DNS leaks` | query the wiki with citations |
-| `/vault-lint` | run all five health checks, print a report (read-only) |
-| `/vault-lint fix` | enter fix mode, confirms each edit individually |
-| `/vault-log` | show the last 10 entries from `log.md` grouped by type |
-| `/vault-log 25` | show the last 25 entries |
+| `/obsidian-wiki:ingest raw/article.md` | process a source into a wiki page |
+| `/obsidian-wiki:ingest` | list files in `raw/` and ask which to ingest |
+| `/obsidian-wiki:ask what do I know about Tor DNS leaks` | query the wiki with citations |
+| `/obsidian-wiki:lint` | run all five health checks, print a report (read-only) |
+| `/obsidian-wiki:lint fix` | enter fix mode, confirms each edit individually |
+| `/obsidian-wiki:log` | show the last 10 entries from `log.md` grouped by type |
+| `/obsidian-wiki:log 25` | show the last 25 entries |
 
 ### Maintenance commands
 
 | Command | What happens |
 |---|---|
-| `/vault-stats` | dashboard: page counts, hubs, orphans, recent activity, stale candidates |
-| `/vault-stats verbose` | also include per-category orphan and hub breakdowns |
-| `/vault-related Gotchas/DNS Leaks.md` | suggest missing cross-refs for one page (read-only) |
-| `/vault-gaps` | find entities mentioned by ≥3 pages with no dedicated page yet |
-| `/vault-gaps 2` | lower the threshold to ≥2 pages |
-| `/vault-rebuild-home` | refresh `Home.md` tables to match files on disk (with diff confirmation) |
-| `/vault-tag` | show tag cloud of every tag in the vault with page counts |
-| `/vault-tag tor dns` | list pages tagged with both `tor` AND `dns` |
-| `/vault-tag --moc tor` | generate a Markdown table for a `tor` MOC (does not write it) |
-| `/vault-merge old-page.md canonical-page.md` | merge two pages, rewrite all inbound wikilinks, delete the loser |
+| `/obsidian-wiki:stats` | dashboard: page counts, hubs, orphans, recent activity, stale candidates |
+| `/obsidian-wiki:stats verbose` | also include per-category orphan and hub breakdowns |
+| `/obsidian-wiki:related Gotchas/DNS Leaks.md` | suggest missing cross-refs for one page (read-only) |
+| `/obsidian-wiki:gaps` | find entities mentioned by ≥3 pages with no dedicated page yet |
+| `/obsidian-wiki:gaps 2` | lower the threshold to ≥2 pages |
+| `/obsidian-wiki:rebuild-home` | refresh `Home.md` tables to match files on disk (with diff confirmation) |
+| `/obsidian-wiki:tag` | show tag cloud of every tag in the vault with page counts |
+| `/obsidian-wiki:tag tor dns` | list pages tagged with both `tor` AND `dns` |
+| `/obsidian-wiki:tag --moc tor` | generate a Markdown table for a `tor` MOC (does not write it) |
+| `/obsidian-wiki:merge old-page.md canonical-page.md` | merge two pages, rewrite all inbound wikilinks, delete the loser |
 
 ### Session import commands
 
 | Command | What happens |
 |---|---|
-| `/vault-scan-sessions` | scan all 5 tools for vault-worthy sessions in last 7 days (read-only report) |
-| `/vault-scan-sessions claude-code 30` | scan one tool, last 30 days |
-| `/vault-import-session <id-or-path>` | extract one session into `raw/sessions/`, then offer to ingest |
-| `/vault-import-session <id> --no-ingest` | write the raw file but skip the ingest prompt |
+| `/obsidian-wiki:scan-sessions` | scan all 5 tools for vault-worthy sessions in last 7 days (read-only report) |
+| `/obsidian-wiki:scan-sessions claude-code 30` | scan one tool, last 30 days |
+| `/obsidian-wiki:import-session <id-or-path>` | extract one session into `raw/sessions/`, then offer to ingest |
+| `/obsidian-wiki:import-session <id> --no-ingest` | write the raw file but skip the ingest prompt |
+
+### Index command
+
+| Command | What happens |
+|---|---|
+| `/obsidian-wiki:index` | regenerate `<vault>/index.md` — machine-readable digest of every wiki page, used by the `vault-context` companion plugin |
+
+### Self-update
+
+| Command | What happens |
+|---|---|
+| `/obsidian-wiki:update` | check the `obsidian-wiki` marketplace for upstream commits, show the git-log changelog, confirm, and apply the update via `claude plugin marketplace update` + `claude plugin update` |
+
+A `SessionStart` hook (`scripts/check-update.sh`) runs a `git fetch` against
+the marketplace clone in the background at most once every 6 hours, writes the
+result to `/tmp/claude/obsidian-wiki-update-check.json`, and prints a one-line
+nudge at session start when an update is available. The hook never modifies
+any file — it only reports. Running `/obsidian-wiki:update` is what actually
+applies the update, and it will prompt before changing anything.
+
+For a persistent **statusline badge** instead of the one-off session nudge,
+paste the snippet from `scripts/statusline-snippet.sh` into your own Claude
+Code statusline script (see that file's header comment for instructions).
+Claude Code plugins cannot contribute to the statusline directly, so the
+badge is opt-in. If you skip it, the session nudge still works.
 
 The skills also auto-trigger from natural-language phrases — see each `SKILL.md` for
 the trigger list.
@@ -196,7 +227,9 @@ obsidian-wiki-plugin/                # marketplace root
 └── plugins/
     └── obsidian-wiki/                # the plugin
 ├── .claude-plugin/
-│   └── plugin.json
+│   ├── plugin.json
+│   └── hooks/
+│       └── hooks.json           # SessionStart hook registration (update check)
 ├── README.md
 ├── skills/
 │   ├── vault-ingest/SKILL.md
@@ -207,23 +240,30 @@ obsidian-wiki-plugin/                # marketplace root
 │   ├── vault-gaps/SKILL.md
 │   ├── vault-home-rebuild/SKILL.md
 │   ├── vault-merge/SKILL.md
+│   ├── vault-index/SKILL.md
 │   ├── vault-session-scan/
 │   │   ├── SKILL.md
 │   │   └── references/storage-paths.md
 │   └── vault-session-import/SKILL.md
 ├── commands/
-│   ├── vault-ingest.md
-│   ├── vault-ask.md
-│   ├── vault-lint.md
-│   ├── vault-log.md
-│   ├── vault-stats.md
-│   ├── vault-related.md
-│   ├── vault-gaps.md
-│   ├── vault-rebuild-home.md
-│   ├── vault-tag.md
-│   ├── vault-merge.md
-│   ├── vault-scan-sessions.md
-│   └── vault-import-session.md
+│   ├── ingest.md
+│   ├── ask.md
+│   ├── lint.md
+│   ├── log.md
+│   ├── stats.md
+│   ├── related.md
+│   ├── gaps.md
+│   ├── rebuild-home.md
+│   ├── tag.md
+│   ├── merge.md
+│   ├── scan-sessions.md
+│   ├── import-session.md
+│   ├── index.md
+│   └── update.md
+├── scripts/
+│   ├── resolve-vault.sh        # vault path resolver (mirrored in vault-context)
+│   ├── check-update.sh         # SessionStart hook: background marketplace update check
+│   └── statusline-snippet.sh   # opt-in snippet for statusline badge
 └── assets/
     ├── vault-CLAUDE.md       # template dropped into the vault
     └── log-template.md       # initial log.md
@@ -235,6 +275,5 @@ obsidian-wiki-plugin/                # marketplace root
   sources already exist in `raw/`).
 - The `qmd` CLI / MCP server for fast vector + BM25 retrieval over the wiki.
 - Dataview plugin queries over frontmatter.
-- Auto-generation of an `index.md` separate from `Home.md`.
 
 These can be added in a later iteration if useful.

@@ -2,7 +2,7 @@
 name: vault-gaps
 description: >
   Use when the user asks to find content gaps in their Obsidian vault, missing pages,
-  topics that should have a dedicated note, or mentions "/vault-gaps". Trigger on
+  topics that should have a dedicated note, or mentions "/obsidian-wiki:gaps". Trigger on
   "what's missing from my wiki", "find topics I should write up", "any gaps in my
   notes", or "entities I keep mentioning but don't have a page for".
 ---

@@ -1,6 +1,6 @@
 {
-  "name": "obsidian-wiki",
-  "description": "Karpathy-style LLM wiki workflow for an Obsidian vault: ingest sources, query with citations, lint for health issues, scan AI coding sessions, and maintain a CLAUDE.md schema.",
+  "name": "vault-context",
+  "description": "Surface Obsidian-vault knowledge inside project repos: scan the current project, match against the vault's index, and write a CLAUDE.md-loaded sidecar with relevant page references.",
   "version": "0.1.0",
   "author": {
     "name": "Sure Serverman"
