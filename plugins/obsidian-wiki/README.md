@@ -247,9 +247,9 @@ obsidian-wiki-plugin/                # marketplace root
 └── plugins/
     └── obsidian-wiki/                # the plugin
 ├── .claude-plugin/
-│   ├── plugin.json
-│   └── hooks/
-│       └── hooks.json           # SessionStart + SessionEnd hook registration
+│   └── plugin.json
+├── hooks/
+│   └── hooks.json               # SessionStart + SessionEnd hook registration
 ├── README.md
 ├── skills/
 │   ├── vault-ingest/SKILL.md
