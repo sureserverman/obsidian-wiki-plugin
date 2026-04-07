@@ -1,7 +1,7 @@
 ---
 name: vault-lint
 description: >
-  Use when the user asks for a vault health check, mentions "/vault-lint", or asks about orphan
+  Use when the user asks for a vault health check, mentions "/obsidian-wiki:lint", or asks about orphan
   pages, broken wikilinks, contradictions between notes, stale claims, or missing backlinks
   in their Obsidian vault. Trigger on "lint my vault", "check wiki health", "find orphans",
   or "any broken links in my notes".

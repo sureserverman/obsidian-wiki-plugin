@@ -1,8 +1,11 @@
 {
   "name": "obsidian-wiki",
-  "description": "Karpathy-style LLM wiki workflow for an Obsidian vault: ingest sources, query with citations, lint for health issues, and maintain a CLAUDE.md schema.",
+  "description": "Karpathy-style LLM wiki workflow for an Obsidian vault: ingest sources, query with citations, lint for health issues, scan AI coding sessions, and maintain a CLAUDE.md schema.",
   "version": "0.1.0",
   "author": {
-    "name": "user"
-  }
+    "name": "Sure Serverman"
+  },
+  "homepage": "https://github.com/sureserverman/obsidian-wiki-plugin",
+  "repository": "https://github.com/sureserverman/obsidian-wiki-plugin",
+  "license": "MIT"
 }

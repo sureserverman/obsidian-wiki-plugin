@@ -2,7 +2,7 @@
 name: vault-session-scan
 description: >
   Use when the user asks to find vault-worthy moments from recent AI coding sessions
-  across Claude Code, Cursor, Codex, Gemini, or OpenCode, mentions "/vault-scan-sessions",
+  across Claude Code, Cursor, Codex, Gemini, or OpenCode, mentions "/obsidian-wiki:scan-sessions",
   or asks "what should I capture from my agent sessions". Trigger on "mine my sessions
   for the wiki", "find lessons from yesterday's debugging", "what did I learn this week",
   or "scan recent agent sessions for raw/".

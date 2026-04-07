@@ -2,7 +2,7 @@
 name: vault-related
 description: >
   Use when the user asks to find missing cross-references for a specific page in their
-  Obsidian vault, mentions "/vault-related", or asks "what should this page link to" or
+  Obsidian vault, mentions "/obsidian-wiki:related", or asks "what should this page link to" or
   "find related notes for X". Trigger on "missing backlinks", "what's related to this",
   or any request to enrich a single page's wikilinks.
 ---

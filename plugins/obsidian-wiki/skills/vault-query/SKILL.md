@@ -2,7 +2,7 @@
 name: vault-query
 description: >
   Use when the user asks a research or recall question that their Obsidian vault at
-  ~/dev/knowledge might answer, or mentions "/vault-ask". Trigger on "what do I know about X",
+  ~/dev/knowledge might answer, or mentions "/obsidian-wiki:ask". Trigger on "what do I know about X",
   "what's in my notes about Y", "check my wiki for Z", or any factual question in a domain
   the vault covers (Tor, DNS, Android, Matrix, packaging, fingerprinting, etc.).
 ---

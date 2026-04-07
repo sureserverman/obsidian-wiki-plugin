@@ -2,7 +2,7 @@
 name: vault-merge
 description: >
   Use when the user asks to merge two Obsidian vault pages into one, consolidate
-  duplicate notes, mentions "/vault-merge", or says "these two pages are about the
+  duplicate notes, mentions "/obsidian-wiki:merge", or says "these two pages are about the
   same thing". Trigger on "merge these notes", "consolidate X and Y", "this is a
   duplicate of", or "fold this page into".
 ---

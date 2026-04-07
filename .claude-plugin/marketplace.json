@@ -1,15 +1,21 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "obsidian-wiki",
-  "description": "Local marketplace hosting the obsidian-wiki plugin: Karpathy-style LLM wiki workflow for an Obsidian vault.",
+  "description": "Marketplace hosting two complementary plugins for an Obsidian vault: obsidian-wiki (producer; runs in the vault) and vault-context (consumer; runs in project repos).",
   "owner": {
     "name": "user"
   },
   "plugins": [
     {
       "name": "obsidian-wiki",
-      "description": "Karpathy-style LLM wiki workflow for an Obsidian vault: ingest sources, query with citations, lint for health issues, scan AI coding sessions, and maintain a CLAUDE.md schema.",
+      "description": "Karpathy-style LLM wiki workflow for an Obsidian vault: ingest sources, query with citations, lint for health issues, scan AI coding sessions, regenerate the vault index, and maintain a CLAUDE.md schema.",
       "source": "./plugins/obsidian-wiki",
+      "category": "productivity"
+    },
+    {
+      "name": "vault-context",
+      "description": "Surface Obsidian-vault knowledge inside project repos: scan the current project, match against the vault's index, and write a CLAUDE.md-loaded sidecar with relevant page references.",
+      "source": "./plugins/vault-context",
       "category": "productivity"
     }
   ]

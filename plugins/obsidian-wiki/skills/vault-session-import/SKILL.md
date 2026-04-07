@@ -2,7 +2,7 @@
 name: vault-session-import
 description: >
   Use when the user picks a specific AI coding session (Claude Code, Cursor, Codex, Gemini,
-  OpenCode) to extract into the vault, mentions "/vault-import-session", or asks to
+  OpenCode) to extract into the vault, mentions "/obsidian-wiki:import-session", or asks to
   "import that session", "save this debugging arc to the wiki", "extract this conversation
   into raw/", or "turn yesterday's session into a note". Trigger after the user reviews a
   candidate from `vault-session-scan` and chooses one.
@@ -173,7 +173,7 @@ After writing the raw file and logging, ask the user:
 If yes, hand off to `vault-ingest` with the new file as input. The ingest skill handles
 category selection, cross-refs, and the wiki page creation independently.
 
-If no, leave the file in `raw/sessions/`. The user can run `/vault-ingest
+If no, leave the file in `raw/sessions/`. The user can run `/obsidian-wiki:ingest
 raw/sessions/<filename>` later.
 
 ## What never to do
