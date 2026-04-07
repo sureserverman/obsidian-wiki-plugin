@@ -147,7 +147,7 @@ Each entry is a level-2 heading followed by optional bullet detail:
 - <detail>
 ```
 
-`<type>` is one of: `ingest`, `query`, `lint`, `schema`, `merge`, `gaps`, `session-import`, `index`.
+`<type>` is one of: `ingest`, `query`, `lint`, `schema`, `merge`, `gaps`, `session-import`, `session-capture`, `index`.
 
 `query` entries are only logged when a new page was filed back. Plain queries that
 just produced an answer are not logged.
@@ -155,6 +155,10 @@ just produced an answer are not logged.
 `session-import` entries are appended by the `vault-session-import` skill when an AI
 coding session is extracted into `raw/sessions/`. The chained `vault-ingest` (if the
 user accepts) produces a separate `ingest` entry.
+
+`session-capture` entries are appended by the `obsidian-wiki` SessionEnd hook
+(`scripts/capture-session.sh`) — see the "Auto-capture from SessionEnd" section
+below.
 
 ---
 
@@ -209,6 +213,38 @@ refuses to overwrite without `--force`.
 The session import skills never read the entire session file into context — they
 stream-parse and extract only the substantive turns (assistant explanations, errored
 tool results, summaries). Verbose tool input/output is dropped.
+
+---
+
+## Auto-capture from SessionEnd
+
+The `obsidian-wiki` plugin registers a `SessionEnd` hook
+(`scripts/capture-session.sh`) that fires when any Claude Code session ends in
+any project (anywhere except inside the vault itself). The hook scores the
+just-ended session via lightweight heuristics — long sessions, error clusters,
+substantive final messages, user-satisfaction markers — and if the score crosses
+the threshold (default 3, override with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`),
+appends a `session-capture` entry to this log.
+
+The capture entry is **informational only**: the hook never extracts the
+session's content. The actual extract still happens via `vault-session-import`
+when you run `/obsidian-wiki:review-captures` from within the vault. Captures
+are idempotent (a session-id is only ever captured once) and the hook never
+writes to `raw/`, the wiki, or anything outside `log.md`.
+
+When `vault-session-import` produces an extract from a capture, it appends a
+`Captured-as: [<date>] session-capture <short-id>` line to its `session-import`
+log entry. That line is the cross-reference `vault-capture-review` uses to tell
+imported captures from pending ones — captures are never edited or deleted, so
+the cross-ref on the import entry is the only "this capture has been processed"
+marker.
+
+Opt out:
+- Per shell: `export OBSIDIAN_WIKI_NO_CAPTURE=1` in your environment.
+- Per project: create an empty `.obsidian-wiki-no-capture` file at the project root.
+
+Tune sensitivity with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N` (default 3,
+practical range 0–6). Lower = more captures.
 
 ---
 

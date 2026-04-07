@@ -161,8 +161,27 @@ Append to `~/dev/knowledge/log.md`:
 - Turns: <N>
 ```
 
-`session-import` is a new log type, alongside `ingest`, `query`, `lint`, `schema`,
-`gaps`, `merge`. The `vault-CLAUDE.md` schema documents this list.
+`session-import` is a log type alongside `ingest`, `query`, `lint`, `schema`,
+`gaps`, `merge`, `session-capture`, `index`. The `vault-CLAUDE.md` schema
+documents this list.
+
+### Cross-reference back to a capture entry
+
+If the import was triggered from `vault-capture-review` (the user picked a
+capture queued by the SessionEnd hook), append one extra bullet that points
+back to the originating `session-capture` entry:
+
+```
+- Captured-as: [<capture-date>] session-capture <short-id>
+```
+
+Where `<capture-date>` is the `[YYYY-MM-DD]` from the original capture
+entry's heading and `<short-id>` is the same 8-char prefix of the session
+UUID. This is the **only** authoritative marker that `vault-capture-review`
+uses to tell pending captures from imported ones, so do not skip it for
+capture-driven imports. Manual imports (where the user passed a path
+directly to `/obsidian-wiki:import-session` and there's no capture entry
+in the log) omit this line.
 
 ## Step 6 — Offer to chain into vault-ingest
 
