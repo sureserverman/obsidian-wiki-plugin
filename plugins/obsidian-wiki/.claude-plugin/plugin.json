@@ -1,0 +1,8 @@
+{
+  "name": "obsidian-wiki",
+  "description": "Karpathy-style LLM wiki workflow for an Obsidian vault: ingest sources, query with citations, lint for health issues, and maintain a CLAUDE.md schema.",
+  "version": "0.1.0",
+  "author": {
+    "name": "user"
+  }
+}

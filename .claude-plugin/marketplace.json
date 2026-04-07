@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "obsidian-wiki",
+  "description": "Local marketplace hosting the obsidian-wiki plugin: Karpathy-style LLM wiki workflow for an Obsidian vault.",
+  "owner": {
+    "name": "user"
+  },
+  "plugins": [
+    {
+      "name": "obsidian-wiki",
+      "description": "Karpathy-style LLM wiki workflow for an Obsidian vault: ingest sources, query with citations, lint for health issues, scan AI coding sessions, and maintain a CLAUDE.md schema.",
+      "source": "./plugins/obsidian-wiki",
+      "category": "productivity"
+    }
+  ]
+}
