@@ -41,5 +41,9 @@ esac
 # Gate 5: sidecar does not yet exist
 [ -e "$PWD/.claude/vault-context.md" ] && exit 0
 
-# All gates passed: print the prompt.
-printf '[vault-context] No vault context for this project yet. Run `/vault-context:link` to scan your vault and surface relevant pages.\n'
+# All gates passed: emit the prompt as a JSON systemMessage. Plain-text stdout
+# from a SessionStart hook only reaches the model's additionalContext — it is
+# never rendered in the user's TUI. Only `{"systemMessage": "..."}` JSON is
+# surfaced as a visible "SessionStart:startup says: …" gray line.
+msg='[vault-context] No vault context for this project yet. Run `/vault-context:link` to scan your vault and surface relevant pages.'
+printf '{"systemMessage":"%s"}\n' "$msg"
