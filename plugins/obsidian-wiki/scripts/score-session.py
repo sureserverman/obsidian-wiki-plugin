@@ -7,7 +7,7 @@ transcript at the path given as argv[1] and prints a single line of the form:
     <score>|<turn_count>|<topic>|<errors>
 
 to stdout, where:
-  - score:      integer in approximately [-3, 5]; capture threshold is 3
+  - score:      integer in approximately [-3, 5]; capture threshold is 2
   - turn_count: line count of the JSONL (proxy for total events)
   - topic:      first user prompt sanitized to a single line, ≤60 chars
   - errors:     count of `"is_error":true` events (tool failure signal)

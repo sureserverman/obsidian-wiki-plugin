@@ -19,7 +19,7 @@
 #   - cwd is the vault itself (don't capture vault-maintenance sessions)
 #   - transcript_path is missing or unreadable
 #   - the session is already captured (idempotency)
-#   - score below threshold (default 3, override via $OBSIDIAN_WIKI_CAPTURE_THRESHOLD)
+#   - score below threshold (default 2, override via $OBSIDIAN_WIKI_CAPTURE_THRESHOLD)
 #
 # This hook only writes to the vault's log.md. It NEVER writes to raw/, the
 # wiki, or anything in the project directory where the session ran.
@@ -83,7 +83,7 @@ if [ -n "$cwd_val" ]; then
     esac
 fi
 
-threshold="${OBSIDIAN_WIKI_CAPTURE_THRESHOLD:-3}"
+threshold="${OBSIDIAN_WIKI_CAPTURE_THRESHOLD:-2}"
 
 # ---------------------------------------------------------------------------
 # Spawn the detached background scorer. Foreground returns immediately —

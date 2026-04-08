@@ -200,7 +200,7 @@ applies the update, and it will prompt before changing anything.
 A second hook (`scripts/capture-session.sh`) fires on `SessionEnd` from any
 project. It scores the just-ended session via lightweight heuristics — long
 sessions, error clusters, substantive endings, user-satisfaction markers — and
-if the score crosses the threshold (default 3, override with
+if the score crosses the threshold (default 2, override with
 `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`) appends a `session-capture` entry to
 `<vault>/log.md`. The hook spawns a detached background process so the user's
 session-end is never blocked, and never extracts the session content — that's

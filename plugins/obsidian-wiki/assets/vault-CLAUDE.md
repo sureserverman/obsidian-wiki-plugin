@@ -223,7 +223,7 @@ The `obsidian-wiki` plugin registers a `SessionEnd` hook
 any project (anywhere except inside the vault itself). The hook scores the
 just-ended session via lightweight heuristics — long sessions, error clusters,
 substantive final messages, user-satisfaction markers — and if the score crosses
-the threshold (default 3, override with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`),
+the threshold (default 2, override with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`),
 appends a `session-capture` entry to this log.
 
 The capture entry is **informational only**: the hook never extracts the
@@ -243,7 +243,7 @@ Opt out:
 - Per shell: `export OBSIDIAN_WIKI_NO_CAPTURE=1` in your environment.
 - Per project: create an empty `.obsidian-wiki-no-capture` file at the project root.
 
-Tune sensitivity with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N` (default 3,
+Tune sensitivity with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N` (default 2,
 practical range 0–6). Lower = more captures.
 
 ---
