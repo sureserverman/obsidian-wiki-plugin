@@ -9,7 +9,7 @@ pick which to extract via `vault-session-import`.
 
 The hook runs in the background after every Claude Code session ends. It
 scores the session via lightweight heuristics and queues a `session-capture`
-log entry whenever the score is at or above the threshold (default 3).
+log entry whenever the score is at or above the threshold (default 2).
 **Nothing is extracted at capture time** — extraction is the job of this
 review flow, so the user stays in control of what lands in `raw/sessions/`.
 
