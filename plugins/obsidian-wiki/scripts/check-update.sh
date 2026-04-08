@@ -16,8 +16,11 @@
 #      through to the async path so the session still starts without waiting.
 #
 #   3. PRINT: if the cache (freshly written or still valid) says
-#      update_available=true, print a one-line nudge to stdout. Claude Code
-#      surfaces SessionStart stdout as a session message.
+#      update_available=true, emit a JSON systemMessage hook response so the
+#      nudge is rendered in the user's TUI. Plain-text stdout from a
+#      SessionStart hook only reaches the model's additionalContext — it is
+#      NEVER shown to the user. The TUI only renders `{"systemMessage": "..."}`
+#      as a visible "SessionStart:startup says: …" gray line.
 #
 #   4. ASYNC FALLBACK REFRESH: if the sync path didn't write a cache and the
 #      existing cache is missing/stale/expired, spawn a detached background
@@ -201,10 +204,14 @@ fi
 # ---------------------------------------------------------------------------
 if [ "$cache_stale" -eq 0 ] && [ "$update_available" = "true" ]; then
     if [ "$commits_ahead" = "1" ]; then
-        printf '[obsidian-wiki] Update available: 1 commit behind. Run `/obsidian-wiki:update` to see what is new.\n'
+        msg='[obsidian-wiki] Update available: 1 commit behind. Run `/obsidian-wiki:update` to see what is new.'
     else
-        printf '[obsidian-wiki] Update available: %s commits behind. Run `/obsidian-wiki:update` to see what is new.\n' "$commits_ahead"
+        msg='[obsidian-wiki] Update available: '"$commits_ahead"' commits behind. Run `/obsidian-wiki:update` to see what is new.'
     fi
+    # JSON systemMessage — the only SessionStart hook output that is visible
+    # to the user in the TUI. Plain-text stdout would go silently into the
+    # model's additionalContext and never reach the user.
+    printf '{"systemMessage":"%s"}\n' "$msg"
 fi
 
 # ---------------------------------------------------------------------------
