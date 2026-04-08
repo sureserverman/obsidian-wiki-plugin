@@ -19,11 +19,18 @@
 set -euo pipefail
 
 expand_tilde() {
-    # POSIX-ish tilde expansion that doesn't require bash 4+
+    # POSIX-ish tilde expansion that doesn't require bash 4+.
+    #
+    # NOTE: bash performs tilde expansion on the *pattern* inside
+    # `${p#~/}`, turning the pattern into `$HOME/`. That pattern then
+    # does not match a literal "~/dev/knowledge" and nothing is stripped,
+    # so the function used to return "$HOME/~/dev/knowledge", which isn't
+    # a real directory. Use `${p:2}` (substring starting at index 2) to
+    # drop the leading "~/" without invoking pattern parsing.
     local p="$1"
     case "$p" in
         "~")     printf '%s\n' "$HOME" ;;
-        "~/"*)   printf '%s\n' "$HOME/${p#~/}" ;;
+        "~/"*)   printf '%s\n' "$HOME/${p:2}" ;;
         *)       printf '%s\n' "$p" ;;
     esac
 }
