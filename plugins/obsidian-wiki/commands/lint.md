@@ -2,7 +2,10 @@
 description: Run a health check over the Obsidian vault
 ---
 
-Use the `vault-lint` skill to scan `~/dev/knowledge` for orphans, broken wikilinks,
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
+
+
+Use the `vault-lint` skill to scan `<vault>` for orphans, broken wikilinks,
 missing frontmatter, possible contradictions, and possibly stale pages.
 
 **Arguments**: `$ARGUMENTS` — `fix` to enter fix mode (default: report-only).

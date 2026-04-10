@@ -22,7 +22,7 @@ skill never writes to `log.md` directly; it reads, filters, and delegates.
 
 ## Step 1 — Read the log
 
-Read `~/dev/knowledge/log.md` (or `$OBSIDIAN_VAULT_PATH/log.md` if set).
+Read `<vault>/log.md` (or `$OBSIDIAN_VAULT_PATH/log.md` if set).
 
 Find every entry whose heading matches:
 

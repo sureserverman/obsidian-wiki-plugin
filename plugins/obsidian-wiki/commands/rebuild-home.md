@@ -2,7 +2,10 @@
 description: Refresh Home.md tables to match files on disk
 ---
 
-Use the `vault-home-rebuild` skill to regenerate the tables in `~/dev/knowledge/Home.md`
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
+
+
+Use the `vault-home-rebuild` skill to regenerate the tables in `<vault>/Home.md`
 from the actual filesystem state. This catches drift caused by manual page additions,
 renames, or deletions in Obsidian.
 

@@ -1,15 +1,17 @@
 ---
 name: vault-ingest
 description: >
-  Use when the user asks to ingest a source into their Obsidian vault at ~/dev/knowledge,
+  Use when the user asks to ingest a source into their Obsidian vault at <vault>,
   add an article/PDF/page to the wiki, process something dropped into raw/, or mentions
   "/obsidian-wiki:ingest". Trigger on "ingest this", "add this to my notes", "process this article",
-  "put this in the wiki", or when a new file appears under ~/dev/knowledge/raw/.
+  "put this in the wiki", or when a new file appears under <vault>/raw/.
 ---
+
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
 
 # Vault Ingest
 
-Incorporate a new source into the Obsidian vault at `~/dev/knowledge` by writing or
+Incorporate a new source into the Obsidian vault at `<vault>` by writing or
 updating a wiki page, adding cross-references to related pages, and logging the activity.
 
 The vault already has its own structure — do not restructure it. Work within the existing
@@ -19,10 +21,10 @@ six category directories and use `Home.md` as the navigation index.
 
 Before ingesting anything, confirm these exist:
 
-- `~/dev/knowledge/` — the vault root
-- `~/dev/knowledge/CLAUDE.md` — schema with category rules and frontmatter template
-- `~/dev/knowledge/log.md` — append-only activity log
-- `~/dev/knowledge/raw/` — source inbox
+- `<vault>/` — the vault root
+- `<vault>/CLAUDE.md` — schema with category rules and frontmatter template
+- `<vault>/log.md` — append-only activity log
+- `<vault>/raw/` — source inbox
 
 If any are missing, the vault has not been bootstrapped for this plugin. Point the user
 at the plugin README (bootstrap section) instead of creating these files yourself.
@@ -124,7 +126,7 @@ Rules:
 
 ## Log append
 
-Append a new entry to `~/dev/knowledge/log.md`. Newest at the bottom, never edit past
+Append a new entry to `<vault>/log.md`. Newest at the bottom, never edit past
 entries. Format:
 
 ```

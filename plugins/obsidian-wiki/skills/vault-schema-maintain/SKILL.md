@@ -7,6 +7,8 @@ description: >
   across future sessions.
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Schema Maintain
 
 Edit the vault's `CLAUDE.md` to evolve its conventions over time. This is the only
@@ -67,7 +69,7 @@ file?" before touching `CLAUDE.md`.
 
 ## Log append
 
-After applying a schema change, append to `~/dev/knowledge/log.md`:
+After applying a schema change, append to `<vault>/log.md`:
 
 ```
 ## [YYYY-MM-DD] schema | <one-line summary of the rule added or changed>

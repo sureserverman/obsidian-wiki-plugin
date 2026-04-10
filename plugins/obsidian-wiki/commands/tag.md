@@ -2,7 +2,10 @@
 description: List vault pages by tag
 ---
 
-Filter pages in `~/dev/knowledge` by their frontmatter `tags:` field (Dataview-style
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
+
+
+Filter pages in `<vault>` by their frontmatter `tags:` field (Dataview-style
 AND semantics). No skill is needed — this command runs the filter directly.
 
 **Arguments**: `$ARGUMENTS` — one or more tag names, space-separated.

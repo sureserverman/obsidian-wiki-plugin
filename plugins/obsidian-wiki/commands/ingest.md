@@ -2,11 +2,14 @@
 description: Ingest a source from raw/ into the Obsidian vault
 ---
 
-Use the `vault-ingest` skill to process a source into the wiki at `~/dev/knowledge`.
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
 
-**Arguments**: `$ARGUMENTS` — path to a file under `~/dev/knowledge/raw/`.
 
-If `$ARGUMENTS` is empty, list files under `~/dev/knowledge/raw/` and ask which one
+Use the `vault-ingest` skill to process a source into the wiki at `<vault>`.
+
+**Arguments**: `$ARGUMENTS` — path to a file under `<vault>/raw/`.
+
+If `$ARGUMENTS` is empty, list files under `<vault>/raw/` and ask which one
 to ingest.
 
 **Examples**:

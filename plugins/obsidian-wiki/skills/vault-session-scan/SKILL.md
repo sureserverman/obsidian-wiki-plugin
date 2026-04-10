@@ -8,6 +8,8 @@ description: >
   or "scan recent agent sessions for raw/".
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Session Scan
 
 Discover recent sessions across the user's AI coding tools (Claude Code, Codex, Cursor,
@@ -55,7 +57,7 @@ first 8 chars of the project hash).
 
 Then check both idempotency conditions:
 
-1. Does `~/dev/knowledge/raw/sessions/<filename>` exist?
+1. Does `<vault>/raw/sessions/<filename>` exist?
 2. Does any wiki page's frontmatter `sources:` contain that path?
 
 If either is true, drop the session from the candidate list. Show the kept count and

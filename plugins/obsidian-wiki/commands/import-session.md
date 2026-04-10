@@ -2,8 +2,11 @@
 description: Extract one AI coding session into raw/sessions/ as a vault source
 ---
 
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
+
+
 Use the `vault-session-import` skill to extract one session into
-`~/dev/knowledge/raw/sessions/` as a markdown file. After writing, the skill offers to
+`<vault>/raw/sessions/` as a markdown file. After writing, the skill offers to
 chain into `vault-ingest` so the source can be filed into the wiki.
 
 **Arguments**: `$ARGUMENTS` — a session identifier. Any of:

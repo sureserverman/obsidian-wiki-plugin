@@ -7,9 +7,11 @@ description: >
   duplicate of", or "fold this page into".
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Merge
 
-Merge two pages in `~/dev/knowledge` into one canonical page and update every inbound
+Merge two pages in `<vault>` into one canonical page and update every inbound
 `[[wikilink]]` across the vault to point to the survivor. This is the consolidation
 operation — what you do when ingest discovered a duplicate, or when you found two
 pages on the same topic by different names.

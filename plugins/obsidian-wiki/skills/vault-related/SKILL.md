@@ -7,9 +7,11 @@ description: >
   or any request to enrich a single page's wikilinks.
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Related
 
-Find pages in `~/dev/knowledge` that a given target page should link to but doesn't.
+Find pages in `<vault>` that a given target page should link to but doesn't.
 This is the cross-reference maintenance work the wiki layer is built for — connecting
 related ideas after the fact.
 

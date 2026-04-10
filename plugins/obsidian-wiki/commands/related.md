@@ -2,7 +2,10 @@
 description: Find missing cross-references for a vault page
 ---
 
-Use the `vault-related` skill to find pages in `~/dev/knowledge` that the target page
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
+
+
+Use the `vault-related` skill to find pages in `<vault>` that the target page
 should link to but doesn't.
 
 **Arguments**: `$ARGUMENTS` — path to the target page.

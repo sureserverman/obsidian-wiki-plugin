@@ -2,7 +2,10 @@
 description: Merge two vault pages into one and rewrite all inbound wikilinks
 ---
 
-Use the `vault-merge` skill to merge two pages in `~/dev/knowledge` into a single
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
+
+
+Use the `vault-merge` skill to merge two pages in `<vault>` into a single
 canonical page, rewrite every inbound `[[wikilink]]`, remove the loser's row from
 `Home.md`, and delete the loser file.
 

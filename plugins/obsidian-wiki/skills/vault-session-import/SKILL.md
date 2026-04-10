@@ -8,11 +8,13 @@ description: >
   candidate from `vault-session-scan` and chooses one.
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Session Import
 
 Take a single AI coding session — identified by path, UUID, or candidate ID from a prior
 `vault-session-scan` run — and turn it into a markdown source file under
-`~/dev/knowledge/raw/sessions/`. Optionally chain to `vault-ingest` to file the resulting
+`<vault>/raw/sessions/`. Optionally chain to `vault-ingest` to file the resulting
 source into the wiki proper.
 
 This skill **writes one new file** in `raw/sessions/`. It does not edit existing wiki
@@ -50,7 +52,7 @@ Where:
 
 Then check **both** conditions:
 
-1. Does `~/dev/knowledge/raw/sessions/<filename>` already exist?
+1. Does `<vault>/raw/sessions/<filename>` already exist?
 2. Does any wiki page's frontmatter `sources:` array contain that path?
 
 If either is true, **stop and tell the user** which page already references this session.
@@ -94,7 +96,7 @@ tell the user: this session has nothing vault-worthy. Don't fabricate content.
 
 ## Step 4 — Write the raw source file
 
-The output goes to `~/dev/knowledge/raw/sessions/<tool>-<YYYY-MM-DD>-<short-id>.md` with
+The output goes to `<vault>/raw/sessions/<tool>-<YYYY-MM-DD>-<short-id>.md` with
 this structure:
 
 ```markdown
@@ -151,7 +153,7 @@ verbatim dumps belong in the original JSONL, not in the wiki source.
 
 ## Step 5 — Append to log
 
-Append to `~/dev/knowledge/log.md`:
+Append to `<vault>/log.md`:
 
 ```
 ## [YYYY-MM-DD] session-import | <topic>
