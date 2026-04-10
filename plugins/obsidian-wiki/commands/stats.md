@@ -2,7 +2,10 @@
 description: Show a dashboard of the Obsidian vault
 ---
 
-Produce a vault dashboard for `~/dev/knowledge`: page counts, hubs, orphans, recent
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
+
+
+Produce a vault dashboard for `<vault>`: page counts, hubs, orphans, recent
 activity, and possibly stale pages. No skill is needed — this command computes the
 report directly from the filesystem and `log.md`.
 

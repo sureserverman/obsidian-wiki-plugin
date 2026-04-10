@@ -26,7 +26,7 @@ project are written. The vault's `index.md` (read here) is generated separately 
 
 Resolve the vault path with `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-vault.sh`. The
 resolver tries `OBSIDIAN_VAULT_PATH`, then `~/.config/obsidian-wiki/config.json`'s
-`default_vault`, then `~/dev/knowledge`. If the resolver exits non-zero, no vault is
+`default_vault`, then `<vault>`. If the resolver exits non-zero, no vault is
 configured — tell the user to run the bootstrap step from `obsidian-wiki`'s README.
 
 `<vault>/index.md` must exist. If it doesn't, the producer plugin's

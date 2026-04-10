@@ -23,7 +23,7 @@ Hand-edits are pointless — the next run overwrites them.
 
 - Resolve the vault path. If the cwd is the vault, use that. Otherwise call
   `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-vault.sh` (env var → `~/.config/obsidian-wiki/config.json`
-  → fallback `~/dev/knowledge`).
+  → fallback `<vault>`).
 - `CLAUDE.md` and `log.md` must exist at the vault root. If not, the vault has not been
   bootstrapped — point the user at the obsidian-wiki README's bootstrap section.
 

@@ -7,9 +7,11 @@ description: >
   notes", or "entities I keep mentioning but don't have a page for".
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Gaps
 
-Find topics or entities mentioned across multiple pages in `~/dev/knowledge` that
+Find topics or entities mentioned across multiple pages in `<vault>` that
 **don't have a dedicated page** of their own. These are the wiki's content gaps —
 candidates for new pages to write.
 

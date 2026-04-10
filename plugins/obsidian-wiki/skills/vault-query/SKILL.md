@@ -2,14 +2,16 @@
 name: vault-query
 description: >
   Use when the user asks a research or recall question that their Obsidian vault at
-  ~/dev/knowledge might answer, or mentions "/obsidian-wiki:ask". Trigger on "what do I know about X",
+  <vault> might answer, or mentions "/obsidian-wiki:ask". Trigger on "what do I know about X",
   "what's in my notes about Y", "check my wiki for Z", or any factual question in a domain
   the vault covers (Tor, DNS, Android, Matrix, packaging, fingerprinting, etc.).
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Query
 
-Answer a question against the Obsidian vault at `~/dev/knowledge`, citing every claim,
+Answer a question against the Obsidian vault at `<vault>`, citing every claim,
 and optionally filing the answer back as a new wiki page if it has lasting value.
 
 The vault has an existing hand-curated index at `Home.md`. Always use it as the search
@@ -17,7 +19,7 @@ entry point before falling back to grep.
 
 ## Step 1 — Scan `Home.md`
 
-Read `~/dev/knowledge/Home.md` first. It is a Map-of-Content containing tables organized
+Read `<vault>/Home.md` first. It is a Map-of-Content containing tables organized
 by category (Infrastructure, Android, Browser Extensions, Installers, Security,
 Desktop Tools, Router Firmware, AI Tooling, Technology Index, Patterns Index, Gotchas
 Index, Architecture Index, Platform Index).

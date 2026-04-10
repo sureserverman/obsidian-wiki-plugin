@@ -7,9 +7,11 @@ description: >
   out of date", or "the index is stale".
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Home Rebuild
 
-Regenerate the tables in `~/dev/knowledge/Home.md` from the actual filesystem state,
+Regenerate the tables in `<vault>/Home.md` from the actual filesystem state,
 catching drift caused by manual page additions, renames, or deletions in Obsidian.
 
 `Home.md` is a hand-curated Map-of-Content. The `vault-ingest` skill only adds rows

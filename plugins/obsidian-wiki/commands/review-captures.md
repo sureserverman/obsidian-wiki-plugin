@@ -2,9 +2,12 @@
 description: Review pending session captures the SessionEnd hook flagged
 ---
 
+`<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
+
+
 Use the `vault-capture-review` skill to list `session-capture` entries the
 `obsidian-wiki` SessionEnd hook (`scripts/capture-session.sh`) appended to
-`~/dev/knowledge/log.md`, filter out the ones already imported, and let you
+`<vault>/log.md`, filter out the ones already imported, and let you
 pick which to extract via `vault-session-import`.
 
 The hook runs in the background after every Claude Code session ends. It

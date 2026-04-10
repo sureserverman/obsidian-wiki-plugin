@@ -7,9 +7,11 @@ description: >
   or "any broken links in my notes".
 ---
 
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+
 # Vault Lint
 
-Run a health check over the Obsidian vault at `~/dev/knowledge` and report problems.
+Run a health check over the Obsidian vault at `<vault>` and report problems.
 
 Default mode is **report-only** — never auto-edit the vault during a lint unless the
 user explicitly asks for fix mode. The vault is hand-curated and a silent "cleanup" can
@@ -107,7 +109,7 @@ Include counts in each heading so the user can scan the severity at a glance.
 
 ## Log append
 
-After producing the report, append a single entry to `~/dev/knowledge/log.md`:
+After producing the report, append a single entry to `<vault>/log.md`:
 
 ```
 ## [YYYY-MM-DD] lint | <N orphans, M broken, K missing frontmatter, L contradictions, P stale>
