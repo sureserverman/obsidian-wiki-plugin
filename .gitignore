@@ -92,3 +92,4 @@ dist/
 *.tmp
 *.temp
 docs/plans/
+CLAUDE.md
