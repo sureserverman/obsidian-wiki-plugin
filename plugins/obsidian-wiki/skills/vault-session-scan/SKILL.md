@@ -46,7 +46,7 @@ fastest enumerations:
 
 If a tool's directory doesn't exist, skip it silently — the user may not use all 5.
 
-## Step 3 — Filter out already-imported sessions
+## Step 3 — Filter, but check for staleness
 
 For each candidate session, derive the canonical raw filename:
 
@@ -62,8 +62,51 @@ Then check both idempotency conditions:
 1. Does `<vault>/raw/sessions/<filename>` exist?
 2. Does any wiki page's frontmatter `sources:` contain that path?
 
-If either is true, drop the session from the candidate list. Show the kept count and
-the filtered count separately so the user knows the scan was thorough.
+If **neither** is true, the session is a fresh candidate — score it and include it.
+
+If **either** is true, do not silently drop it. Some tools (Cursor in particular,
+also Claude Code sessions resumed with `--continue`, and OpenCode project-scoped JSON)
+append to the same session file across days, so the imported extraction may be stale.
+Apply the **staleness check**:
+
+```
+source_mtime     = mtime of the current source session file
+imported_mtime   = mtime of raw/sessions/<filename>.md
+source_size      = line count (JSONL) or event count (JSON) of the source
+imported_turns   = `session-turns:` field of the imported file's frontmatter
+
+stale if:
+    (source_mtime - imported_mtime) > 1 day
+  AND (source_size >= imported_turns * 1.25  OR  source_size - imported_turns >= 50)
+```
+
+Tune both conditions: mtime alone can lie (transcript opened without edits), size
+alone can lie (small appends). Together they catch real growth.
+
+A stale candidate enters a separate **Refresh** bucket in the report — do not mix it
+with fresh candidates. Score it the same way, but annotate it with the original
+import date and the growth factor (e.g. `190 → 2969 turns, 15×`).
+
+### Cursor-specific: UUID collisions across projects
+
+Cursor reuses session UUIDs across different project contexts — e.g. the same
+`93512520-…` UUID can exist under `~/.cursor/projects/empty-window/` **and**
+`~/.cursor/projects/home-user-dev-foo/` with different content. Before assuming a
+Cursor candidate is already imported, check the imported file's
+`source-project:` frontmatter (or `source-session:` path) against the candidate's
+project dir. If they differ, treat it as a **new session with a colliding UUID** and
+suggest a disambiguated filename:
+
+```
+raw/sessions/cursor-<YYYY-MM-DD>-<short-id>-<project-slug>.md
+```
+
+Where `<project-slug>` is a short (6–10 char) hint derived from the encoded cwd —
+e.g. `emptywin`, `pihole`, `healthalert`. This is the **only** tool where this
+applies; other tools' session IDs are globally unique.
+
+Show counts: fresh candidates, refresh candidates, dropped-as-current, and (Cursor)
+new-with-colliding-UUID separately, so the user can tell the scan was thorough.
 
 ## Step 4 — Score for vault-worthiness
 
@@ -90,25 +133,33 @@ Sessions with score ≥ 3 are "high-value", 1–2 are "medium", 0 or negative is
 
 ## Step 5 — Build the candidate report
 
-Group by tool, sort by score within each group:
+Group by tool, sort by score within each group. Separate **Fresh** candidates
+(never imported) from **Refresh** candidates (already imported but the source
+has grown past the staleness threshold — Step 3).
 
 ```markdown
 # Session scan — last 7 days
 
-## Claude Code (4 candidates, 3 already imported, 1 skipped)
+## Claude Code (4 fresh, 1 refresh, 3 current)
 
-### High value
+### Fresh — high value
 1. **2026-04-05 — Tor bridge bootstrap debugging** (score 5, 87 turns)
    - `~/.claude/projects/-home-user-dev-room/2b7b05df-...jsonl`
    - Snippet: "obfs4 bridges fail on first connect but succeed on retry"
    - Suggested import name: `raw/sessions/claude-code-2026-04-05-2b7b05df.md`
    - Suggested category: `Gotchas/`
 
-### Medium value
+### Fresh — medium value
 2. **2026-04-04 — Refactoring xray config** (score 2, 34 turns)
    - ...
 
-## Codex (2 candidates)
+### Refresh (imported file stale — source grew since last import)
+3. **2026-04-02 — long-running skill dev session** (190 → 2100 turns, 11×)
+   - Imported: `raw/sessions/claude-code-2026-04-02-aaaaaaaa.md` (extracted 2026-04-03)
+   - Source mtime: 2026-04-12
+   - Re-import with `/obsidian-wiki:import-session --force` to refresh
+
+## Codex (2 fresh)
 ...
 ```
 
@@ -149,14 +200,16 @@ the read-heavy phases. If you are running on Opus, delegate them to the
 
 - the list of tool storage roots to walk,
 - the `<days>` window,
-- the list of already-imported raw filenames (for the filter in step 3),
+- the list of already-imported raw filenames with their mtimes and
+  `session-turns:` values (for the staleness check in Step 3),
 - the scoring signals table, and ask it to return one row per candidate session
-  with `tool`, `date`, `path`, `short_id`, `turn_count`, `score`, `dominant_signals`,
-  and a ≤2-sentence snippet.
+  with `tool`, `date`, `path`, `short_id`, `project_slug` (Cursor only),
+  `turn_count`, `score`, `dominant_signals`, `bucket` (`fresh` | `refresh` |
+  `colliding-uuid`), and a ≤2-sentence snippet.
 
-Keep the `references/storage-paths.md` read, the idempotency filter, and the
-candidate-report formatting in this session — those benefit from the caller's
-context about user intent.
+Keep the `references/storage-paths.md` read, the idempotency filter (including the
+staleness and UUID-collision logic), and the candidate-report formatting in this
+session — those benefit from the caller's context about user intent.
 
 ## Common pitfalls
 
@@ -175,6 +228,14 @@ context about user intent.
 - **Cursor has no tool_result events.** The "errored tool_result" scoring
   signal doesn't fire on Cursor — infer failures from assistant text following
   a `tool_use` block instead.
+- **Cursor session UUIDs are not globally unique.** The same UUID prefix can
+  appear under two different `~/.cursor/projects/<cwd>/agent-transcripts/`
+  directories with different content. Do not dedupe Cursor candidates by
+  UUID alone — include the project path. See Step 3.
+- **Silently dropping "already imported" sessions.** Cursor and Claude Code
+  append to the same session file across days. An imported file extracted on
+  day 1 may be stale by day 7. Use the Step 3 staleness check (mtime + size
+  growth), not just filename existence.
 - **Date encoding mismatches.** Each tool dates sessions differently. Always normalize
   to ISO `YYYY-MM-DD` in the report.
 - **Forgetting to dereference the working directory.** Claude Code and Cursor encode

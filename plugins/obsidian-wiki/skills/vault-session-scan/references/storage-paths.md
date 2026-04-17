@@ -104,7 +104,25 @@ Observed in the wild:
 - Content block types are `text` and `tool_use` only.
 
 Sessions are usually small-to-medium (tens to low-hundreds of KB), far smaller
-than Claude Code's JSONL.
+than Claude Code's JSONL — but they grow across days as Cursor appends new
+turns to the same transcript file, so a one-week-old file may have 10–25× more
+events than it did a week ago.
+
+**UUID reuse across project contexts.** Cursor session UUIDs are **not** globally
+unique. The same UUID prefix can appear under two different
+`~/.cursor/projects/<encoded-cwd>/agent-transcripts/` directories (including
+`empty-window/` when the user opens Cursor without a folder), each with
+independent content. Treat `(project_dir, session_uuid)` as the idempotency
+key for Cursor, not the UUID alone. When disambiguating raw filenames:
+
+```
+raw/sessions/cursor-<YYYY-MM-DD>-<short-id>-<project-slug>.md
+```
+
+where `<project-slug>` is a 6–10 char hint derived from the encoded cwd
+(e.g. `emptywin`, `pihole`, `healthalert`). Only add the suffix when a
+collision actually exists; first-imports keep the plain `cursor-<date>-<short-id>.md`
+form.
 
 ### 2. Per-project tool outputs (secondary — build/command logs only)
 
@@ -226,5 +244,13 @@ A session is "already imported" if **either**:
 1. A file exists at `raw/sessions/<tool>-<date>-<short-id>.md`, OR
 2. Some wiki page's `sources:` frontmatter array contains that path.
 
-When scanning, surface only sessions that are NOT already imported. This avoids
-re-suggesting the same conversation every run.
+When scanning, surface only sessions that are NOT already imported — **unless** the
+source has grown past the staleness threshold since the last import. Many tools
+(Cursor always, Claude Code with `--continue`, OpenCode per-project JSON) append
+to the same session file across days, so an imported extraction can become
+stale. See `SKILL.md` Step 3 for the exact staleness formula (mtime delta + size
+growth). Stale imports go into a separate "Refresh" bucket in the scan report
+and are re-imported with `--force`.
+
+For Cursor only, the idempotency key is `(project_dir, session_uuid)` not just
+the UUID — see the Cursor UUID-reuse note above.

@@ -50,13 +50,38 @@ Where:
 - `<short-id>` is the first 8 chars of the session UUID, or, for OpenCode (no UUID),
   the first 8 chars of the project hash.
 
+**Cursor** adds one twist: session UUIDs are not globally unique across Cursor
+project contexts. The idempotency key for Cursor is `(project_dir, session_uuid)`.
+If the source path's project dir differs from the imported file's
+`source-project:` / `source-session:` frontmatter, this is a DIFFERENT session
+with a colliding UUID — use a disambiguated filename:
+
+```
+raw/sessions/cursor-<YYYY-MM-DD>-<short-id>-<project-slug>.md
+```
+
+where `<project-slug>` is a 6–10 char hint derived from the encoded cwd
+(e.g. `emptywin`, `pihole`, `healthalert`). Only add the suffix when a
+collision is detected.
+
 Then check **both** conditions:
 
 1. Does `<vault>/raw/sessions/<filename>` already exist?
 2. Does any wiki page's frontmatter `sources:` array contain that path?
 
-If either is true, **stop and tell the user** which page already references this session.
-Do not silently overwrite. The user can pass `--force` to bypass (rare).
+If either is true, the default behavior is to **stop and tell the user** which
+page already references this session — do not silently overwrite. Two reasons to
+bypass with `--force`:
+
+- **Refresh**: the source transcript has grown since the original import (common
+  for Cursor and for Claude Code sessions resumed with `--continue`). The scan
+  skill's "Refresh" bucket flags these; re-importing replaces the extraction
+  with one that spans the full current arc.
+- **User repair**: the prior extraction had errors and the user wants a redo.
+
+On `--force`, set `refreshed: true` in the output frontmatter and mention the
+prior turn count in the header (`"refreshed YYYY-MM-DD — original captured
+~N of what is now M turns"`). See the Step 4 template.
 
 ## Step 3 — Stream-parse the session
 
@@ -92,9 +117,11 @@ title: <one-line topic, derived from the first user message>
 source-tool: <claude-code|codex|cursor|gemini|opencode>
 source-session: <full path to the original session file>
 source-uuid: <session UUID if available>
+source-project: <encoded-cwd path segment; required for cursor (for UUID-collision detection), optional for others>
 extracted-on: <YYYY-MM-DD>
 session-date: <YYYY-MM-DD>
 session-turns: <count>
+refreshed: <true|omit>   # set to true on --force re-imports
 tags: [session, <tool>]
 ---
 
@@ -195,7 +222,10 @@ raw/sessions/<filename>` later.
   generation, no diagnostic turns), tell the user. Don't invent insights to justify the
   import.
 - **Do not overwrite an existing raw file** without `--force`. The idempotency check is
-  there to protect prior imports — possibly with manual edits the user made.
+  there to protect prior imports — possibly with manual edits the user made. When
+  `--force` is used for a refresh, set `refreshed: true` in frontmatter and append
+  a `Refresh: true` line to the log entry so the audit trail distinguishes refreshes
+  from first imports.
 - **Do not edit the original session file.** It's source-of-truth provenance. Treat
   `~/.claude/projects/`, `~/.codex/`, etc. as read-only.
 - **Do not include secrets verbatim.** If you spot API keys, tokens, passwords, or
