@@ -75,8 +75,8 @@ Skip:
 - System reminders, environment dumps, frontmatter blocks
 
 **Per-tool parsing:** see `references/tool-parsers.md` for claude-code, codex,
-cursor (txt + SQLite), gemini, and opencode parsing rules. Load it when you
-have confirmed the tool in Step 1.
+cursor (agent-transcripts JSONL, with txt / SQLite fallbacks), gemini, and
+opencode parsing rules. Load it when you have confirmed the tool in Step 1.
 
 If a session is so dominated by code generation that there's no extractable narrative,
 tell the user: this session has nothing vault-worthy. Don't fabricate content.

@@ -110,10 +110,13 @@ extend the schema to allow a `home` type — flag this if it comes up repeatedly
 
 ## What never to do
 
-- **Rewrite `Home.md` wholesale.** Always Edit-by-row.
+- **Rewrite `Home.md` wholesale.** Always Edit-by-row — the intro and narrative sections
+  outside tables are hand-authored and must survive untouched.
 - **Touch the introduction or narrative sections.** Only tables.
 - **Remove rows the user might still want.** Always confirm removals individually.
-- **Reorder existing rows.** Order is curated.
+- **Reorder existing rows.** Row order is curated: the user may have grouped by sub-theme
+  or chronology rather than alphabetically. Respect the existing order even when adding
+  rows.
 - **Fabricate descriptions.** A new row's description must come from the page's
   frontmatter `title` or first-paragraph summary, not from your own paraphrase of the
   body.

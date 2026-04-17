@@ -3,8 +3,8 @@ name: vault-query
 description: >
   Use when the user asks a research or recall question that their Obsidian vault at
   <vault> might answer, or mentions "/obsidian-wiki:ask". Trigger on "what do I know about X",
-  "what's in my notes about Y", "check my wiki for Z", or any factual question in a domain
-  the vault covers (Tor, DNS, Android, Matrix, packaging, fingerprinting, etc.).
+  "what's in my notes about Y", "check my wiki for Z", or any factual question about tools,
+  protocols, decisions, or gotchas the user has written up in their notes.
 ---
 
 > **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.

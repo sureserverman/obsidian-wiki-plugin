@@ -3,8 +3,10 @@ name: vault-schema-maintain
 description: >
   Use when the user wants to update the vault's CLAUDE.md schema, change naming or ingest
   conventions, or mentions "update the wiki schema", "change how ingest works", or
-  "the wiki convention is wrong". Trigger on corrections to vault rules that should persist
-  across future sessions.
+  "the wiki convention is wrong". Trigger on "from now on pages like X go in Y", "the
+  ingest rule should be", "actually that convention is wrong", "make this a rule for
+  future ingests", or any correction to how the vault categorizes, names, or structures
+  pages that should persist across future sessions.
 ---
 
 > **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
