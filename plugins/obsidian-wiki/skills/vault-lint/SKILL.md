@@ -134,6 +134,18 @@ that category only. Fix mode rules:
 - Never auto-resolve contradictions or stale claims — those always require human
   judgment.
 
+## Delegation (optional, for cost/speed)
+
+Categories 1 and 2 (orphans, broken wikilinks) are read-heavy grep-and-match work.
+If the vault is large or the session is running on Opus, delegate those two phases
+to the `vault-scanner` subagent (model: haiku). Use the Agent tool with
+`subagent_type: vault-scanner` and give it the vault path plus the specific task
+(e.g., "return orphan candidates" or "return broken `[[target]]` references grouped
+by source file"). Merge the returned findings into your report.
+
+Keep categories 3–5 (frontmatter, contradictions, stale claims) in this session —
+they need judgment, not bulk I/O.
+
 ## Common pitfalls
 
 - **Running in fix mode by default.** Always report first.

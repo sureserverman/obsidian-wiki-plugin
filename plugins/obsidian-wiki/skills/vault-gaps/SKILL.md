@@ -1,5 +1,6 @@
 ---
 name: vault-gaps
+allowed-tools: Read, Glob, Grep, Bash
 description: >
   Use when the user asks to find content gaps in their Obsidian vault, missing pages,
   topics that should have a dedicated note, or mentions "/obsidian-wiki:gaps". Trigger on

@@ -1,5 +1,6 @@
 ---
 name: vault-capture-review
+allowed-tools: Read, Glob, Grep, Bash
 description: >
   Use when the user asks to review pending session captures, asks "what did the
   hook flag", asks to triage auto-captured Claude Code sessions, mentions
@@ -8,6 +9,8 @@ description: >
   Trigger on phrases like "review captures", "show pending captures", "what got
   auto-captured", or "import the flagged sessions".
 ---
+
+> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
 
 # Vault Capture Review
 

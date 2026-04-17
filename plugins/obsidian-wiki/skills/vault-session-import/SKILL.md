@@ -74,22 +74,9 @@ Skip:
 - Successful tool results (build output, file lists) unless they're short
 - System reminders, environment dumps, frontmatter blocks
 
-Per-tool parsing notes:
-
-- **Claude Code JSONL**: each line is `{type, message: {role, content}}`. `content` is
-  an array of blocks; pull `text` blocks from assistant, skip `tool_use`/`tool_result`
-  unless errored.
-- **Codex JSONL**: similar event structure but the field names differ (`role` may be
-  nested under `payload` or `message` depending on version). Inspect first 5 lines to
-  determine the schema.
-- **Cursor agent-tools .txt**: plain text already; no parsing needed. Just read the
-  file. These are tool outputs only — there's no "assistant explanation" to extract,
-  so the resulting raw file will be more like a captured log.
-- **Cursor SQLite (state.vscdb)**: only if the user specifically asked. Use
-  `sqlite3 ... "SELECT value FROM ItemTable WHERE key LIKE '%composerData%';"` and
-  decode the JSON blobs. Schema is undocumented; inspect first.
-- **Gemini**: best-effort. Read whatever files exist in the project's history dir.
-- **OpenCode JSON**: read the file (small), find the messages/turns array, iterate.
+**Per-tool parsing:** see `references/tool-parsers.md` for claude-code, codex,
+cursor (txt + SQLite), gemini, and opencode parsing rules. Load it when you
+have confirmed the tool in Step 1.
 
 If a session is so dominated by code generation that there's no extractable narrative,
 tell the user: this session has nothing vault-worthy. Don't fabricate content.
@@ -214,6 +201,25 @@ raw/sessions/<filename>` later.
 - **Do not include secrets verbatim.** If you spot API keys, tokens, passwords, or
   paths to credential files in the session, redact them in the extracted markdown.
   Note that you redacted (`<redacted: api key>`) so the user knows.
+
+## Delegation (optional, for cost/speed)
+
+Step 3 (stream-parse extraction) and Step 4 (writing the structured raw file)
+are exactly the content-transformation shape a Sonnet-tier worker is built for.
+If you are on Opus, delegate both to the `vault-writer` subagent (model: sonnet)
+via the Agent tool with `subagent_type: vault-writer`. Give it:
+
+- the resolved session path, the tool name, the canonical `raw/sessions/`
+  filename, and the session UUID/short-id,
+- the "what to extract / what to skip" rules from Step 3,
+- the output template from Step 4 (frontmatter + sections),
+- the 2–5 KB target size and the redaction rule for secrets.
+
+Keep Step 1 (resolution), Step 2 (idempotency check against both disk and
+existing `sources:` references), Step 5 (log append with the precise
+`session-import` format, including the `Captured-as:` line when applicable),
+and Step 6 (the chain-into-ingest offer) in this session — those touch other
+vault files and need the caller's context about user intent.
 
 ## Common pitfalls
 

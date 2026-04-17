@@ -140,6 +140,19 @@ Tell the user, in a few lines:
 If a downstream tool (like `vault-context` from a project repo) prompted this run,
 mention that the index is now ready for it.
 
+## Delegation (optional, for cost/speed)
+
+The "walk the vault" and "per-page extraction" phases are pure read/grep work and
+are the bulk of the runtime. If you are running on Opus or the vault is large,
+delegate those two phases to the `vault-scanner` subagent (model: haiku). Use the
+Agent tool with `subagent_type: vault-scanner` and ask it to return, for every
+eligible page, a JSON or bulleted block with `title`, `path`, `tags`, `topics`,
+`summary`, `updated` — the exact fields listed above.
+
+Keep the category-dir schema resolution, the idempotency compare, the write, and
+the log append in this session — those are single-shot decisions that don't
+benefit from delegation.
+
 ## Common pitfalls
 
 - **Indexing `raw/` or `.obsidian/`.** Never. Those are not wiki pages.

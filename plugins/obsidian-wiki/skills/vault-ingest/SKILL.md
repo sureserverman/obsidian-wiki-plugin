@@ -165,6 +165,24 @@ If the source disagrees with something already in the vault:
 Silent overwrites destroy wiki history. The user relies on the vault being
 append-mostly, and needs to see conflicts explicitly.
 
+## Delegation (optional, for cost/speed)
+
+The summary-page drafting (frontmatter + TL;DR + key points + details sections
+from the source content) is a content-transformation job that a Sonnet-tier
+worker handles well at lower cost than the caller. If you are on Opus, delegate
+the page authoring to the `vault-writer` subagent (model: sonnet) via the Agent
+tool with `subagent_type: vault-writer`. Give it:
+
+- the vault path and chosen category dir,
+- the source path (under `raw/`),
+- the suggested title,
+- the frontmatter schema from `CLAUDE.md` (so it matches the vault's conventions),
+- any existing page you want updated rather than created anew.
+
+Keep the category decision, the "update vs create" lookup, the cross-reference
+pass, the Home.md row, the log append, and any contradiction flagging in this
+session — those are the judgment calls and structural edits the vault hinges on.
+
 ## Common pitfalls
 
 - **Writing a new page when an existing one would do.** Grep first.
