@@ -1,5 +1,6 @@
 ---
 name: vault-session-scan
+allowed-tools: Read, Glob, Grep, Bash
 description: >
   Use when the user asks to find vault-worthy moments from recent AI coding sessions
   across Claude Code, Cursor, Codex, Gemini, or OpenCode, mentions "/obsidian-wiki:scan-sessions",
@@ -137,6 +138,24 @@ considered, they can re-run the scan — it's idempotent.
   in the sample.
 - **Do not skip the idempotency check.** A scan that re-suggests already-imported
   sessions is annoying noise.
+
+## Delegation (optional, for cost/speed)
+
+Steps 2 (discovery) and 4 (scoring by sampling JSONL head/tail/error windows) are
+the read-heavy phases. If you are running on Opus, delegate them to the
+`vault-scanner` subagent (model: haiku) via the Agent tool with
+`subagent_type: vault-scanner`. Give it:
+
+- the list of tool storage roots to walk,
+- the `<days>` window,
+- the list of already-imported raw filenames (for the filter in step 3),
+- the scoring signals table, and ask it to return one row per candidate session
+  with `tool`, `date`, `path`, `short_id`, `turn_count`, `score`, `dominant_signals`,
+  and a ≤2-sentence snippet.
+
+Keep the `references/storage-paths.md` read, the idempotency filter, and the
+candidate-report formatting in this session — those benefit from the caller's
+context about user intent.
 
 ## Common pitfalls
 

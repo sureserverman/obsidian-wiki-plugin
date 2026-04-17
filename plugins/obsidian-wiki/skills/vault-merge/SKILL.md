@@ -113,6 +113,25 @@ it yet, mention this as a candidate schema update.
 - **Merge across categories without confirmation.** Moving a page from `Gotchas/` to
   `Patterns/` is a structural decision the user must make.
 
+## Delegation (optional, for cost/speed)
+
+Step 2 (building the merged body: frontmatter union, TL;DR consolidation, key-
+points dedup, contradiction surfacing) is a Sonnet-tier content job. If you are
+on Opus, delegate the body build to the `vault-writer` subagent (model: sonnet)
+via the Agent tool with `subagent_type: vault-writer`. Give it:
+
+- both page paths and the chosen survivor/loser assignment,
+- the frontmatter-merge rules from Step 2 (union semantics, date rules, alias
+  addition),
+- the instruction to surface any contradictions as a `## Conflicts` section
+  rather than silently pick.
+
+Write mode for `vault-writer` is "merge two overlapping pages." It returns the
+merged body for you to show the user for approval; it does **not** perform the
+deletion, the inbound link rewrites, Home.md updates, or the log append — those
+stay in this session because they span multiple files and require per-phase
+confirmation as Step 5 describes.
+
 ## Common pitfalls
 
 - Missing alias-form inbound links. Grep for both `[[loser]]` and `[[loser|`.
