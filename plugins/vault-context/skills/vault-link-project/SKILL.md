@@ -2,9 +2,8 @@
 name: vault-link-project
 description: >
   Use when the user asks what their Obsidian vault knows about the current project
-  repo, asks to link/refresh vault context for a project, mentions
-  "/vault-context:link" or "/vault-context:refresh", or opens an unfamiliar project
-  and wants a vault briefing. Trigger on "what does my vault say about this project",
+  repo, asks to link/refresh vault context for a project, or mentions
+  "/vault-context:link" or "/vault-context:refresh". Trigger on "what does my vault say about this project",
   "link my notes here", "pull vault context for this repo", "any gotchas in my notes
   for this codebase", "brief me on this project from my vault", or when a SessionStart
   hook reports that no vault-context.md exists yet.

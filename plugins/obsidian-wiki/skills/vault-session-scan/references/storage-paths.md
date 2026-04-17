@@ -71,32 +71,65 @@ and a UUID.
 
 ## Cursor
 
-Cursor stores session data in **two places**, with different value:
+Cursor stores session data in **three places**, with different value:
 
-### 1. Per-project tool outputs (easy to parse)
+### 1. Per-project agent transcripts (primary — full conversations)
 
 ```
-~/.cursor/projects/<encoded-cwd>/agent-tools/<uuid>.txt
+~/.cursor/projects/<encoded-cwd>/agent-transcripts/<session-uuid>/<session-uuid>.jsonl
+```
+
+`<encoded-cwd>` is similar to Claude Code's encoding but **without** the leading
+`-`: e.g., `home-user-dev-foo` (Claude Code would be `-home-user-dev-foo`).
+
+**This is the file to scan and import.** Each session gets its own directory
+named by the session UUID, containing a single `.jsonl` with the same UUID as
+basename.
+
+**File format**: JSONL — one event per line. Event shape:
+
+```json
+{"role": "user" | "assistant",
+ "message": {"content": [{"type": "text", "text": "..."},
+                         {"type": "tool_use", "name": "...", "input": {...}}]}}
+```
+
+Observed in the wild:
+- Top-level keys are only `role` and `message`. There are **no in-event timestamps**
+  and **no session-level metadata header** — the session start date must be
+  inferred from the transcript directory's mtime (or the `.jsonl` file's mtime).
+- Roles are only `user` and `assistant`. There is no `tool_result` role — Cursor
+  does not persist tool output events back into this transcript, only the
+  assistant text and its tool invocations.
+- Content block types are `text` and `tool_use` only.
+
+Sessions are usually small-to-medium (tens to low-hundreds of KB), far smaller
+than Claude Code's JSONL.
+
+### 2. Per-project tool outputs (secondary — build/command logs only)
+
+```
+~/.cursor/projects/<encoded-cwd>/agent-tools/<tool-invocation-uuid>.txt
 ~/.cursor/projects/<encoded-cwd>/assets/...
 ```
 
-`<encoded-cwd>` is similar to Claude Code's encoding: e.g., `home-user-dev-foo`
-(no leading `-`).
-
 The `agent-tools/*.txt` files contain captured tool outputs (build logs, command
-results). They are plain text and easy to grep, but they are **outputs only** —
-not full conversation transcripts. Useful for "what command produced this error" but
-not for "what was discussed".
+results). Plain text, easy to grep, but **outputs only** — not conversations.
+The UUID in the filename is the tool-invocation UUID, **not** the session UUID,
+so these files cannot be mapped back to a session without cross-referencing the
+transcript. Useful for "what command produced this error" but not for "what was
+discussed". Skip for scan-for-import purposes; prefer the transcript JSONL above.
 
-### 2. Workspace storage (full conversations, hard to parse)
+### 3. Workspace storage (fallback — hard to parse)
 
 ```
 ~/.config/Cursor/User/workspaceStorage/<workspace-hash>/state.vscdb
 ~/.config/Cursor/User/workspaceStorage/<workspace-hash>/anysphere.cursor-retrieval/
 ```
 
-The full chat history lives in **SQLite** (`state.vscdb`) under the `anysphere`
-extension namespace. Schema is undocumented and changes between Cursor versions.
+Chat history is also mirrored into **SQLite** (`state.vscdb`) under the
+`anysphere` extension namespace. Schema is undocumented and changes between
+Cursor versions.
 
 To extract:
 ```bash
@@ -106,9 +139,10 @@ sqlite3 ~/.config/Cursor/User/workspaceStorage/<hash>/state.vscdb \
 
 The values are JSON blobs. Decode case-by-case.
 
-**Pragmatic recommendation**: prefer the agent-tools `.txt` files for routine scans.
-Only dive into the SQLite when the user is specifically looking for a conversation
-they remember.
+**Pragmatic recommendation**: always use the `agent-transcripts/` JSONL for scan
+and import. Only dive into the SQLite when the transcript is missing (older
+Cursor versions that hadn't started writing `agent-transcripts/` yet) or when
+the user is specifically looking for a conversation they remember.
 
 ---
 

@@ -37,8 +37,9 @@ fastest enumerations:
 
 - **Claude Code**: `find ~/.claude/projects -name '*.jsonl' -mtime -<days>`
 - **Codex**: `find ~/.codex/sessions/<YYYY>/<MM> -name 'rollout-*.jsonl' -mtime -<days>`
-- **Cursor**: `find ~/.cursor/projects -name '*.txt' -mtime -<days>` (agent-tools only;
-  for chat history, see the SQLite section in the reference)
+- **Cursor**: `find ~/.cursor/projects -path '*/agent-transcripts/*/*.jsonl' -mtime -<days>`
+  (full transcripts — these are the real conversations, not the `agent-tools/*.txt`
+  files which are tool outputs only; for the SQLite fallback see the reference)
 - **Gemini**: `find ~/.gemini/history -type f -mtime -<days>` plus
   `~/.gemini/antigravity/knowledge/` and `brain/` if they contain markdown
 - **OpenCode**: `find ~/.local/share/opencode/storage/project -name '*.json' -mtime -<days>`
@@ -161,9 +162,19 @@ context about user intent.
 
 - **Reading entire sessions.** Always sample. Use head/tail/error windows.
 - **Missing tool dirs.** Some tools may not be installed; skip silently.
-- **Cursor SQLite trap.** The `state.vscdb` files are version-dependent and slow to
-  query. Default to the agent-tools `.txt` files; only dive into SQLite if the user
-  asks for chat history specifically.
+- **Cursor wrong-directory trap.** The full conversations live under
+  `agent-transcripts/<uuid>/<uuid>.jsonl` — always scan there. The
+  `agent-tools/*.txt` files are captured tool outputs (build logs, command
+  output), **not** sessions, and their UUID is a tool-invocation UUID not a
+  session UUID. The `state.vscdb` SQLite mirror is version-dependent and slow;
+  only dive into it when `agent-transcripts/` is missing or the user is hunting
+  a specific conversation they remember.
+- **Cursor has no in-event timestamps.** Transcript events are only `{role,
+  message}`. Derive the session start date from the file's or directory's mtime,
+  not from the events.
+- **Cursor has no tool_result events.** The "errored tool_result" scoring
+  signal doesn't fire on Cursor — infer failures from assistant text following
+  a `tool_use` block instead.
 - **Date encoding mismatches.** Each tool dates sessions differently. Always normalize
   to ISO `YYYY-MM-DD` in the report.
 - **Forgetting to dereference the working directory.** Claude Code and Cursor encode
