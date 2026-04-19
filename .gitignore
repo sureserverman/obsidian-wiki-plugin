@@ -93,3 +93,7 @@ dist/
 *.temp
 docs/plans/
 CLAUDE.md
+
+# ===== AI / Design Plans =====
+docs/plans/
+plans/
