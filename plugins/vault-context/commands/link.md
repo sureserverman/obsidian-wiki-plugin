@@ -2,7 +2,7 @@
 description: Scan the current project, match against the vault index, and write a vault-context sidecar
 ---
 
-Use the `vault-link-project` skill to scan the current project, match against
+Use the `link` skill to scan the current project, match against
 `<vault>/index.md`, and write `<project>/.claude/vault-context.md` with the relevant
 vault pages. Also adds a delimited `@.claude/vault-context.md` import block to project
 `CLAUDE.md` so future Claude Code sessions load the briefing automatically.

@@ -2,7 +2,7 @@
 description: Re-scan the current project and rewrite the vault-context sidecar
 ---
 
-Use the `vault-link-project` skill to re-scan the current project, re-match against
+Use the `link` skill to re-scan the current project, re-match against
 `<vault>/index.md`, and rewrite `<project>/.claude/vault-context.md` in place. The
 delimited block in project `CLAUDE.md` is not touched (the import points at the same
 sidecar path either way).
