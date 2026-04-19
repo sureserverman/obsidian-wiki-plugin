@@ -1,5 +1,5 @@
 ---
-name: vault-ingest
+name: ingest
 description: >
   Use when the user asks to ingest a source into their Obsidian vault at <vault>,
   add an article/PDF/page to the wiki, process something dropped into raw/, or mentions

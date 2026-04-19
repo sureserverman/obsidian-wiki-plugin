@@ -5,7 +5,7 @@
 # lightweight heuristics, and (if vault-worthy) appends a `session-capture`
 # entry to <vault>/log.md. The user can later review queued captures with
 # `/obsidian-wiki:review-captures` and import the worthwhile ones via
-# vault-session-import.
+# import-session.
 #
 # Behavior is fire-and-forget: the foreground does cheap filtering only and
 # spawns a detached background subshell for the JSONL parse and log append.

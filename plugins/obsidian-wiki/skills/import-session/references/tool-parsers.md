@@ -1,7 +1,7 @@
 # Per-tool parsing notes
 
 Parsing rules for each supported AI coding tool, referenced by Step 3
-("Stream-parse the session") of `vault-session-import`. Load this file when
+("Stream-parse the session") of `import-session`. Load this file when
 actually parsing a session — the skill body only names which tool applies.
 
 - **Claude Code JSONL**: each line is `{type, message: {role, content}}`. `content` is

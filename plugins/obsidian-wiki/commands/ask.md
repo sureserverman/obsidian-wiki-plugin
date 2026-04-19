@@ -5,7 +5,7 @@ description: Query the Obsidian vault with citations
 `<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
 
 
-Use the `vault-query` skill to answer a question against the wiki at `<vault>`.
+Use the `ask` skill to answer a question against the wiki at `<vault>`.
 
 **Arguments**: `$ARGUMENTS` — the question to answer.
 

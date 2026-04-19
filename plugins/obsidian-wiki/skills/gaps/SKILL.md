@@ -1,5 +1,5 @@
 ---
-name: vault-gaps
+name: gaps
 allowed-tools: Read, Glob, Grep, Bash
 description: >
   Use when the user asks to find content gaps in their Obsidian vault, missing pages,
@@ -17,7 +17,7 @@ Find topics or entities mentioned across multiple pages in `<vault>` that
 candidates for new pages to write.
 
 This is **report-only**. The skill never creates new pages on its own; it only surfaces
-candidates and lets the user decide which to write up (using `vault-ingest` once they
+candidates and lets the user decide which to write up (using `ingest` once they
 have a source).
 
 ## Step 1 — Build the entity universe
@@ -103,7 +103,7 @@ The report itself is printed to chat, not written into the vault.
 
 ## What never to do
 
-- **Auto-create pages.** This skill only surfaces gaps. Use `vault-ingest` to actually
+- **Auto-create pages.** This skill only surfaces gaps. Use `ingest` to actually
   write a page once a source exists.
 - **Suggest gaps that are name-drops.** A capitalized word in one paragraph of one
   page is not a gap.

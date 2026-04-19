@@ -1,11 +1,11 @@
 ---
-name: vault-session-import
+name: import-session
 description: >
   Use when the user picks a specific AI coding session (Claude Code, Cursor, Codex, Gemini,
   OpenCode) to extract into the vault, mentions "/obsidian-wiki:import-session", or asks to
   "import that session", "save this debugging arc to the wiki", "extract this conversation
   into raw/", or "turn yesterday's session into a note". Trigger after the user reviews a
-  candidate from `vault-session-scan` and chooses one.
+  candidate from `scan-sessions` and chooses one.
 ---
 
 > **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
@@ -13,12 +13,12 @@ description: >
 # Vault Session Import
 
 Take a single AI coding session — identified by path, UUID, or candidate ID from a prior
-`vault-session-scan` run — and turn it into a markdown source file under
-`<vault>/raw/sessions/`. Optionally chain to `vault-ingest` to file the resulting
+`scan-sessions` run — and turn it into a markdown source file under
+`<vault>/raw/sessions/`. Optionally chain to `ingest` to file the resulting
 source into the wiki proper.
 
 This skill **writes one new file** in `raw/sessions/`. It does not edit existing wiki
-pages — that's `vault-ingest`'s job. The two-skill split lets the user review the
+pages — that's `ingest`'s job. The two-skill split lets the user review the
 extracted markdown before it lands in the wiki.
 
 ## Step 1 — Resolve the session
@@ -35,7 +35,7 @@ If the input is ambiguous, ask the user to confirm before continuing.
 
 Identify the **tool** (claude-code, codex, cursor, gemini, opencode) from the path. The
 tool determines the parser and the filename prefix. See
-`../vault-session-scan/references/storage-paths.md` for path-to-tool mapping.
+`../scan-sessions/references/storage-paths.md` for path-to-tool mapping.
 
 ## Step 2 — Idempotency check
 
@@ -183,7 +183,7 @@ documents this list.
 
 ### Cross-reference back to a capture entry
 
-If the import was triggered from `vault-capture-review` (the user picked a
+If the import was triggered from `review-captures` (the user picked a
 capture queued by the SessionEnd hook), append one extra bullet that points
 back to the originating `session-capture` entry:
 
@@ -193,19 +193,19 @@ back to the originating `session-capture` entry:
 
 Where `<capture-date>` is the `[YYYY-MM-DD]` from the original capture
 entry's heading and `<short-id>` is the same 8-char prefix of the session
-UUID. This is the **only** authoritative marker that `vault-capture-review`
+UUID. This is the **only** authoritative marker that `review-captures`
 uses to tell pending captures from imported ones, so do not skip it for
 capture-driven imports. Manual imports (where the user passed a path
 directly to `/obsidian-wiki:import-session` and there's no capture entry
 in the log) omit this line.
 
-## Step 6 — Offer to chain into vault-ingest
+## Step 6 — Offer to chain into ingest
 
 After writing the raw file and logging, ask the user:
 
 > Wrote `raw/sessions/<filename>`. Want to ingest it into the wiki now? (Y/n)
 
-If yes, hand off to `vault-ingest` with the new file as input. The ingest skill handles
+If yes, hand off to `ingest` with the new file as input. The ingest skill handles
 category selection, cross-refs, and the wiki page creation independently.
 
 If no, leave the file in `raw/sessions/`. The user can run `/obsidian-wiki:ingest
@@ -216,7 +216,7 @@ raw/sessions/<filename>` later.
 - **Do not slurp the entire session file into context.** A 100MB JSONL will blow your
   context window. Stream-parse line-by-line, extract only the relevant events.
 - **Do not write into a wiki category dir** (`Architecture/`, `Gotchas/`, etc.). That's
-  `vault-ingest`'s job, not this skill's. Session imports always land in
+  `ingest`'s job, not this skill's. Session imports always land in
   `raw/sessions/` first.
 - **Do not fabricate content.** If a session has no extractable narrative (pure code
   generation, no diagnostic turns), tell the user. Don't invent insights to justify the

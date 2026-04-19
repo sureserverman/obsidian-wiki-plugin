@@ -1,5 +1,5 @@
 ---
-name: vault-query
+name: ask
 description: >
   Use when the user asks a research or recall question that their Obsidian vault at
   <vault> might answer, or mentions "/obsidian-wiki:ask". Trigger on "what do I know about X",
@@ -85,7 +85,7 @@ first.** Do not file unprompted.
 When the user agrees:
 
 1. Pick the category (usually `Gotchas/` or `Patterns/` for synthesized answers).
-2. Write the page using the schema from `CLAUDE.md` (same frontmatter as `vault-ingest`
+2. Write the page using the schema from `CLAUDE.md` (same frontmatter as `ingest`
    would use).
 3. Cite every wiki page that fed into the synthesis.
 4. If the answer was derived from a concrete question, record the question in the

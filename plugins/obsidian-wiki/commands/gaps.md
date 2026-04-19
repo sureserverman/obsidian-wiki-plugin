@@ -5,7 +5,7 @@ description: Find content gaps (entities mentioned across pages with no dedicate
 `<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
 
 
-Use the `vault-gaps` skill to scan `<vault>` for entities mentioned across
+Use the `gaps` skill to scan `<vault>` for entities mentioned across
 multiple pages that don't have a dedicated page yet.
 
 **Arguments**: `$ARGUMENTS` — minimum mention count for the high-confidence section

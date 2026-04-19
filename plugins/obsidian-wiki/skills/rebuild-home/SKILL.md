@@ -1,5 +1,5 @@
 ---
-name: vault-home-rebuild
+name: rebuild-home
 description: >
   Use when the user asks to refresh, rebuild, or regenerate Home.md in their Obsidian
   vault, mentions "/obsidian-wiki:rebuild-home", or notices that Home.md has drifted from the
@@ -14,7 +14,7 @@ description: >
 Regenerate the tables in `<vault>/Home.md` from the actual filesystem state,
 catching drift caused by manual page additions, renames, or deletions in Obsidian.
 
-`Home.md` is a hand-curated Map-of-Content. The `vault-ingest` skill only adds rows
+`Home.md` is a hand-curated Map-of-Content. The `ingest` skill only adds rows
 to it; it never removes or reorders. Over time, when the user creates pages directly in
 Obsidian (or deletes them), `Home.md` falls out of sync. This skill catches that.
 

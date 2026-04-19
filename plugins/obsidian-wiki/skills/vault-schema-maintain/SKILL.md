@@ -14,8 +14,8 @@ description: >
 # Vault Schema Maintain
 
 Edit the vault's `CLAUDE.md` to evolve its conventions over time. This is the only
-skill that is allowed to modify `CLAUDE.md`. All other skills (`vault-ingest`,
-`vault-query`, `vault-lint`) read it but never write to it.
+skill that is allowed to modify `CLAUDE.md`. All other skills (`ingest`,
+`ask`, `lint`) read it but never write to it.
 
 The schema is a living document. It captures decisions the user has made about how
 their vault works, and it grows as patterns are corrected, edge cases come up, and new

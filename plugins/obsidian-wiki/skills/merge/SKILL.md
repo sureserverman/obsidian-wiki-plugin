@@ -1,5 +1,5 @@
 ---
-name: vault-merge
+name: merge
 description: >
   Use when the user asks to merge two Obsidian vault pages into one, consolidate
   duplicate notes, mentions "/obsidian-wiki:merge", or says "these two pages are about the
@@ -82,7 +82,7 @@ update. Do not batch.
 ## Step 5 — Apply, in this order
 
 The order matters. If you delete the loser first, the inbound links become broken
-before they're rewritten — `vault-lint` would flag every one.
+before they're rewritten — `lint` would flag every one.
 
 1. **Write the merged content** to the survivor. Use Write (this is a full rewrite of
    the survivor) only after the user has approved the merged body in Step 2.

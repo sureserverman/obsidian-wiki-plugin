@@ -5,9 +5,9 @@ description: Extract one AI coding session into raw/sessions/ as a vault source
 `<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
 
 
-Use the `vault-session-import` skill to extract one session into
+Use the `import-session` skill to extract one session into
 `<vault>/raw/sessions/` as a markdown file. After writing, the skill offers to
-chain into `vault-ingest` so the source can be filed into the wiki.
+chain into `ingest` so the source can be filed into the wiki.
 
 **Arguments**: `$ARGUMENTS` — a session identifier. Any of:
 
@@ -24,7 +24,7 @@ session already cited by some wiki page.
 ## Special arguments
 
 - `--force` — overwrite an existing extract (rare; use after a parser bug fix).
-- `--no-ingest` — write the raw file but skip the chained `vault-ingest` prompt.
+- `--no-ingest` — write the raw file but skip the chained `ingest` prompt.
 
 **Examples**:
 - `/obsidian-wiki:import-session claude-code-2026-04-05-2b7b05df`

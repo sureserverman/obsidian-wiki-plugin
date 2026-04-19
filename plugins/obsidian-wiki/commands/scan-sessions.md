@@ -5,7 +5,7 @@ description: Scan recent AI coding sessions for vault-worthy moments
 `<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
 
 
-Use the `vault-session-scan` skill to discover sessions worth importing into the
+Use the `scan-sessions` skill to discover sessions worth importing into the
 Obsidian vault at `<vault>`. Reads from Claude Code, Codex, Cursor, Gemini,
 and OpenCode session storage.
 

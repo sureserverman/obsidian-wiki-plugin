@@ -8,9 +8,9 @@ invoked as `/obsidian-wiki:<command>` — no risk of collision with built-in com
 like `/login`. The plugin is built to **adapt to a vault that already has its own
 structure** rather than imposing Karpathy's exact `raw/ + wiki/ + index.md` layout.
 
-**Skills**: `vault-ingest`, `vault-query`, `vault-lint`, `vault-schema-maintain`,
-`vault-related`, `vault-gaps`, `vault-home-rebuild`, `vault-merge`,
-`vault-session-scan`, `vault-session-import`, `vault-capture-review`, `vault-index`.
+**Skills**: `ingest`, `ask`, `lint`, `vault-schema-maintain`,
+`related`, `gaps`, `rebuild-home`, `merge`,
+`scan-sessions`, `import-session`, `review-captures`, `index`.
 
 **Commands**: `/obsidian-wiki:ingest`, `/obsidian-wiki:ask`, `/obsidian-wiki:lint`, `/obsidian-wiki:log`,
 `/obsidian-wiki:stats`, `/obsidian-wiki:related`, `/obsidian-wiki:gaps`, `/obsidian-wiki:rebuild-home`, `/obsidian-wiki:tag`,
@@ -252,20 +252,20 @@ obsidian-wiki-plugin/                # marketplace root
 │   └── hooks.json               # SessionStart + SessionEnd hook registration
 ├── README.md
 ├── skills/
-│   ├── vault-ingest/SKILL.md
-│   ├── vault-query/SKILL.md
-│   ├── vault-lint/SKILL.md
+│   ├── ingest/SKILL.md
+│   ├── ask/SKILL.md
+│   ├── lint/SKILL.md
 │   ├── vault-schema-maintain/SKILL.md
-│   ├── vault-related/SKILL.md
-│   ├── vault-gaps/SKILL.md
-│   ├── vault-home-rebuild/SKILL.md
-│   ├── vault-merge/SKILL.md
-│   ├── vault-index/SKILL.md
-│   ├── vault-session-scan/
+│   ├── related/SKILL.md
+│   ├── gaps/SKILL.md
+│   ├── rebuild-home/SKILL.md
+│   ├── merge/SKILL.md
+│   ├── index/SKILL.md
+│   ├── scan-sessions/
 │   │   ├── SKILL.md
 │   │   └── references/storage-paths.md
-│   ├── vault-session-import/SKILL.md
-│   └── vault-capture-review/SKILL.md
+│   ├── import-session/SKILL.md
+│   └── review-captures/SKILL.md
 ├── commands/
 │   ├── ingest.md
 │   ├── ask.md

@@ -5,7 +5,7 @@ description: Ingest a source from raw/ into the Obsidian vault
 `<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
 
 
-Use the `vault-ingest` skill to process a source into the wiki at `<vault>`.
+Use the `ingest` skill to process a source into the wiki at `<vault>`.
 
 **Arguments**: `$ARGUMENTS` — path to a file under `<vault>/raw/`.
 
