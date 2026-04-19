@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # extract-project-signals.sh — emit deduplicated, normalized tokens describing the
 # project rooted at the current working directory. Output is one token per line on
-# stdout, sorted and unique. Used by vault-link-project to match against a vault
+# stdout, sorted and unique. Used by the link skill to match against a vault
 # index.
 #
 # Sources, in order:

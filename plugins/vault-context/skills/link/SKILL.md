@@ -1,5 +1,5 @@
 ---
-name: vault-link-project
+name: link
 description: >
   Use when the user asks what their Obsidian vault knows about the current project
   repo, asks to link/refresh vault context for a project, or mentions
