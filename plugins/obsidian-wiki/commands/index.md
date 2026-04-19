@@ -2,7 +2,7 @@
 description: Regenerate the vault-wide index file at <vault>/index.md
 ---
 
-Use the `vault-index` skill to walk the Obsidian vault and write a fresh `<vault>/index.md`
+Use the `index` skill to walk the Obsidian vault and write a fresh `<vault>/index.md`
 listing every page's title, tags, topics, one-line summary, and last-updated date.
 
 **Arguments**: none.

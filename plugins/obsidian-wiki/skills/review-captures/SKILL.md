@@ -1,5 +1,5 @@
 ---
-name: vault-capture-review
+name: review-captures
 allowed-tools: Read, Glob, Grep, Bash
 description: >
   Use when the user asks to review pending session captures, asks "what did the
@@ -17,7 +17,7 @@ description: >
 Surface `session-capture` entries that the `obsidian-wiki` SessionEnd hook
 (`scripts/capture-session.sh`) wrote to `<vault>/log.md`, filter out the ones
 already imported, and let the user pick which to extract via
-`vault-session-import`.
+`import-session`.
 
 This skill is **the consumer** of the capture queue. The producer is the hook —
 it appends one log entry per vault-worthy session as the session ends. This
@@ -68,7 +68,7 @@ so we never edit the capture entry to mark it done. The capture entry stays
 in place forever as a historical breadcrumb; the cross-ref on the import
 entry is what links them.
 
-Also check the older idempotency rule from `vault-session-import`: does
+Also check the older idempotency rule from `import-session`: does
 `raw/sessions/claude-code-<date>-<short-id>.md` already exist? If it does
 but no `Captured-as:` cross-ref points to this capture, the import was done
 manually — still treat it as imported, but warn the user the cross-ref is
@@ -116,14 +116,14 @@ Accept:
 - `all` → queue all pending captures for import in score order.
 - `1`, `1,3`, `1-3` → specific selections.
 
-For each chosen capture, hand off to `vault-session-import` with the full
+For each chosen capture, hand off to `import-session` with the full
 `Transcript:` path from the capture entry. Pass the capture's
 `<YYYY-MM-DD>` and `<short-id>` along too — the import skill needs them to
 write the `Captured-as:` cross-reference.
 
 ## Step 5 — Verify the cross-reference
 
-After each `vault-session-import` invocation completes, re-read `log.md` and
+After each `import-session` invocation completes, re-read `log.md` and
 confirm the new `session-import` entry contains:
 
 ```
@@ -138,7 +138,7 @@ to the import entry).
 ## What never to do
 
 - **Do not write to `log.md`.** The log is append-only and only
-  `vault-session-import` writes the import entry. This skill is read-only on
+  `import-session` writes the import entry. This skill is read-only on
   the log.
 - **Do not delete capture entries.** Even after import, the capture entry
   stays in the log as the audit trail. The "imported" status is derived
@@ -159,7 +159,7 @@ to the import entry).
   line is the only authoritative marker. Don't assume "imported on the
   same day == this capture" — multiple captures can land on one day.
 - **Stale transcript paths.** A session JSONL can be moved or deleted
-  between capture and review. Before delegating to `vault-session-import`,
+  between capture and review. Before delegating to `import-session`,
   check the path still exists. If it doesn't, tell the user and skip.
 - **Wrong vault.** If `$OBSIDIAN_VAULT_PATH` is set in the user's shell but
   this conversation didn't inherit it, you may be reading the wrong log.

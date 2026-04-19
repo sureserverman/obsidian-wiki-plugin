@@ -92,7 +92,7 @@ ask the user.
 
 ---
 
-## Ingest procedure (mirrors the `vault-ingest` skill)
+## Ingest procedure (mirrors the `ingest` skill)
 
 This is repeated here so a human can read the procedure without loading the skill.
 
@@ -152,8 +152,8 @@ Each entry is a level-2 heading followed by optional bullet detail:
 `query` entries are only logged when a new page was filed back. Plain queries that
 just produced an answer are not logged.
 
-`session-import` entries are appended by the `vault-session-import` skill when an AI
-coding session is extracted into `raw/sessions/`. The chained `vault-ingest` (if the
+`session-import` entries are appended by the `import-session` skill when an AI
+coding session is extracted into `raw/sessions/`. The chained `ingest` (if the
 user accepts) produces a separate `ingest` entry.
 
 `session-capture` entries are appended by the `obsidian-wiki` SessionEnd hook
@@ -162,7 +162,7 @@ below.
 
 ---
 
-## Lint criteria (mirrors the `vault-lint` skill)
+## Lint criteria (mirrors the `lint` skill)
 
 The lint skill checks five categories:
 
@@ -187,11 +187,11 @@ The plugin can extract content from AI coding sessions across five tools (Claude
 Codex, Cursor, Gemini, OpenCode) and turn them into vault sources. Two skills are
 involved:
 
-- `vault-session-scan` — read-only discovery. Finds candidate sessions in the user's
+- `scan-sessions` — read-only discovery. Finds candidate sessions in the user's
   tool storage dirs, scores them for vault-worthiness, presents a ranked report.
-- `vault-session-import` — extracts one chosen session into
+- `import-session` — extracts one chosen session into
   `raw/sessions/<tool>-<YYYY-MM-DD>-<short-id>.md`, then optionally chains to
-  `vault-ingest` to file the source into the wiki.
+  `ingest` to file the source into the wiki.
 
 **Filename convention** for extracted sessions:
 
@@ -207,7 +207,7 @@ Where `<tool>` ∈ `claude-code`, `codex`, `cursor`, `gemini`, `opencode` and
 1. The file exists at `raw/sessions/<tool>-<date>-<short-id>.md`, OR
 2. Some wiki page's `sources:` frontmatter array contains that path.
 
-`vault-session-scan` filters out already-imported sessions; `vault-session-import`
+`scan-sessions` filters out already-imported sessions; `import-session`
 refuses to overwrite without `--force`.
 
 The session import skills never read the entire session file into context — they
@@ -227,14 +227,14 @@ the threshold (default 2, override with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`),
 appends a `session-capture` entry to this log.
 
 The capture entry is **informational only**: the hook never extracts the
-session's content. The actual extract still happens via `vault-session-import`
+session's content. The actual extract still happens via `import-session`
 when you run `/obsidian-wiki:review-captures` from within the vault. Captures
 are idempotent (a session-id is only ever captured once) and the hook never
 writes to `raw/`, the wiki, or anything outside `log.md`.
 
-When `vault-session-import` produces an extract from a capture, it appends a
+When `import-session` produces an extract from a capture, it appends a
 `Captured-as: [<date>] session-capture <short-id>` line to its `session-import`
-log entry. That line is the cross-reference `vault-capture-review` uses to tell
+log entry. That line is the cross-reference `review-captures` uses to tell
 imported captures from pending ones — captures are never edited or deleted, so
 the cross-ref on the import entry is the only "this capture has been processed"
 marker.
@@ -256,7 +256,7 @@ category. It exists so other tools (notably the `vault-context` plugin used from
 project repos) can find vault pages relevant to their context without having to grep
 the whole vault.
 
-The index is written **only** by the `vault-index` skill (`/obsidian-wiki:index`).
+The index is written **only** by the `index` skill (`/obsidian-wiki:index`).
 Hand-edits are pointless — every run is a full rewrite. The skill skips the write if
 the new content is byte-identical to the old one, so the file's mtime tracks real
 content changes. Index runs append a `[YYYY-MM-DD] index |` entry to `log.md`.

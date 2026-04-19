@@ -1,5 +1,5 @@
 ---
-name: vault-related
+name: related
 description: >
   Use when the user asks to find missing cross-references for a specific page in their
   Obsidian vault, mentions "/obsidian-wiki:related", or asks "what should this page link to" or

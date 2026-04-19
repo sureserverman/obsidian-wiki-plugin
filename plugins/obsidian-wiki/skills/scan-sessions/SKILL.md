@@ -1,5 +1,5 @@
 ---
-name: vault-session-scan
+name: scan-sessions
 allowed-tools: Read, Glob, Grep, Bash
 description: >
   Use when the user asks to find vault-worthy moments from recent AI coding sessions
@@ -15,7 +15,7 @@ description: >
 
 Discover recent sessions across the user's AI coding tools (Claude Code, Codex, Cursor,
 Gemini, OpenCode), score them for vault-worthiness, and present candidates the user can
-import into the wiki via `vault-session-import`.
+import into the wiki via `import-session`.
 
 This skill is **read-only** — it never writes to `raw/`, the wiki, or `log.md`. It only
 surfaces candidates.
@@ -182,7 +182,7 @@ considered, they can re-run the scan — it's idempotent.
 
 ## What never to do
 
-- **Do not write to `raw/`.** That's `vault-session-import`'s job.
+- **Do not write to `raw/`.** That's `import-session`'s job.
 - **Do not modify any wiki page.** Scanning is read-only.
 - **Do not slurp full session files into context.** A 100MB JSONL will blow your
   context window. Stream-parse, sample head/tail/errors only.

@@ -12,7 +12,7 @@ to stdout, where:
   - topic:      first user prompt sanitized to a single line, ≤60 chars
   - errors:     count of `"is_error":true` events (tool failure signal)
 
-Signals (mirrors vault-session-scan SKILL.md, simplified to what a hook can
+Signals (mirrors scan-sessions SKILL.md, simplified to what a hook can
 compute without vault context):
 
   +1  long session         turn_count > 50
