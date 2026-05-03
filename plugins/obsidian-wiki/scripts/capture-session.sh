@@ -31,6 +31,7 @@ input="$(cat)"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 resolve_vault="$script_dir/resolve-vault.sh"
 scorer="$script_dir/score-session.py"
+queue_lib="$script_dir/lib/queue.sh"
 
 # ---------------------------------------------------------------------------
 # Parse a top-level field from the hook input JSON. Prefer jq; fall back to
@@ -105,6 +106,7 @@ threshold="${OBSIDIAN_WIKI_CAPTURE_THRESHOLD:-2}"
         VAULT="'"$vault_path"'"
         THRESHOLD="'"$threshold"'"
         SCORER="'"$scorer"'"
+        QUEUE_LIB="'"$queue_lib"'"
 
         SHORT_ID="${SESSION_ID:0:8}"
         LOG="$VAULT/log.md"
@@ -171,6 +173,40 @@ threshold="${OBSIDIAN_WIKI_CAPTURE_THRESHOLD:-2}"
                 printf "%s" "$ENTRY" >> "$LOG"
             fi
         ) 9>"$LOCK"
+
+        # Auto-import queue: enqueue a job for the SessionStart drain so
+        # the next interactive Claude Code session imports + ingests this
+        # session via /obsidian-wiki:import-session + /obsidian-wiki:ingest.
+        # queue_write is idempotent — a duplicate enqueue is a no-op.
+        if [ -f "$QUEUE_LIB" ]; then
+            # shellcheck source=/dev/null
+            . "$QUEUE_LIB"
+            ENQUEUED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            # Build the JSON body. We use python3 for safe escaping of
+            # transcript paths and topics (which can contain quotes/slashes/
+            # unicode); jq -Rs would also work but python3 is already a
+            # hard dep of this script via the scorer.
+            JOB_BODY="$(SESSION_ID="$SESSION_ID" TRANSCRIPT="$TRANSCRIPT" \
+                       CWD_VAL="$CWD_VAL" REASON="$REASON" SCORE="$SCORE" \
+                       TURNS="$TURNS" TOPIC="$TOPIC" ENQUEUED_AT="$ENQUEUED_AT" \
+                       python3 -c "
+import json, os
+print(json.dumps({
+    \"session_id\": os.environ.get(\"SESSION_ID\", \"\"),
+    \"transcript_path\": os.environ.get(\"TRANSCRIPT\", \"\"),
+    \"cwd\": os.environ.get(\"CWD_VAL\", \"\"),
+    \"reason\": os.environ.get(\"REASON\", \"\"),
+    \"score\": int(os.environ.get(\"SCORE\", \"0\") or 0),
+    \"turns\": int(os.environ.get(\"TURNS\", \"0\") or 0),
+    \"topic\": os.environ.get(\"TOPIC\", \"\"),
+    \"enqueued_at\": os.environ.get(\"ENQUEUED_AT\", \"\"),
+    \"schema_version\": 1,
+}))
+" 2>/dev/null)"
+            if [ -n "$JOB_BODY" ]; then
+                queue_write auto-import "$SHORT_ID" "$JOB_BODY" >/dev/null 2>&1 || true
+            fi
+        fi
     ' >/dev/null 2>&1 &
 ) >/dev/null 2>&1
 disown 2>/dev/null || true
