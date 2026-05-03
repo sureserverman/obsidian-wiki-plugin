@@ -10,6 +10,10 @@
           },
           {
             "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/daily-cursor-codex.sh"
+          },
+          {
+            "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/drain-queue.sh"
           }
         ]
