@@ -195,23 +195,61 @@ nudge at session start when an update is available. The hook never modifies
 any file — it only reports. Running `/obsidian-wiki:update` is what actually
 applies the update, and it will prompt before changing anything.
 
-### Auto-capture from SessionEnd
+### Hooks (auto-import + daily maintenance)
 
-A second hook (`scripts/capture-session.sh`) fires on `SessionEnd` from any
-project. It scores the just-ended session via lightweight heuristics — long
-sessions, error clusters, substantive endings, user-satisfaction markers — and
-if the score crosses the threshold (default 2, override with
-`OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`) appends a `session-capture` entry to
-`<vault>/log.md`. The hook spawns a detached background process so the user's
-session-end is never blocked, and never extracts the session content — that's
-the job of `/obsidian-wiki:review-captures` later.
+The plugin ships four hooks that keep the vault and its consumers up to date
+without the user having to remember manual commands. None of them invoke an
+LLM directly — they queue jobs into `~/.config/obsidian-wiki/queue/<kind>/`
+and the next interactive Claude Code session drains the queue via an
+additionalContext directive that runs the existing slash commands.
 
-The hook only writes to the vault's `log.md` (under `flock`). It never writes
-to `raw/`, the wiki, or anything in the project the session ran in. Captures
-are idempotent (a session-id is only ever captured once), and the hook
-silently skips if the cwd is the vault itself, the reason is `clear`, the
-project has a `.obsidian-wiki-no-capture` marker file, or
-`OBSIDIAN_WIKI_NO_CAPTURE=1` is set in the shell environment.
+**Hook 1 — SessionEnd auto-import (Claude Code).** `scripts/capture-session.sh`
+fires when any Claude Code session ends. It scores the just-ended session via
+lightweight heuristics — long sessions, error clusters, substantive endings,
+user-satisfaction markers — and if the score crosses the threshold (default
+2, override with `OBSIDIAN_WIKI_CAPTURE_THRESHOLD=N`) it both:
+1. Appends a `session-capture` entry to `<vault>/log.md` (back-compat with
+   `/obsidian-wiki:review-captures`).
+2. Enqueues an `auto-import` job. At the next SessionStart, the drain emits
+   a directive to run `/obsidian-wiki:import-session` and `/obsidian-wiki:ingest`
+   on each queued session.
+
+The hook spawns a detached background process so the user's session-end is
+never blocked. It never writes to `raw/`, the wiki, or the project where
+the session ran. Captures are idempotent (one queued job per session-id),
+and the hook silently skips if the cwd is the vault itself, `reason=clear`,
+the project has a `.obsidian-wiki-no-capture` marker file, or
+`OBSIDIAN_WIKI_NO_CAPTURE=1` is set.
+
+**Hook 2 — Daily Cursor/Codex auto-import.** `scripts/daily-cursor-codex.sh`
+runs at SessionStart, gated by a per-UTC-day sentinel, and enqueues a
+`daily-cursor-codex` job at most once per day. The drain emits a directive
+to run `/obsidian-wiki:scan-sessions cursor`, `/obsidian-wiki:scan-sessions codex`,
+and import each candidate above threshold. Lookback window defaults to 1 day;
+override with `OBSIDIAN_WIKI_DAILY_WINDOW=N`. Set `OBSIDIAN_WIKI_NO_DAILY=1`
+to disable Hooks 2 and 3 entirely.
+
+**Hook 3a — Daily vault index regen.** `scripts/daily-index.sh` runs at
+SessionStart, gated by a per-UTC-day sentinel, and enqueues a `daily-index`
+job. The drain emits a directive to run `/obsidian-wiki:index`, regenerating
+`<vault>/index.md` so the consumer plugin (`vault-context`) sees up-to-date
+page metadata.
+
+**Hook 3b — Per-project sidecar staleness (in `vault-context`).**
+`vault-context`'s SessionStart hook (`plugins/vault-context/scripts/session-start.sh`)
+gains a sidecar-vs-index staleness check: when a project's
+`.claude/vault-context.md` is older than `<vault>/index.md`, it emits a
+`/vault-context:refresh` nudge. This naturally distributes the per-project
+refresh as the user moves between projects after the daily index regen —
+no project registry required. Set `VAULT_CONTEXT_NO_STALENESS_NUDGE=1` to
+suppress.
+
+**Drain.** `scripts/drain-queue.sh` runs as the last SessionStart entry in
+this plugin's hook list (after `check-update.sh`, `daily-cursor-codex.sh`,
+`daily-index.sh`). It emits one `systemMessage` line summarizing pending
+jobs across all kinds and one structured additionalContext block listing
+the per-kind directives. Drained jobs move to `queue/<kind>/done/` so the
+nudge fires exactly once per job.
 
 For a persistent **statusline badge** instead of the one-off session nudge,
 paste the snippet from `scripts/statusline-snippet.sh` into your own Claude
@@ -285,9 +323,15 @@ obsidian-wiki-plugin/                # marketplace root
 ├── scripts/
 │   ├── resolve-vault.sh        # vault path resolver (mirrored in vault-context)
 │   ├── check-update.sh         # SessionStart hook: background marketplace update check
-│   ├── capture-session.sh      # SessionEnd hook: score + queue vault-worthy sessions
+│   ├── capture-session.sh      # SessionEnd hook: score + enqueue auto-import + log
+│   ├── daily-cursor-codex.sh   # SessionStart hook: daily Cursor/Codex enqueue
+│   ├── daily-index.sh          # SessionStart hook: daily vault-index enqueue
+│   ├── drain-queue.sh          # SessionStart hook: drain queue → additionalContext
 │   ├── score-session.py        # JSONL scorer used by capture-session.sh
-│   └── statusline-snippet.sh   # opt-in snippet for statusline badge
+│   ├── statusline-snippet.sh   # opt-in snippet for statusline badge
+│   └── lib/
+│       ├── queue.sh            # queue write/list/drain helpers (flock-serialized)
+│       └── daily-gate.sh       # per-kind UTC-daily sentinel helper
 └── assets/
     ├── vault-CLAUDE.md       # template dropped into the vault
     └── log-template.md       # initial log.md

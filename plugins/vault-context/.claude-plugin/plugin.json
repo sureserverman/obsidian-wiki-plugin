@@ -1,7 +1,7 @@
 {
   "name": "vault-context",
-  "description": "Surface Obsidian-vault knowledge inside project repos: scan the current project, match against the vault's index, and write a CLAUDE.md-loaded sidecar with relevant page references.",
-  "version": "0.2.0",
+  "description": "Surface Obsidian-vault knowledge inside project repos: scan the current project, match against the vault's index, write a CLAUDE.md-loaded sidecar with relevant page references, and nudge the user to refresh the sidecar when the vault index is updated.",
+  "version": "0.3.0",
   "author": {
     "name": "Sure Serverman"
   },
