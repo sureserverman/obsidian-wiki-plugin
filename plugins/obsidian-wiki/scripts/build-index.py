@@ -22,6 +22,11 @@ of the vault that contain at least one .md file, excluding infrastructure dirs
 (raw, Portfolio, .obsidian, and any dotted dir). Pass explicit --category flags to
 honor a vault schema that differs from this heuristic.
 
+Portfolio/ stays out of category auto-detection (it is tracking data, not wiki
+pages), but every Portfolio/<area>/<project>/integration.md is indexed by a
+dedicated pass into a "Portfolio Integrations/" section so inter-project edges are
+discoverable downstream. Vaults with no such files produce byte-identical output.
+
 Stats printed to stdout (one key=value per line):
   TOTAL_PAGES=<N>
   STATUS=new|identical|changed
@@ -250,6 +255,102 @@ def parse_blocks(text):
     return blocks
 
 
+WIKI_RE = re.compile(r'\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]')
+
+
+def parse_integration_frontmatter(text):
+    """Parse a Portfolio integration.md (schema: project / depends_on / impacts).
+
+    Returns (project, depends, impacts) where depends and impacts are lists of
+    (target_slug, why). This schema differs from a wiki page's frontmatter, so the
+    generic parse_frontmatter() does not apply — these files carry no title/tags.
+    """
+    if not text.startswith("---"):
+        return None, [], []
+    lines = text.split("\n")
+    end = None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            end = i
+            break
+    if end is None:
+        return None, [], []
+    fm = lines[1:end]
+    project, depends, impacts, section = None, [], [], None
+    i = 0
+    while i < len(fm):
+        line = fm[i]
+        mp = re.match(r'^project:\s*(.+)$', line)
+        if mp:
+            project, section = mp.group(1).strip().strip('"\''), None
+            i += 1
+            continue
+        ms = re.match(r'^(depends_on|impacts):\s*$', line)
+        if ms:
+            section = ms.group(1)
+            i += 1
+            continue
+        mt = re.match(r'^\s*-\s*target:\s*(.+)$', line)
+        if section and mt:
+            wl = WIKI_RE.search(mt.group(1))
+            slug = wl.group(1).strip() if wl else mt.group(1).strip().strip('"\'')
+            why, j = "", i + 1
+            while j < len(fm):
+                mw = re.match(r'^\s+why:\s*(.+)$', fm[j])
+                if mw:
+                    why = mw.group(1).strip().strip('"\'')
+                    break
+                if re.match(r'^\s*-\s', fm[j]) or re.match(r'^\S', fm[j]):
+                    break
+                j += 1
+            (depends if section == "depends_on" else impacts).append((slug, why))
+        i += 1
+    return project, depends, impacts
+
+
+def build_portfolio_integrations(vault, date):
+    """Index every Portfolio/<area>/<project>/integration.md as a matchable entry.
+
+    Portfolio/ is excluded from category auto-detection (it is tracking data, not
+    wiki pages), but the per-project integration declarations are exactly the
+    inter-project edges downstream tools want to surface. Each file becomes one
+    entry whose topics carry the project slug plus every edge target, so the
+    vault-context matcher can find it from either end of an edge.
+    """
+    pdir = os.path.join(vault, "Portfolio")
+    if not os.path.isdir(pdir):
+        return [], 0
+    entries = []
+    for root, dirs, files in os.walk(pdir):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        if "integration.md" not in files:
+            continue
+        fp = os.path.join(root, "integration.md")
+        text = open(fp, encoding="utf-8", errors="replace").read()
+        project, depends, impacts = parse_integration_frontmatter(text)
+        slug = project or os.path.basename(os.path.dirname(fp))
+        dep_t = [t for t, _ in depends]
+        imp_t = [t for t, _ in impacts]
+        title = f"{slug} integration"
+        topics, seen = [], set()
+        for t in [slug] + dep_t + imp_t:
+            if t and t.lower() not in seen:
+                seen.add(t.lower())
+                topics.append(t)
+            if len(topics) >= 30:
+                break
+        summary = (f"{slug} inter-project edges — depends on: "
+                   f"{', '.join(dep_t) or 'none'}; impacts: {', '.join(imp_t) or 'none'}")
+        if len(summary) > 200:
+            summary = summary[:200].rsplit(" ", 1)[0] + "…"
+        updated = datetime.date.fromtimestamp(os.path.getmtime(fp)).isoformat()
+        rel = os.path.relpath(fp, vault).replace(os.sep, "/")
+        entries.append((title.lower(), page_block(title, rel, summary,
+                        ["integration"], topics, updated)))
+    entries.sort(key=lambda x: x[0])
+    return [b for _, b in entries], len(entries)
+
+
 def build(vault, categories, date):
     blocks_by_cat, total = {}, 0
     for cat in categories:
@@ -276,6 +377,9 @@ def build(vault, categories, date):
         entries.sort(key=lambda x: x[0])
         blocks_by_cat[cat] = [b for _, b in entries]
 
+    pint_blocks, pint_total = build_portfolio_integrations(vault, date)
+    total += pint_total
+
     out = ["# Vault Index\n",
            f"Auto-generated by /obsidian-wiki:index on {date}. Do not hand-edit.\n"
            "Re-run after ingesting new sources.\n",
@@ -284,6 +388,9 @@ def build(vault, categories, date):
         if blocks_by_cat.get(cat):
             out.append(f"## {cat}/\n")
             out.append("\n".join(blocks_by_cat[cat]))
+    if pint_blocks:
+        out.append("## Portfolio Integrations/\n")
+        out.append("\n".join(pint_blocks))
     return "\n".join(out).rstrip("\n") + "\n", total
 
 

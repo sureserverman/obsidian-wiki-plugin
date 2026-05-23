@@ -47,6 +47,14 @@ on auto-detect. Never hardcode a fixed list of categories.
 The builder skips `Home.md`, `index.md`, `CLAUDE.md`, and `log.md` by basename, and
 never descends into `raw/` or `.obsidian/`.
 
+**Portfolio integration edges.** `Portfolio/` stays out of category auto-detection
+(it is tracking data, not wiki pages), but the builder runs one dedicated pass over
+every `Portfolio/<area>/<project>/integration.md` and emits them under a
+`## Portfolio Integrations/` section. Each entry's `topics` carry the declaring
+project slug plus every `depends_on`/`impacts` target, and its `summary` lists those
+edges — so the `vault-context` matcher can surface an inter-project edge from either
+end. Vaults with no such files produce byte-identical output (the section is omitted).
+
 The builder owns the walk, per-page extraction, assembly, the idempotency compare,
 and the write. It prints stats to stdout — `TOTAL_PAGES`, `STATUS`, and on change
 `CHANGED_BLOCKS` / `ADDED` / `REMOVED` with path lists — which you use for the log
