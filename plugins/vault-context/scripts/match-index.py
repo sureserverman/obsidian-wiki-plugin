@@ -31,10 +31,18 @@ Output JSON shape:
 If fewer than 5 pages score > 0, prints a single line `NO_MATCHES` and exits 0.
 The caller (write-context.sh) handles both cases.
 
-Pure stdlib. No third-party deps.
+Self-integration guarantee: a "Portfolio Integrations/" entry whose declaring
+project is THIS repo always surfaces in the output, even if the TOP_N cap or a low
+token-overlap score would otherwise drop it. The owning repo is identified by mapping
+cwd to its slug via ~/.claude/projects-registry.yaml (the ecosystem's source-of-truth
+registry) — a definite ownership match, not fuzzy signal overlap. Best-effort: if the
+registry is absent or has no entry for cwd, the guarantee is silently skipped.
+
+Pure stdlib. No third-party deps (the registry is read with a line scan, not PyYAML).
 """
 
 import json
+import os
 import re
 import sys
 from collections import defaultdict
@@ -134,6 +142,50 @@ def title_tokens(title: str):
     ]
 
 
+def integration_slug(page: dict):
+    """Declaring project slug if `page` is a Portfolio integration entry, else None.
+
+    Index path for these is `Portfolio/<area>/<slug>/integration.md`; the slug is the
+    component immediately before the filename.
+    """
+    path = page.get("path", "")
+    if not path.endswith("/integration.md"):
+        return None
+    parts = path.split("/")
+    return parts[-2] if len(parts) >= 2 else None
+
+
+def resolve_self_slug():
+    """Best-effort map of the current working directory to its portfolio slug.
+
+    Reads ~/.claude/projects-registry.yaml and returns the `name:` of the project
+    whose `path:` equals cwd. Parsed with a stdlib line scan (entries are
+    `- path:` / `name:` pairs) to keep this module dependency-free. Returns None if
+    the registry is absent, unreadable, or has no entry for cwd — in which case the
+    self-integration guarantee is simply skipped.
+    """
+    try:
+        text = (Path.home() / ".claude" / "projects-registry.yaml").read_text(
+            encoding="utf-8")
+    except OSError:
+        return None
+    cwd = os.path.realpath(os.getcwd())
+    path_cur = None
+    for line in text.splitlines():
+        mp = re.match(r"\s*-?\s*path:\s*(.+?)\s*$", line)
+        if mp:
+            path_cur = mp.group(1).strip().strip("\"'")
+            continue
+        mn = re.match(r"\s*name:\s*(.+?)\s*$", line)
+        if mn and path_cur is not None:
+            try:
+                if os.path.realpath(os.path.expanduser(path_cur)) == cwd:
+                    return mn.group(1).strip().strip("\"'")
+            except OSError:
+                pass
+    return None
+
+
 def score_page(page: dict, signals: set, today: date) -> float:
     score = 0.0
 
@@ -198,6 +250,18 @@ def main():
 
     scored.sort(key=lambda p: (-p["score"], p["title"].lower()))
     top = scored[:TOP_N]
+
+    # Always surface THIS repo's own integration edges, even if the TOP_N cap (or a
+    # low token-overlap score) would drop them. Ownership is resolved from the
+    # registry (cwd -> slug), so it is a definite match, not a guess.
+    self_slug = resolve_self_slug()
+    if self_slug and not any(integration_slug(p) == self_slug for p in top):
+        own = next((p for p in scored if integration_slug(p) == self_slug), None)
+        if own is None:
+            own = next((dict(p, score=round(score_page(p, signals, today), 2))
+                        for p in pages if integration_slug(p) == self_slug), None)
+        if own is not None:
+            top.append(own)
 
     by_category = defaultdict(list)
     for p in top:
