@@ -27,30 +27,35 @@ Hand-edits are pointless — the next run overwrites them.
 - `CLAUDE.md` and `log.md` must exist at the vault root. If not, the vault has not been
   bootstrapped — point the user at the obsidian-wiki README's bootstrap section.
 
-## Walk the vault
+## Build the index
 
-Enumerate `.md` files under the six category directories:
+**Always run the deterministic builder.** Do not hand-roll the walk, and do not
+delegate it to a subagent (see "Why a script, not delegation" below). The builder
+reads every page in one complete pass — no token limits, no truncation, identical
+output for identical input:
 
-- `Architecture/`
-- `Gotchas/`
-- `Patterns/`
-- `Platforms/`
-- `Projects/`
-- `Technologies/`
+    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build-index.py --vault <vault> \
+        [--category <Dir> ...] [--dry-run]
 
-**Skip** these even if they're under a category dir:
+**Categories.** If you omit `--category`, the builder auto-detects them: every
+immediate subdirectory of the vault holding at least one `.md` file, minus
+infrastructure dirs (`raw/`, `Portfolio/`, `.obsidian/`, dotted dirs). Read the
+vault's `CLAUDE.md` schema first; if it declares an explicit category set — or one
+the heuristic would get wrong — pass each with a `--category` flag instead of relying
+on auto-detect. Never hardcode a fixed list of categories.
 
-- `Home.md` (the hand-curated MOC)
-- `index.md` (the file you're about to write — never index yourself)
-- `CLAUDE.md`, `log.md` (vault metadata)
-- Anything under `raw/`, `raw/sessions/`, `raw/assets/`, `.obsidian/`
+The builder skips `Home.md`, `index.md`, `CLAUDE.md`, and `log.md` by basename, and
+never descends into `raw/` or `.obsidian/`.
 
-If the vault uses a different layout (per the user's `CLAUDE.md`), enumerate whatever
-category dirs the schema declares. Don't hardcode the six.
+The builder owns the walk, per-page extraction, assembly, the idempotency compare,
+and the write. It prints stats to stdout — `TOTAL_PAGES`, `STATUS`, and on change
+`CHANGED_BLOCKS` / `ADDED` / `REMOVED` with path lists — which you use for the log
+entry and report. Pass `--dry-run` to preview the diff without writing.
 
-## Per-page extraction
+## What the builder extracts (contract)
 
-For each page, read it **once** and pull:
+For each page the builder pulls these fields. This documents the output contract —
+the builder implements it; you do not extract by hand:
 
 | Field | Source | Fallback |
 |---|---|---|
@@ -109,13 +114,13 @@ parsers expect a fixed set of keys per entry.
 
 ## Idempotency
 
-Compare the new content against the existing `<vault>/index.md` byte-for-byte before
-writing:
+The builder performs this for you — it compares byte-for-byte before writing and
+reports the outcome as `STATUS`:
 
-- If the file does not exist, create it.
-- If the file exists and differs, overwrite it and remember the count of pages whose
-  blocks changed.
-- If the file exists and is byte-identical, do not write at all (preserve mtime).
+- File does not exist → creates it (`STATUS=new`).
+- File exists and differs → overwrites it (`STATUS=changed`, with `CHANGED_BLOCKS`).
+- File exists and is byte-identical → does not write at all, preserving mtime
+  (`STATUS=identical`).
 
 ## Log append
 
@@ -140,18 +145,16 @@ Tell the user, in a few lines:
 If a downstream tool (like `vault-context` from a project repo) prompted this run,
 mention that the index is now ready for it.
 
-## Delegation (optional, for cost/speed)
+## Why a script, not delegation
 
-The "walk the vault" and "per-page extraction" phases are pure read/grep work and
-are the bulk of the runtime. If you are running on Opus or the vault is large,
-delegate those two phases to the `vault-scanner` subagent (model: haiku). Use the
-Agent tool with `subagent_type: vault-scanner` and ask it to return, for every
-eligible page, a JSON or bulleted block with `title`, `path`, `tags`, `topics`,
-`summary`, `updated` — the exact fields listed above.
-
-Keep the category-dir schema resolution, the idempotency compare, the write, and
-the log append in this session — those are single-shot decisions that don't
-benefit from delegation.
+Earlier versions delegated the walk + extraction to the `vault-scanner` subagent
+(haiku) for cost. **Don't.** On a large vault that pass hits token limits and
+degrades silently: it truncates mid-vault, returns blank fields, and miscounts pages
+— which would shrink and gut the index, the opposite of regenerating it. The
+deterministic builder has none of those failure modes and is faster anyway. The only
+work left in-session is the judgement around it: resolving the category set from the
+schema, appending the log entry, and reporting. Reserve `vault-scanner` for genuinely
+read-heavy *judgement* tasks (e.g. lint heuristics), never this mechanical digest.
 
 ## Common pitfalls
 
@@ -160,8 +163,11 @@ benefit from delegation.
   a fast way to thrash.
 - **Fabricating tags.** Tags come from frontmatter only. If a page has no `tags:`,
   write an empty `tags:` line. Do not guess based on content.
-- **Hardcoding the six category dirs** when the user's `CLAUDE.md` declares a different
-  set. Read the schema first.
+- **Hand-rolling the walk or delegating it to a subagent.** Always run
+  `scripts/build-index.py`; it is the single source of truth for extraction.
+- **Hardcoding categories in the invocation** instead of letting the builder
+  auto-detect or passing `--category` flags derived from the vault's `CLAUDE.md`
+  schema. Read the schema first.
 - **Patching `index.md` in place.** Always write the whole file. Stable sort makes the
   diff small.
 - **Skipping the log append.** The log is the audit trail; index runs must be visible
