@@ -97,6 +97,31 @@ awk -v proj="$project_name" \
 }
 ' "$template" > "$tmpfile"
 
+# Carry over the PORTFOLIO-STATUS block, which /planning:portfolio rebuild appends
+# below this plugin's footer. We render the whole sidecar from the template, so
+# without this the refresh would silently drop that block (it owns content the
+# template doesn't). Re-append it using the portfolio skill's own convention
+# (strip trailing newlines, one blank-line separator) so a later rebuild finds
+# both sentinels and stays a no-op. Block contract: coder-plugins
+# planning/skills/portfolio/references/sidecar-format.md.
+if [ -f "$output_file" ]; then
+    carried="$(python3 - "$output_file" <<'PY'
+import re, sys
+try:
+    cur = open(sys.argv[1], encoding="utf-8").read()
+except OSError:
+    sys.exit(0)
+m = re.search(r"<!-- PORTFOLIO-STATUS-BEGIN.*?PORTFOLIO-STATUS-END -->", cur, re.S)
+if m:
+    sys.stdout.write(m.group(0))
+PY
+)"
+    if [ -n "$carried" ]; then
+        printf '%s\n\n%s\n' "$(cat "$tmpfile")" "$carried" > "$tmpfile.new" \
+            && mv "$tmpfile.new" "$tmpfile"
+    fi
+fi
+
 mv "$tmpfile" "$output_file"
 trap - EXIT
 
