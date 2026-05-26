@@ -107,6 +107,31 @@ For each hit:
   file. Obsidian users care about where links appear.
 - Use `[[Page Name]]` link format (Obsidian wikilinks).
 
+### Links must be bidirectional
+
+A `[[wikilink]]` is one-directional **in the file**: if the new page links to `[[X]]`,
+page `X` is not linked back unless you edit `X` too. Obsidian's backlinks pane computes
+the reverse view, but the text-based `lint` orphan check, and a reader skimming `X`, only
+see links that actually exist in the file. A new page that links *out* but is never
+linked *to* is an orphan the moment it is written.
+
+So, after writing the new page:
+
+- **Reciprocate every link.** For each page the new page links to (in its body or its
+  `related:` frontmatter), add the reciprocal `[[New Page]]` link on that page — unless
+  it is a pure name-drop per the rule above. **A dedicated page is never a name-drop to
+  its subject.**
+- **Project-scoped pages MUST back-link from their subject.** When the new page is a
+  `Plans/`, `Incidents/`, `Decisions/`, or `Architecture/` page *about one project* (it
+  carries a `[[<project>]]` link), the matching `Projects/<project>.md` MUST gain a
+  reciprocal `[[New Page]]` reference — a `## Plan` / `## Incidents` line, or a
+  `related:` entry. The "contributes new information" gate does **not** apply here: the
+  existence of a staged plan or a post-mortem *is* load-bearing navigation for the
+  project page. Skipping this is the single most common way a project-scoped page is
+  born an orphan.
+- Bump the `updated:` frontmatter on every page you add a reciprocal link to, and list
+  those pages on the `- Cross-refs:` line of the log entry.
+
 If the source contradicts an existing page, do **not** silently overwrite. Surface the
 contradiction: add a "Conflicts with" note to the new page, and ask the user how to
 reconcile. See the "Contradictions" section below.
