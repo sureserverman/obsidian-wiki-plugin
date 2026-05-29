@@ -110,6 +110,16 @@ Matching is intentionally simple (token overlap, no embeddings, no stemming). Sw
 - **Hook never modifies files.** It only prints a prompt.
 - **No external services.** Everything runs locally; nothing leaves your machine.
 
+## Determinism boundary
+
+Mechanical, decidable checks live in `scripts/validate-link.sh` and decide
+identically every run; the commands run them and consume the JSON rather than
+re-deriving the rules. The validator owns a project's **link state**: the circular-link
+guard, sidecar well-formedness, sidecar↔CLAUDE.md import drift, and index freshness.
+`/vault-context:status` reports its findings; the `link` skill runs it as a post-write
+check. Judgment — which pages matter, status wording, when to refresh/unlink — stays
+with the LLM. See `scripts/README.md` for the full split.
+
 ## Out of scope (v0.1)
 
 - Multi-vault matching in one project session.

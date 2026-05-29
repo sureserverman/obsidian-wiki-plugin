@@ -275,6 +275,13 @@ the trigger list.
 - **Trigger-only skill descriptions.** Skill descriptions contain only the user
   phrases that should trigger them — never workflow steps. (See
   `skill-description-leak-audit` for the reasoning.)
+- **Determinism boundary.** Mechanical, decidable vault checks live in
+  `scripts/validate-*.sh` and decide identically every run; the skills run them and
+  consume the JSON instead of re-deriving the rules. `validate-vault.sh` owns broken
+  wikilinks / missing frontmatter / orphans (the mechanical half of `/lint`);
+  `validate-log.sh` owns the `log.md` heading contract and type vocabulary. Judgment
+  — contradictions, stale claims, merge survivor choice, secret redaction, wording —
+  stays with the LLM. See `scripts/README.md` for the full split.
 
 ## File map
 

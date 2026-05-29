@@ -1,12 +1,15 @@
 ---
 description: Run a health check over the Obsidian vault
+allowed-tools: Bash(bash:*), Read, Grep, Glob, Edit
 ---
 
 `<vault>` is the vault path resolved by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`.
 
 
-Use the `lint` skill to scan `<vault>` for orphans, broken wikilinks,
-missing frontmatter, possible contradictions, and possibly stale pages.
+Use the `lint` skill to scan `<vault>`. The mechanical checks — orphans, broken
+wikilinks, and missing frontmatter — come from the deterministic validators
+(`scripts/validate.sh "<vault>" --json`); the skill then adds the judgment layer:
+possible contradictions and possibly stale pages.
 
 **Arguments**: `$ARGUMENTS` — `fix` to enter fix mode (default: report-only).
 

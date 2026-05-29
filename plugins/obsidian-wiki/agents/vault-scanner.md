@@ -33,13 +33,16 @@ a vault path. Typical jobs:
    summary, and `updated` — the fields the caller specifies.
 3. **Find wikilinks.** Grep `[[...]]` across the vault, return `(source_file,
    target, line)` tuples. Handle `[[Name]]`, `[[Name|alias]]`, `[[Name#section]]`.
-4. **Orphan check.** Given a list of page basenames, return which ones have zero
-   inbound `[[...]]` references elsewhere in the vault.
-5. **Broken-link check.** Given a list of `[[target]]` tokens, return which targets
-   have no matching file (or alias) in the vault.
-6. **Sample AI session logs.** Given a JSONL path, return the first N events, the
+4. **Sample AI session logs.** Given a JSONL path, return the first N events, the
    last N events, and any events with `tool_result` errors. Never slurp the whole
    file — stream-parse.
+
+> **Not your job: orphan and broken-wikilink checks.** Those are decided by the
+> deterministic lane (`scripts/validate-vault.sh`), not by a subagent grep — it
+> handles aliases, path-style links, fenced code, and exclusions consistently. If a
+> caller asks you to "find orphans" or "find broken links," point them at that
+> script instead of reimplementing it. You may still be asked to *find wikilinks*
+> (job 3) as raw input for other work.
 
 ## How to report back
 
