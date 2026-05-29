@@ -19,43 +19,47 @@ destroy user work.
 
 ## What to check
 
-The check has five categories. Run each one and collect its findings before reporting.
-Do not stop at the first finding.
+A lint has two lanes. The **mechanical lane** — orphans, broken wikilinks, and
+malformed frontmatter — is decided by this plugin's deterministic validators in
+`scripts/`; you run them and report their findings verbatim. The **judgment lane**
+— possible contradictions and possibly-stale claims — needs your reading and stays
+below. Collect everything before reporting; do not stop at the first finding.
 
-### 1. Orphan pages
+### Mechanical lane — run the validators (do not re-derive these by hand)
 
-A page is an orphan if no other page in the vault links to it with `[[Name]]`. Excluded
-from orphan detection:
+Run the domain validators against the resolved vault and parse their JSON. They
+do the grep-and-match that this skill used to describe in prose, identically every
+run:
 
-- `Home.md` (the index is expected to have no inbound links)
-- Anything under `raw/` (sources, not wiki pages)
-- Anything under `.obsidian/` (Obsidian internal)
+```bash
+bash "$CLAUDE_PLUGIN_ROOT/scripts/validate.sh" "<vault>" --json
+```
 
-To find orphans: for each `.md` file in the six category directories, grep the rest of
-the vault for the file's basename (without extension) inside `[[...]]`. Zero hits = orphan.
+(That runs both `validate-vault.sh` — orphans, broken wikilinks, missing/empty
+frontmatter — and `validate-log.sh` — `log.md` drift. Run one directly if you only
+need that slice.)
 
-Case-insensitive match. Handle `[[Name]]`, `[[Name|alias]]`, and `[[Name#section]]` as
-link forms.
+Each finding is `{severity, rule, category, path, line, message}`. The rules:
 
-### 2. Broken wikilinks
+- `vault-broken-wikilink` (warn) — a `[[target]]` resolving to no page, alias, or
+  file (case-insensitive; `#section`/`|alias` suffixes, path-style links into
+  `raw/`, fenced code, and escaped table pipes are all handled). To report "grouped
+  by source file," just sort the findings by `path`.
+- `vault-missing-frontmatter` / `vault-frontmatter-no-title` (warn) — page has no
+  closing `---` block, or one without a `title:`.
+- `vault-orphan-page` (info) — no inbound `[[link]]`. `Home.md`, `raw/`,
+  `.obsidian/`, and the auto-generated `Portfolio/` tree are excluded by the script.
+- `log-malformed-entry` / `log-unknown-type` (warn) — a `log.md` heading that
+  breaks the `## [YYYY-MM-DD] <type> | <title>` contract or uses a type outside the
+  known set.
 
-For every `[[target]]` that appears anywhere in the vault, verify a matching file exists
-under the six category directories. Match by basename, case-insensitive, with or without
-`.md` suffix. Also check for aliases declared in the target file's frontmatter
-(`aliases: [...]`).
+These findings are authoritative — a link the script calls broken *is* broken. Your
+only judgment in this lane is flagging when an orphan or a forward-looking link is
+intentional, which you note rather than silently drop.
 
-Report broken links grouped by the file that contains them, so the user can open each
-source file once and fix all its broken links together.
+### Judgment lane — your reading (not decidable by a script)
 
-### 3. Missing frontmatter
-
-A page is missing frontmatter if it does not start with a `---` block containing at
-least `title:` or `tags:`. The schema in `CLAUDE.md` defines the required fields. If
-`CLAUDE.md` is not present, treat `title` and `created` as the minimum.
-
-Report only. Never auto-add frontmatter — the user chose the current state intentionally.
-
-### 4. Possible contradictions (heuristic)
+#### Possible contradictions (heuristic)
 
 This is fuzzy and should be flagged as candidates, not verdicts. Look for:
 
@@ -67,7 +71,7 @@ This is fuzzy and should be flagged as candidates, not verdicts. Look for:
 Report each candidate as a pair of pages plus the specific sentences that appear to
 conflict. Let the user judge.
 
-### 5. Possible stale claims (heuristic)
+#### Possible stale claims (heuristic)
 
 A claim is possibly stale if:
 
@@ -105,7 +109,12 @@ Produce a single markdown report with this structure:
 - `Technologies/Z.md` (updated 2025-08-01, references "Xray v1.8 experimental")
 ```
 
-Include counts in each heading so the user can scan the severity at a glance.
+Include counts in each heading so the user can scan the severity at a glance. The
+Orphans / Broken wikilinks / Missing frontmatter sections are populated directly
+from the validator findings (`vault-orphan-page`, `vault-broken-wikilink`,
+`vault-missing-frontmatter` / `vault-frontmatter-no-title`); Contradictions and
+Stale are your own. If `validate-log.sh` reported `log-*` findings, add a
+`## log.md drift (N)` section for them.
 
 ## Log append
 
@@ -116,7 +125,8 @@ After producing the report, append a single entry to `<vault>/log.md`:
 ```
 
 The log entry is a one-liner. The report itself is printed to the chat, not saved to
-`log.md`.
+`log.md`. The `## [YYYY-MM-DD] <type> | …` shape and the `lint` type are enforced by
+`validate-log.sh`, so this entry will pass the next lint's log check.
 
 ## Fix mode (only on explicit request)
 
@@ -136,23 +146,25 @@ that category only. Fix mode rules:
 
 ## Delegation (optional, for cost/speed)
 
-Categories 1 and 2 (orphans, broken wikilinks) are read-heavy grep-and-match work.
-If the vault is large or the session is running on Opus, delegate those two phases
-to the `vault-scanner` subagent (model: haiku). Use the Agent tool with
-`subagent_type: vault-scanner` and give it the vault path plus the specific task
-(e.g., "return orphan candidates" or "return broken `[[target]]` references grouped
-by source file"). Merge the returned findings into your report.
+The mechanical lane no longer needs delegation: orphans, broken wikilinks, and
+frontmatter are a single deterministic script run (`validate.sh`), faster and more
+consistent than any subagent grep. Don't re-dispatch that work to `vault-scanner`.
 
-Keep categories 3–5 (frontmatter, contradictions, stale claims) in this session —
-they need judgment, not bulk I/O.
+Where `vault-scanner` (model: haiku) still earns its keep is the **judgment lane's
+bulk reads**: when chasing possible contradictions or stale claims you may need to
+read many pages that share a tag/topic. Delegate *those reads* — "return the
+`updated:` date and any version/compatibility claims from these N pages" — and do
+the comparison yourself. Bulk I/O to haiku; the verdict stays here.
 
 ## Common pitfalls
 
 - **Running in fix mode by default.** Always report first.
 - **Treating heuristics as verdicts.** Contradiction and staleness checks are
-  candidates the user validates.
-- **Grepping the vault without excluding `raw/` and `.obsidian/`.** That produces
-  false-positive broken links and orphans.
+  candidates the user validates. The validator findings, by contrast, are decided.
+- **Re-deriving the mechanical lane by hand.** Don't hand-grep for orphans or broken
+  links — run `validate.sh` and trust it. It already excludes `raw/`/`.obsidian/`/
+  `Portfolio/`, skips fenced code, and resolves aliases and path-style links, which
+  hand-greps habitually get wrong.
 - **Auto-deleting orphans.** Never. An orphan might be a page the user is about to
   link from a work-in-progress note.
 - **Silently rewriting frontmatter.** Never. The user may have non-standard fields

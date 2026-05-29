@@ -36,7 +36,9 @@ configured — tell the user to run the bootstrap step from `obsidian-wiki`'s RE
 
 **Refuse to run if cwd is inside the vault itself.** That would be a circular link
 (a vault page asking for vault context about itself). Compare `realpath cwd` against
-`realpath vault`; if cwd is at or under vault, exit with a clear message.
+`realpath vault`; if cwd is at or under vault, exit with a clear message. (This same
+guard is the `link-circular` error in `scripts/validate-link.sh` — the deterministic
+backstop for it.)
 
 ## Project signal extraction
 
@@ -111,6 +113,21 @@ Algorithm:
 
 Never edit content outside the markers. The delimited block is the only part the
 plugin claims ownership of.
+
+## Verify (deterministic)
+
+After writing the sidecar and the CLAUDE.md block, confirm the link is well-formed
+and consistent by running the link validator:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh" "$PWD" --json
+```
+
+A healthy link reports no `link-*` findings. If it surfaces
+`link-sidecar-no-body-markers`, `link-sidecar-no-header`, `link-import-missing`, or
+`link-import-dangling`, you left the project in a half-linked state — fix it before
+reporting success rather than telling the user it worked. This is the same check
+`/vault-context:status` runs.
 
 ## Report
 
