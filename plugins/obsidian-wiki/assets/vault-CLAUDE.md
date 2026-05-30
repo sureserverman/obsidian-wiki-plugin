@@ -147,7 +147,9 @@ Each entry is a level-2 heading followed by optional bullet detail:
 - <detail>
 ```
 
-`<type>` is one of: `ingest`, `query`, `lint`, `schema`, `merge`, `gaps`, `session-import`, `session-capture`, `index`.
+`<type>` is one of: `ingest`, `query`, `lint`, `schema`, `merge`, `gaps`, `session-import`, `session-capture`, `index`, `remove`, `delete`.
+
+`remove` / `delete` log the removal of a page or project from the vault (and disk).
 
 `query` entries are only logged when a new page was filed back. Plain queries that
 just produced an answer are not logged.

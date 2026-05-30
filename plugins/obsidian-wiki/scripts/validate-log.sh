@@ -25,7 +25,7 @@ LOG="$ROOT/log.md"
 
 # The entry-type vocabulary. Adding a type means appending here AND updating the
 # /log skill — keeping both honest is exactly why this lives in one script.
-TYPES="ingest query lint schema merge gaps session-import session-capture index"
+TYPES="ingest query lint schema merge gaps session-import session-capture index remove delete"
 in_enum() { case " $TYPES " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
 # Walk every level-2 heading (entries are `## …`; deeper `###` are entry bodies).
