@@ -31,7 +31,7 @@ a *vault path* as their root, and only activate when one is present:
 - **`validate-log.sh <vault>`** — activates when `<vault>/log.md` exists. Asserts the
   `## [YYYY-MM-DD] <type> | <title>` heading contract and that `<type>` is in the
   known set (`ingest query lint schema merge gaps session-import session-capture
-  index`). This is the single source of truth for the log format the `/log`,
+  index remove delete`). This is the single source of truth for the log format the `/log`,
   `/ingest`, `/merge`, `/lint`, and session skills all write.
 
 The "activate only when the artifact is present" guard is deliberate: it lets

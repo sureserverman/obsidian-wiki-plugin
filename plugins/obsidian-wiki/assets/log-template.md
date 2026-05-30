@@ -2,7 +2,7 @@
 
 Append-only record of wiki activity. Newest entries at the bottom. Do not edit past entries.
 
-Format: `## [YYYY-MM-DD] <type> | <title>` where `<type>` is one of `ingest`, `query`, `lint`, `schema`, `merge`, `gaps`, `session-import`, `session-capture`, or `index`.
+Format: `## [YYYY-MM-DD] <type> | <title>` where `<type>` is one of `ingest`, `query`, `lint`, `schema`, `merge`, `gaps`, `session-import`, `session-capture`, `index`, `remove`, or `delete`.
 
 Optional bullet details follow each heading.
 
