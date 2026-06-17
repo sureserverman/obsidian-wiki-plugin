@@ -14,8 +14,9 @@ this command reads and groups directly.
 
 1. Read `<vault>/log.md`. Each entry starts with `## [YYYY-MM-DD] <type> | <title>`.
 2. Take the last N entries (default 10, or `$ARGUMENTS` if it parses as a positive integer).
-3. Group them by type (`ingest`, `query`, `lint`, `schema`, `merge`, `gaps`,
-   `session-import`, `session-capture`, `index`, `remove`, `delete`).
+3. Group them by the `<type>` field, whatever types actually appear (e.g. `ingest`,
+   `lint`, `merge`, `session-capture`). The authoritative vocabulary is enforced by
+   `scripts/validate-log.sh`; don't hard-code the full list here — it would drift.
 4. Print the grouped list, then summarize the recent activity in 2–3 sentences.
 
 This is a **read-only** command. Do not modify `log.md`.
