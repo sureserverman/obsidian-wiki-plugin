@@ -23,8 +23,9 @@ LOG="$ROOT/log.md"
 # /ingest creates it; this validator simply has nothing to check.)
 [ -f "$LOG" ] || { render_findings "validate-log.sh" "$ROOT"; exit $?; }
 
-# The entry-type vocabulary. Adding a type means appending here AND updating the
-# /log skill — keeping both honest is exactly why this lives in one script.
+# The entry-type vocabulary — the single source of truth. Adding a type means
+# appending here only; the /log command groups dynamically and writer skills name
+# just the one type they emit, so nothing else has to be kept in sync.
 TYPES="ingest query lint schema merge gaps session-import session-capture index remove delete"
 in_enum() { case " $TYPES " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
