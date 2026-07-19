@@ -131,11 +131,33 @@ do not need to read the entire session; the head/tail/error windows give enough 
 
 Sessions with score ≥ 3 are "high-value", 1–2 are "medium", 0 or negative is "low".
 
+### Trigger heuristics (label what made a session worth capturing)
+
+Tag each candidate with any of four **canonical trigger heuristics** it exhibits
+(these are the exact labels the coder-plugins `session-analyzer` / `skill-workshop`
+use — spell them identically so the two toolchains stay in sync). These are a
+**secondary label**, not a second scoring pass: the numeric 0–5 score above is
+unchanged; the trigger tags ride into the report so an `import-session` pick
+inherits the "why this mattered" context.
+
+| Trigger | Signal in the session | Related Step-4 row |
+|---|---|---|
+| `user-correction` | the user corrected the agent's approach and the corrected approach then worked | (no numeric row — label only) |
+| `error-resolved` | an error was resolved through visible trial-and-error (≥2 failed attempts) | "Multiple failed attempts before success" |
+| `nonobvious-workflow` | a working procedure that needed discovery/lookup, not derivation | "Introduced a new tool / protocol" |
+| `recurring-toolchain` | the same 5+ tool sequence the user keeps re-driving by hand | (no numeric row — label only) |
+
+Where a trigger maps to a Step-4 row, that row already contributed its points —
+do **not** add the trigger's points again. The tag records the reason; it never
+double-counts the score.
+
 ## Step 5 — Build the candidate report
 
 Group by tool, sort by score within each group. Separate **Fresh** candidates
 (never imported) from **Refresh** candidates (already imported but the source
-has grown past the staleness threshold — Step 3).
+has grown past the staleness threshold — Step 3). Annotate each candidate with
+any trigger heuristics it matched (e.g. `[user-correction, error-resolved]`) so
+the reason it scored is visible at a glance and rides along into `import-session`.
 
 ```markdown
 # Session scan — last 7 days
