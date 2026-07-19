@@ -169,7 +169,7 @@ Open Claude Code with `~/dev/knowledge` as the working directory.
 
 | Command | What happens |
 |---|---|
-| `/obsidian-wiki:scan-sessions` | scan all 5 tools for vault-worthy sessions in last 7 days (read-only report) |
+| `/obsidian-wiki:scan-sessions` | scan all 5 tools for vault-worthy sessions in last 7 days (read-only report). Candidates are tagged with any of four **trigger heuristics** — `user-correction`, `error-resolved`, `nonobvious-workflow`, `recurring-toolchain` — surfacing *why* a session mattered so the label rides into the import. (Same canonical labels as coder-plugins/agent-tooling `session-analyzer` / `skill-workshop`.) |
 | `/obsidian-wiki:scan-sessions claude-code 30` | scan one tool, last 30 days |
 | `/obsidian-wiki:import-session <id-or-path>` | extract one session into `raw/sessions/`, then offer to ingest |
 | `/obsidian-wiki:import-session <id> --no-ingest` | write the raw file but skip the ingest prompt |
