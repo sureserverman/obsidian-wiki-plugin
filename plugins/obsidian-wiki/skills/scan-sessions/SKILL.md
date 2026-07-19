@@ -133,22 +133,23 @@ Sessions with score ≥ 3 are "high-value", 1–2 are "medium", 0 or negative is
 
 ### Trigger heuristics (label what made a session worth capturing)
 
-On top of the numeric score, tag each candidate with any of four **canonical
-trigger heuristics** it exhibits (these are the exact labels the coder-plugins
-`session-analyzer` / `skill-workshop` use — spell them identically so the two
-toolchains stay in sync). A session showing any of them gains score and carries
-the label into the report, so an `import-session` pick inherits the "why this
-mattered" context:
+Tag each candidate with any of four **canonical trigger heuristics** it exhibits
+(these are the exact labels the coder-plugins `session-analyzer` / `skill-workshop`
+use — spell them identically so the two toolchains stay in sync). These are a
+**secondary label**, not a second scoring pass: the numeric 0–5 score above is
+unchanged; the trigger tags ride into the report so an `import-session` pick
+inherits the "why this mattered" context.
 
-| Trigger | Signal in the session | Score |
+| Trigger | Signal in the session | Related Step-4 row |
 |---|---|---|
-| `user-correction` | the user corrected the agent's approach and the corrected approach then worked | +2 |
-| `error-resolved` | an error was resolved through visible trial-and-error (≥2 failed attempts) | +2 |
-| `nonobvious-workflow` | a working procedure that needed discovery/lookup, not derivation | +1 |
-| `recurring-toolchain` | the same 5+ tool sequence the user keeps re-driving by hand | +1 |
+| `user-correction` | the user corrected the agent's approach and the corrected approach then worked | (no numeric row — label only) |
+| `error-resolved` | an error was resolved through visible trial-and-error (≥2 failed attempts) | "Multiple failed attempts before success" |
+| `nonobvious-workflow` | a working procedure that needed discovery/lookup, not derivation | "Introduced a new tool / protocol" |
+| `recurring-toolchain` | the same 5+ tool sequence the user keeps re-driving by hand | (no numeric row — label only) |
 
-These overlap the numeric signals above (e.g. `error-resolved` ≈ "multiple failed
-attempts") — apply each signal once; the labels add the *why*, not double weight.
+Where a trigger maps to a Step-4 row, that row already contributed its points —
+do **not** add the trigger's points again. The tag records the reason; it never
+double-counts the score.
 
 ## Step 5 — Build the candidate report
 
