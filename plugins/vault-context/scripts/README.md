@@ -16,11 +16,14 @@ scripts/
 └── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
 ```
 
-`lib/eligibility.sh` is shared by the write path and the detect path deliberately.
-`write-context.sh` refuses an area directory *before* creating anything (exit 4);
-`validate-link.sh` reports the same condition as `link-area-directory` for a sidecar
-that predates the guard. One rule, one file — a second copy would drift, and the two
-verdicts must agree. Point `VAULT_CONTEXT_REGISTRY` at a fixture to test it.
+`lib/eligibility.sh` is shared by three callers deliberately. `write-context.sh`
+refuses an area directory *before* creating anything (exit 4); `validate-link.sh`
+reports the same condition as `link-area-directory` for a sidecar that predates the
+guard; `session-start.sh` nudges only where linking can succeed. One rule, one file —
+a second copy would drift, and all three verdicts must agree. Both path-taking callers
+canonicalize with `pwd -P` for the same reason: registry paths are compared literally,
+so a logical path would let two callers disagree about one directory. Point
+`VAULT_CONTEXT_REGISTRY` at a fixture to test it.
 
 ## What the validator inspects
 
