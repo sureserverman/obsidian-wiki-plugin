@@ -8,6 +8,7 @@
 set -eu
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$DIR/lib/findings.sh"
+. "$DIR/lib/eligibility.sh"
 have_jq
 
 JSON=0; ARGS=()
@@ -45,6 +46,15 @@ if [ -n "$vault" ]; then
     add_finding error link-circular link ".claude/vault-context.md" 0 \
       "project root is at or under the vault ($vault_real) — vault-context must not link the vault to itself"
   fi
+fi
+
+# --- area-directory guard ----------------------------------------------------
+# The write path (write-context.sh) refuses these outright; this is the
+# deterministic backstop for a sidecar written before the guard existed, or by
+# hand. Same rule, one definition: scripts/lib/eligibility.sh.
+if ! project_eligible "$ROOT"; then
+  add_finding error link-area-directory link ".claude/vault-context.md" 0 \
+    "project root is an area directory, not a project — it is not a git repo, and is either absent from $VAULT_CONTEXT_REGISTRY or holds other registered projects beneath it; remove the sidecar and its CLAUDE.md import block with /vault-context:unlink and link the child projects instead"
 fi
 
 # --- sidecar well-formedness -------------------------------------------------
