@@ -14,7 +14,7 @@
 # Common gates (must pass for either path):
 #   1. Vault is configured (resolve-vault.sh exits 0)
 #   2. <vault>/index.md exists
-#   3. cwd is inside a git repo
+#   3. cwd is a directory /link would actually accept (lib/eligibility.sh)
 #   4. cwd is NOT itself under the vault path (avoid circular linking)
 #
 # Then per-path:
@@ -38,8 +38,18 @@ vault="$("$script_dir/resolve-vault.sh" 2>/dev/null)" || exit 0
 # Gate 2: vault index exists
 [ -f "$vault/index.md" ] || exit 0
 
-# Gate 3: cwd in a git repo
-git rev-parse --show-toplevel >/dev/null 2>&1 || exit 0
+# Gate 3: cwd is somewhere /link would actually write.
+#
+# This must be the *same* predicate the write path uses, not a proxy for it. A
+# `git rev-parse` check succeeds anywhere inside a repo, including subdirectories
+# and area directories that happen to be repos — and since a refusal deliberately
+# creates nothing, the sidecar that would silence this nudge never appears. The
+# nudge would then fire every session, forever, pointing at a command that exits
+# 4. Nudge only where linking can succeed.
+# shellcheck source=lib/eligibility.sh
+. "$script_dir/lib/eligibility.sh"
+cwd_phys="$(cd "$PWD" 2>/dev/null && pwd -P || printf '%s' "$PWD")"
+project_eligible "$cwd_phys" || exit 0
 
 # Gate 4: cwd not under the vault
 cwd_real="$(realpath "$PWD" 2>/dev/null || printf '%s' "$PWD")"

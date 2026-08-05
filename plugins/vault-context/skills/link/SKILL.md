@@ -40,6 +40,23 @@ configured — tell the user to run the bootstrap step from `obsidian-wiki`'s RE
 guard is the `link-circular` error in `scripts/validate-link.sh` — the deterministic
 backstop for it.)
 
+**Refuse to run in an area directory.** A grouping folder that merely holds project
+repos (`~/dev/ai-tools`, `~/dev/android`) is not a project: a sidecar there duplicates
+every child repo's context into every session under the whole tree, on top of each
+child's own sidecar. A directory counts as a project when it is a git repo (the
+fallback for a fresh repo nobody has registered yet), or when it is listed as a
+`path:` in `~/.claude/projects-registry.yaml` **with no other registered project
+beneath it**. That last clause is load-bearing: the registry can itself carry an area
+directory as an entry, so registration alone is not evidence — containment is.
+
+You do not implement this check: `scripts/write-context.sh` enforces it before it
+creates anything and exits **4** with an explanatory message, so a refusal leaves no
+`.claude/` directory and no partial sidecar behind. Surface that message to the user
+verbatim and stop — do not retry against the parent, and do not offer to bypass it.
+The rule itself lives once in `scripts/lib/eligibility.sh`; `scripts/validate-link.sh`
+reports the same condition as the `link-area-directory` error for a sidecar that
+predates the guard.
+
 ## Project signal extraction
 
 Invoke `${CLAUDE_PLUGIN_ROOT}/scripts/extract-project-signals.sh` against the cwd.
@@ -147,6 +164,9 @@ from the vault to refresh it before the next link.
 
 - **Running inside the vault itself** — refuse. Linking the vault to itself is
   meaningless and will index recursively in a way the user didn't ask for.
+- **Running in an area directory** — refuse (the write script does it for you, exit
+  4). The tell is that the cwd's *children* are the projects. Link each child, not
+  the parent.
 - **Running with no `<vault>/index.md`** — point at `/obsidian-wiki:index`, don't try
   to grep the vault directly. The matcher needs the structured digest.
 - **Treating `vault-context.md` as user-editable** — it isn't. The header says it's
