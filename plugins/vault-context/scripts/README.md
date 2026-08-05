@@ -11,9 +11,19 @@ the plugin-dev determinism kit. It encodes one rule:
 ```
 scripts/
 ├── lib/findings.sh      # shared finding accumulator + JSON contract (from plugin-dev; do not fork)
+├── lib/eligibility.sh   # the "is this directory a project?" rule — one definition, two callers
 ├── validate.sh          # orchestrator — discovers and runs every validate-*.sh, merges, prints a verdict
 └── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
 ```
+
+`lib/eligibility.sh` is shared by three callers deliberately. `write-context.sh`
+refuses an area directory *before* creating anything (exit 4); `validate-link.sh`
+reports the same condition as `link-area-directory` for a sidecar that predates the
+guard; `session-start.sh` nudges only where linking can succeed. One rule, one file —
+a second copy would drift, and all three verdicts must agree. Both path-taking callers
+canonicalize with `pwd -P` for the same reason: registry paths are compared literally,
+so a logical path would let two callers disagree about one directory. Point
+`VAULT_CONTEXT_REGISTRY` at a fixture to test it.
 
 ## What the validator inspects
 
@@ -24,6 +34,9 @@ project has link state (a `.claude/vault-context.md` sidecar or a CLAUDE.md
 
 - `link-circular` (error) — the project sits at or under the resolved vault (the
   deterministic backstop for the `/link` skill's circular-link refusal).
+- `link-area-directory` (error) — the root is a grouping folder, not a project: not a
+  git repo, and either absent from `~/.claude/projects-registry.yaml` or holding other
+  registered projects beneath it.
 - `link-sidecar-no-body-markers` / `link-sidecar-no-header` (warn) — the sidecar is
   malformed against `assets/vault-context-template.md`.
 - `link-import-missing` / `link-import-dangling` / `link-import-no-ref` (warn) — the

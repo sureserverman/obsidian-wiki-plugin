@@ -10,6 +10,10 @@
 # Renders matches grouped by category from the template at
 # ${CLAUDE_PLUGIN_ROOT}/assets/vault-context-template.md.
 #
+# Refuses to write into an area directory (exit 4) — see scripts/lib/eligibility.sh.
+#
+# Exit codes: 0 ok | 1 error | 2 usage | 4 target is not a project.
+#
 # Pure shell + python3 stdlib. No third-party deps.
 
 set -euo pipefail
@@ -23,11 +27,35 @@ project_name="$1"
 vault_path="$2"
 output_file="${3:-$PWD/.claude/vault-context.md}"
 
+script_dir_self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --- area-directory guard ----------------------------------------------------
+# The sidecar lives at <project-root>/.claude/vault-context.md, so the project
+# root is the output file's grandparent. Check it before creating anything: a
+# refusal must leave no .claude/ directory and no partial sidecar behind.
+# shellcheck source=lib/eligibility.sh
+. "$script_dir_self/lib/eligibility.sh"
+
+project_root="$(dirname "$(dirname "$output_file")")"
+if [ -d "$project_root" ]; then
+    project_root="$(cd "$project_root" && pwd -P)"
+fi
+if ! project_eligible "$project_root"; then
+    area_directory_message "$project_root" >&2
+    # Drain stdin before exiting. This script is the tail of
+    # `extract-project-signals.sh | match-index.py | write-context.sh`, and it is
+    # now the only stage that can exit before reading: leaving the pipe unread
+    # kills match-index.py with SIGPIPE, which prints a BrokenPipeError traceback
+    # underneath the refusal message. Skip it when stdin is a terminal, where
+    # `cat` would block waiting for an EOF nobody is going to send.
+    [ -t 0 ] || cat >/dev/null 2>&1 || true
+    exit 4
+fi
+
 if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
     # Fall back to script's own directory's parent so the script is testable
     # outside Claude Code's environment.
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    CLAUDE_PLUGIN_ROOT="$(dirname "$script_dir")"
+    CLAUDE_PLUGIN_ROOT="$(dirname "$script_dir_self")"
 fi
 
 template="$CLAUDE_PLUGIN_ROOT/assets/vault-context-template.md"

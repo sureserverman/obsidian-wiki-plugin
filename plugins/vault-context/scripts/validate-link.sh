@@ -8,13 +8,19 @@
 set -eu
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$DIR/lib/findings.sh"
+. "$DIR/lib/eligibility.sh"
 have_jq
 
 JSON=0; ARGS=()
 for a in "$@"; do case "$a" in --json) JSON=1 ;; *) ARGS+=("$a") ;; esac; done
 [ "$JSON" = 1 ] && export FINDINGS_JSON=1
 ROOT="${ARGS[0]:-.}"
-ROOT="$(cd "$ROOT" 2>/dev/null && pwd || true)"
+# `pwd -P`, not `pwd`: the write path canonicalizes physically (write-context.sh),
+# and both feed the same string to project_eligible, which compares registry paths
+# literally. A logical path would make the two callers reach opposite verdicts on
+# the identical directory whenever it is reached through a symlink — the exact
+# drift lib/eligibility.sh exists to prevent.
+ROOT="$(cd "$ROOT" 2>/dev/null && pwd -P || true)"
 [ -n "$ROOT" ] && [ -d "$ROOT" ] || { echo "usage: $0 <project-root> [--json]" >&2; exit 2; }
 
 SIDECAR="$ROOT/.claude/vault-context.md"
@@ -40,11 +46,21 @@ fi
 vault="$(bash "$DIR/resolve-vault.sh" 2>/dev/null || true)"
 if [ -n "$vault" ]; then
   vault_real="$(cd "$vault" 2>/dev/null && pwd -P || true)"
-  root_real="$(cd "$ROOT" 2>/dev/null && pwd -P || true)"
+  # $ROOT is already physical (see above), so no second resolution is needed.
+  root_real="$ROOT"
   if [ -n "$vault_real" ] && { [ "$root_real" = "$vault_real" ] || case "$root_real/" in "$vault_real"/*) true ;; *) false ;; esac; }; then
     add_finding error link-circular link ".claude/vault-context.md" 0 \
       "project root is at or under the vault ($vault_real) — vault-context must not link the vault to itself"
   fi
+fi
+
+# --- area-directory guard ----------------------------------------------------
+# The write path (write-context.sh) refuses these outright; this is the
+# deterministic backstop for a sidecar written before the guard existed, or by
+# hand. Same rule, one definition: scripts/lib/eligibility.sh.
+if ! project_eligible "$ROOT"; then
+  add_finding error link-area-directory link ".claude/vault-context.md" 0 \
+    "project root is an area directory, not a project — it is not a git repo, and is either absent from $VAULT_CONTEXT_REGISTRY or holds other registered projects beneath it; remove the sidecar and its CLAUDE.md import block with /vault-context:unlink and link the child projects instead"
 fi
 
 # --- sidecar well-formedness -------------------------------------------------
