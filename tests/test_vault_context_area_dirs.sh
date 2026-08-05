@@ -29,12 +29,18 @@ trap 'rm -rf "$WORK"' EXIT
 # area/                     registered, holds registered children  → refuse
 # area/child/               registered + git repo                  → accept
 # area/plain-child/         registered, not a repo, no children    → accept
+# monorepo/                 UNregistered git repo, holds children  → refuse
+# monorepo/sub/             registered, not a repo                 → accept
 # stray/                    unregistered, not a repo               → refuse
 # fresh/                    unregistered git repo                  → accept
+# link-to-plain -> area/plain-child   symlink to a registered non-repo project
 AREA="$WORK/area"
-mkdir -p "$AREA/child" "$AREA/plain-child" "$WORK/stray" "$WORK/fresh"
+MONO="$WORK/monorepo"
+mkdir -p "$AREA/child" "$AREA/plain-child" "$MONO/sub" "$WORK/stray" "$WORK/fresh"
 git -C "$AREA/child" init -q
 git -C "$WORK/fresh" init -q
+git -C "$MONO" init -q
+ln -s "$AREA/plain-child" "$WORK/link-to-plain"
 
 REGISTRY="$WORK/projects-registry.yaml"
 cat > "$REGISTRY" <<YAML
@@ -48,6 +54,9 @@ projects:
     enabled: true
   - path: $AREA/plain-child
     name: plain-child
+    enabled: true
+  - path: $MONO/sub
+    name: mono-sub
     enabled: true
 YAML
 
@@ -82,6 +91,19 @@ case "$msg" in
     *) fail "refusal message does not name the registry: $msg" ;;
 esac
 ok "refusal explains itself and names the registry"
+
+# --- Test 1b: UNregistered git monorepo root holding registered projects -----
+# The ~/dev/infra/installers shape. Being a git repo must not rescue a directory
+# whose children are the projects: a repo-first rule accepts this one, and its
+# sidecar duplicates the children's pages into every session beneath it.
+rc="$(write_sidecar "$MONO")"
+[ "$rc" = "4" ] || fail "unregistered monorepo root over registered children: expected exit 4, got $rc"
+[ ! -e "$MONO/.claude" ] || fail "unregistered monorepo root: left a .claude/ behind"
+ok "git repo holding registered projects → refused (containment beats repo-ness)"
+
+rc="$(write_sidecar "$MONO/sub")"
+[ "$rc" = "0" ] || fail "registered child of a monorepo: expected exit 0, got $rc"
+ok "registered child inside that monorepo → accepted"
 
 # --- Test 2: unregistered, non-repo directory → refused ----------------------
 rc="$(write_sidecar "$WORK/stray")"
@@ -137,8 +159,50 @@ if command -v jq >/dev/null 2>&1; then
     [ "$(printf '%s' "$out" | jq -r '[.findings[]|select(.rule=="link-area-directory")]|length')" = "0" ] \
         || fail "validate-link.sh wrongly flagged a real project as an area directory"
     ok "real project sidecar → no link-area-directory finding"
+
+    # --- Test 7: the two paths agree on a symlinked project root -------------
+    # Both callers canonicalize physically, so a registered non-repo project
+    # reached through a symlink must get the same verdict from each. A logical
+    # `pwd` in either one makes the write path accept what the detect path calls
+    # an area directory — for the same directory.
+    rc="$(write_sidecar "$WORK/link-to-plain")"
+    [ "$rc" = "0" ] || fail "symlinked registered project: write path refused (exit $rc)"
+    out="$(bash "$VALIDATE" "$WORK/link-to-plain" --json 2>/dev/null)"
+    [ "$(printf '%s' "$out" | jq -r '[.findings[]|select(.rule=="link-area-directory")]|length')" = "0" ] \
+        || fail "symlinked registered project: detect path flagged it as an area directory — verdicts drift"
+    ok "symlinked registered project → write and detect paths agree"
 else
     echo "  skip: jq not installed — validate-link.sh cases not run"
 fi
+
+# --- Test 8: the SessionStart nudge fires only where /link can succeed -------
+# The nudge and the write path must share one predicate. If the hook nudges
+# somewhere the guard refuses, the sidecar that would silence it can never be
+# created, so the nudge repeats every session and points at a command that
+# exits 4.
+HOOK="$ROOT/plugins/vault-context/scripts/session-start.sh"
+FAKE_VAULT="$WORK/vault-for-hook"
+mkdir -p "$FAKE_VAULT"
+: > "$FAKE_VAULT/index.md"
+
+run_hook() { ( cd "$1" && OBSIDIAN_VAULT_PATH="$FAKE_VAULT" bash "$HOOK" ); }
+
+out="$(run_hook "$MONO")"
+[ -z "$out" ] || fail "hook nudged in an area directory the write path refuses: $out"
+ok "no nudge in an area directory (would be an unresolvable loop)"
+
+sub="$AREA/child/deep/nested"
+mkdir -p "$sub"
+out="$(run_hook "$sub")"
+[ -z "$out" ] || fail "hook nudged in a repo subdirectory the write path refuses: $out"
+ok "no nudge in a repo subdirectory (not a project root)"
+
+rm -rf "$WORK/fresh/.claude"
+out="$(run_hook "$WORK/fresh")"
+case "$out" in
+    *"No vault context for this project yet"*) ;;
+    *) fail "hook did not nudge in a real, unlinked project: $out" ;;
+esac
+ok "nudge still fires in a real, unlinked project"
 
 echo "ALL OK"
