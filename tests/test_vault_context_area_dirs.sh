@@ -108,7 +108,19 @@ rc="$(write_sidecar "$WORK/fresh")"
 [ -f "$WORK/fresh/.claude/vault-context.md" ] || fail "unregistered git repo: no sidecar written"
 ok "unregistered git repo → accepted, sidecar written"
 
-# --- Test 5: detect path reports a pre-existing area sidecar -----------------
+# --- Test 5: a refusal does not kill the upstream pipe stage -----------------
+# write-context.sh is the tail of `extract-project-signals.sh | match-index.py |
+# write-context.sh` and is the only stage that can now exit before reading its
+# stdin. If it does that without draining the pipe, match-index.py takes SIGPIPE
+# and prints a BrokenPipeError traceback underneath the refusal message.
+err="$WORK/refusal.err"
+python3 -c 'import sys; sys.stdout.write("x" * 5000000)' 2>/dev/null \
+    | bash "$WRITE" stray "$WORK/vault" "$WORK/stray/.claude/vault-context.md" >/dev/null 2>"$err"
+grep -q 'BrokenPipeError' "$err" && fail "refusal killed the upstream pipe stage: $(cat "$err")"
+grep -q 'area directory — not a project' "$err" || fail "refusal message missing from stderr: $(cat "$err")"
+ok "refusal drains stdin — no BrokenPipeError from the upstream stage"
+
+# --- Test 6: detect path reports a pre-existing area sidecar -----------------
 # A sidecar written before the guard existed is not reachable through the write
 # path any more, so validate-link.sh is the only thing that can surface it.
 if command -v jq >/dev/null 2>&1; then

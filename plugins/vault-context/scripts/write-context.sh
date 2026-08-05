@@ -42,6 +42,13 @@ if [ -d "$project_root" ]; then
 fi
 if ! project_eligible "$project_root"; then
     area_directory_message "$project_root" >&2
+    # Drain stdin before exiting. This script is the tail of
+    # `extract-project-signals.sh | match-index.py | write-context.sh`, and it is
+    # now the only stage that can exit before reading: leaving the pipe unread
+    # kills match-index.py with SIGPIPE, which prints a BrokenPipeError traceback
+    # underneath the refusal message. Skip it when stdin is a terminal, where
+    # `cat` would block waiting for an EOF nobody is going to send.
+    [ -t 0 ] || cat >/dev/null 2>&1 || true
     exit 4
 fi
 
