@@ -97,7 +97,6 @@ CLAUDE.md
 # ===== AI / Design Plans =====
 docs/plans/
 plans/
-plugins/obsidian-wiki/skills/scan-sessions/references/storage-paths.md
 
 # executing-plans ephemeral progress state
 .claude/plan-progress.json
