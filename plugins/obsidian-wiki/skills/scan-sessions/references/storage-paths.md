@@ -270,20 +270,61 @@ may be worth reading, but do not report their emptiness as "no Gemini sessions".
 
 **Path pattern**:
 ```
-~/.local/share/opencode/storage/project/<project-hash>.json
-~/.local/share/opencode/storage/project/global.json
+~/.local/share/opencode/opencode.db          # SQLite — sessions live here
 ```
 
-Each project gets one JSON file containing its session state. There is a `global.json`
-for cross-project state. There is also `~/.local/share/opencode/storage/migration/`
-for schema migration data.
+> **Not `storage/project/*.json`.** OpenCode migrated its session store to SQLite
+> (the DB carries `__drizzle_migrations`, `migration` and `data_migration` tables).
+> The old JSON path still exists and still resolves, which is what makes it
+> dangerous: on the reference host it holds exactly two files, 228 and 134 bytes,
+> last written months ago, and they are a **project registry** — `{id, worktree,
+> vcs, time}` — never conversations. Globbing it finds nothing recent and reports
+> "no sessions" regardless of usage. This reference said otherwise until 0.7.2.
 
-**File format**: JSON (not JSONL). The structure is OpenCode-version-dependent. Read
-the file, locate the messages/turns array, iterate.
+**File format**: SQLite. The relevant tables are `session`, `message` and `part`;
+message and part content is JSON in a `data` column, reachable with
+`json_extract`.
 
-OpenCode storage is typically small (tens of KB) compared to Claude Code (100s of MB),
-because it stores less per session. This makes scanning fast but means individual
-sessions carry less detail.
+- `session` — `id` (`ses_…`), `project_id`, `parent_id`, `directory`, `title`,
+  `time_created`, `time_updated` (epoch **milliseconds**), plus cost/token columns.
+- `message` — `id`, `session_id`, `time_created`, `data` → `{role, time, agent,
+  model, summary}`.
+- `part` — `id`, `message_id`, `session_id`, `data` → `{type, …}`. Observed types:
+  `text`, `reasoning`, `tool`, `step-start`, `step-finish`, `patch`, `file`. The
+  prose is in `type == "text"` parts, at `data.text`.
+
+**Discovery** (sessions touched in the last N days):
+
+```sql
+SELECT id, title, directory, date(time_updated/1000,'unixepoch') AS updated
+FROM session
+WHERE time_updated > (strftime('%s','now') - <days>*86400)*1000
+ORDER BY time_updated DESC;
+```
+
+**Extraction** (one session, in order):
+
+```sql
+SELECT json_extract(m.data,'$.role'), json_extract(p.data,'$.text')
+FROM message m JOIN part p ON p.message_id = m.id
+WHERE m.session_id = '<ses_id>' AND json_extract(p.data,'$.type') = 'text'
+ORDER BY m.time_created, p.id;
+```
+
+Read the DB **read-only** — OpenCode may be running, and a WAL is present:
+
+```bash
+sqlite3 "file:$HOME/.local/share/opencode/opencode.db?mode=ro" "SELECT count(*) FROM session;"
+```
+
+Write `$HOME`, not `~`: a tilde inside the quoted `file:` URI is expanded by
+neither the shell nor SQLite, and the open fails with "unable to open database
+file".
+
+**Filtering**: like Codex, most rows are not sessions worth importing. On the
+reference host, 33 of 46 ran in `/tmp/…` scratch directories (harness smoke tests)
+and 5 had a non-null `parent_id` (child/subagent threads). Prefer
+`parent_id IS NULL` and a `directory` under the user's real worktrees.
 
 ---
 
@@ -299,8 +340,10 @@ raw/sessions/<tool>-<YYYY-MM-DD>-<short-id>.md
 Where:
 - `<tool>` ∈ `claude-code`, `codex`, `cursor`, `gemini`, `opencode`
 - `<YYYY-MM-DD>` is the session start date
-- `<short-id>` is the first 8 chars of the session UUID (or a hash of the path if no
-  UUID exists)
+- `<short-id>` is the first 8 chars of the session UUID. Per tool: Claude Code and
+  Cursor use the filename UUID, Codex `session_meta.session_id`, Gemini the id
+  already in its filename, OpenCode the `ses_` id with the prefix stripped
+  (`ses_04661ff6…` → `04661ff6`)
 
 Example: `raw/sessions/claude-code-2026-04-07-2b7b05df.md`
 
@@ -326,8 +369,8 @@ A session is "already imported" if **either**:
 
 When scanning, surface only sessions that are NOT already imported — **unless** the
 source has grown past the staleness threshold since the last import. Many tools
-(Cursor always, Claude Code with `--continue`, OpenCode per-project JSON) append
-to the same session file across days, so an imported extraction can become
+(Cursor always, Claude Code with `--continue`, OpenCode via its `time_updated`
+column) keep growing the same session across days, so an imported extraction can become
 stale. See `SKILL.md` Step 3 for the exact staleness formula (mtime delta + size
 growth). Stale imports go into a separate "Refresh" bucket in the scan report
 and are re-imported with `--force`.
