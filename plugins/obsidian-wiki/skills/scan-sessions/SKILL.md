@@ -44,11 +44,20 @@ fastest enumerations:
 - **Cursor**: `find ~/.cursor/projects -path '*/agent-transcripts/*/*.jsonl' -mtime -<days>`
   (full transcripts — these are the real conversations, not the `agent-tools/*.txt`
   files which are tool outputs only; for the SQLite fallback see the reference)
-- **Gemini**: `find ~/.gemini/history -type f -mtime -<days>` plus
-  `~/.gemini/antigravity/knowledge/` and `brain/` if they contain markdown
+- **Gemini**: `find ~/.gemini/tmp -path '*/chats/session-*.json' -mtime -<days>`
+  (**not** `~/.gemini/history/`, which holds only `.project_root` markers)
 - **OpenCode**: `find ~/.local/share/opencode/storage/project -name '*.json' -mtime -<days>`
 
 If a tool's directory doesn't exist, skip it silently — the user may not use all 5.
+
+**A zero result is a claim — check which kind it is.** "No sessions in the window"
+and "I looked in the wrong place" are indistinguishable in the output, and both
+Gemini and OpenCode shipped wrong paths in this skill until 0.7.2. Before reporting
+zero for any tool, confirm the store is reachable and non-empty *without* the date
+filter — drop `-mtime` (or the `time_updated` clause) and count. Then report which
+one you found: "no sessions in the last N days (M total on disk, newest
+YYYY-MM-DD)" or "storage not found at <path> — the tool may be uninstalled, or this
+skill's path may be stale." Never report a bare zero.
 
 ## Step 3 — Filter, but check for staleness
 
@@ -270,7 +279,8 @@ session — those benefit from the caller's context about user intent.
 ## Common pitfalls
 
 - **Reading entire sessions.** Always sample. Use head/tail/error windows.
-- **Missing tool dirs.** Some tools may not be installed; skip silently.
+- **Missing tool dirs.** Some tools may not be installed; skip silently — but say
+  so in the report rather than folding them into a zero count (see Step 2).
 - **Cursor wrong-directory trap.** The full conversations live under
   `agent-transcripts/<uuid>/<uuid>.jsonl` — always scan there. The
   `agent-tools/*.txt` files are captured tool outputs (build logs, command

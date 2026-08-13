@@ -38,5 +38,10 @@ actually parsing a session — the skill body only names which tool applies.
   missing or the user specifically asked. Use
   `sqlite3 ... "SELECT value FROM ItemTable WHERE key LIKE '%composerData%';"`
   and decode the JSON blobs. Schema is undocumented; inspect first.
-- **Gemini**: best-effort. Read whatever files exist in the project's history dir.
+- **Gemini JSON**: one document per session at
+  `~/.gemini/tmp/<project>/chats/session-<datetime>-<short-id>.json` — **not** under
+  `~/.gemini/history/`, which holds only `.project_root` markers. Slurpable (tens of
+  KB to ~1 MB). Shape: `{sessionId, projectHash, startTime, lastUpdated, messages:
+  [{id, timestamp, type, content: [{text}]}]}` where `type` is `user` or `gemini`.
+  Every message carries its own timestamp, so dates need no mtime inference.
 - **OpenCode JSON**: read the file (small), find the messages/turns array, iterate.
