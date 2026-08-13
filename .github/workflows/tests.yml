@@ -18,7 +18,15 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      # Pinned to a commit SHA, not a tag: a tag is mutable and can be
+      # repointed by the action owner (zizmor unpinned-uses / CWE-829). This is
+      # v7.0.1 — re-resolve with:
+      #   gh api repos/actions/checkout/git/ref/tags/vX.Y.Z --jq .object.sha
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Don't leave the job's GITHUB_TOKEN in .git/config, where anything
+          # later in the job could read or archive it (zizmor artipacked).
+          persist-credentials: false
 
       - name: Shell syntax
         run: find plugins -name '*.sh' -exec bash -n {} \;
