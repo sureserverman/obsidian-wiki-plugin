@@ -131,6 +131,14 @@ do not need to read the entire session; the head/tail/error windows give enough 
 
 Sessions with score ≥ 3 are "high-value", 1–2 are "medium", 0 or negative is "low".
 
+> **Do not score with `scripts/score-session.py`.** That scorer belongs to the
+> SessionEnd capture hook and parses the **Claude Code** event shape only
+> (`message.content[].type == "text"`). Pointed at a Codex rollout or a Cursor
+> transcript it does not error — it silently returns a flat, meaningless score for
+> every session, because it finds no text, no roles, and no `is_error` events. It
+> refuses such input as of 0.7.1, but the scoring above is the contract for this
+> skill on every tool, including Claude Code: sample and judge, don't shell out.
+
 ### Trigger heuristics (label what made a session worth capturing)
 
 Tag each candidate with any of four **canonical trigger heuristics** it exhibits
@@ -258,6 +266,8 @@ session — those benefit from the caller's context about user intent.
   append to the same session file across days. An imported file extracted on
   day 1 may be stale by day 7. Use the Step 3 staleness check (mtime + size
   growth), not just filename existence.
+- **Scoring non-Claude-Code sessions with the capture hook's scorer.** See the
+  note in Step 4 — it parses one tool's shape and quietly flattens the rest.
 - **Date encoding mismatches.** Each tool dates sessions differently. Always normalize
   to ISO `YYYY-MM-DD` in the report.
 - **Forgetting to dereference the working directory.** Claude Code and Cursor encode
