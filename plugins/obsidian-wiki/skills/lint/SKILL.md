@@ -1,5 +1,6 @@
 ---
 name: lint
+allowed-tools: Read, Glob, Grep, Edit, Bash(bash:*)
 description: >
   Use when the user asks for a vault health check, mentions "/obsidian-wiki:lint", or asks about orphan
   pages, broken wikilinks, contradictions between notes, stale claims, or missing backlinks

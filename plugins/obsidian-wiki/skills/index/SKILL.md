@@ -1,5 +1,6 @@
 ---
 name: index
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash(bash:*), Bash(python3:*)
 description: >
   Use when the user asks to regenerate the vault index, mentions "/obsidian-wiki:index",
   says the vault index is stale, asks for a machine-readable digest of every vault page,

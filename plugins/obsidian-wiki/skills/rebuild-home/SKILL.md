@@ -1,5 +1,6 @@
 ---
 name: rebuild-home
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash(bash:*)
 description: >
   Use when the user asks to refresh, rebuild, or regenerate Home.md in their Obsidian
   vault, mentions "/obsidian-wiki:rebuild-home", or notices that Home.md has drifted from the

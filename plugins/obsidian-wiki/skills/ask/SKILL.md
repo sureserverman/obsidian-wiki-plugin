@@ -1,5 +1,6 @@
 ---
 name: ask
+allowed-tools: Read, Glob, Grep, Write, Bash(bash:*)
 description: >
   Use when the user asks a research or recall question that their Obsidian vault at
   <vault> might answer, or mentions "/obsidian-wiki:ask". Trigger on "what do I know about X",

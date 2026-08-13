@@ -41,6 +41,20 @@ done < <(find plugins -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' -o -p
 [ "$BAD" -eq 0 ] || fail "$BAD component(s) declare an unscoped Bash grant"
 ok "all $CHECKED tool declaration(s) scope Bash or omit it"
 
+# An ABSENT key is broader than a bare `Bash` token: the component inherits the
+# whole session tool set, Write and Edit included. The 2026-08-13 incremental
+# audit raised 3 HIGH + 7 MEDIUM for exactly this, and an earlier version of
+# this test could not see it — it only inspected files that already declared a
+# key, so ten skills passed by having no declaration at all.
+UNDECLARED=0
+while IFS= read -r f; do
+    grep -qE '^(allowed-tools|tools):' "$f" && continue
+    echo "  NO DECLARATION: ${f#./}" >&2
+    UNDECLARED=$((UNDECLARED + 1))
+done < <(find plugins -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' \) | sort)
+[ "$UNDECLARED" -eq 0 ] || fail "$UNDECLARED skill/agent file(s) declare no tool set at all"
+ok "every skill and agent declares an explicit tool set"
+
 # Guard the four the audit named, by path, so a future rewrite cannot quietly
 # drop back to a blanket grant without this test naming the file.
 for f in \

@@ -1,5 +1,6 @@
 ---
 name: ingest
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash(bash:*)
 description: >
   Use when the user asks to ingest a source into their Obsidian vault at <vault>,
   add an article/PDF/page to the wiki, process something dropped into raw/, or mentions

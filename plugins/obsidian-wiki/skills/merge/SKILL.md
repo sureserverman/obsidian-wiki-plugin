@@ -1,5 +1,6 @@
 ---
 name: merge
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash(bash:*)
 description: >
   Use when the user asks to merge two Obsidian vault pages into one, consolidate
   duplicate notes, mentions "/obsidian-wiki:merge", or says "these two pages are about the
