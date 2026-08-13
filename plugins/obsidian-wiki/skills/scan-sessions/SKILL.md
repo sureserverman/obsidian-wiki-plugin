@@ -37,6 +37,10 @@ fastest enumerations:
 
 - **Claude Code**: `find ~/.claude/projects -name '*.jsonl' -mtime -<days>`
 - **Codex**: `find ~/.codex/sessions/<YYYY>/<MM> -name 'rollout-*.jsonl' -mtime -<days>`
+  then **drop non-interactive rollouts** — read line 1 (`session_meta`) of each and
+  keep only `payload.originator == "codex-tui"` with `payload.thread_source ==
+  "user"`. `codex_exec` runs and `subagent` threads are automation, not sessions,
+  and are typically the majority of the window (see the reference)
 - **Cursor**: `find ~/.cursor/projects -path '*/agent-transcripts/*/*.jsonl' -mtime -<days>`
   (full transcripts — these are the real conversations, not the `agent-tools/*.txt`
   files which are tool outputs only; for the SQLite fallback see the reference)
@@ -266,9 +270,15 @@ session — those benefit from the caller's context about user intent.
   append to the same session file across days. An imported file extracted on
   day 1 may be stale by day 7. Use the Step 3 staleness check (mtime + size
   growth), not just filename existence.
+- **Importing Codex automation as if it were a session.** Most rollouts in a
+  window are `codex_exec` (non-interactive) or `subagent` threads — in one measured
+  week, 25 of 32. They read as sessions but are review-agent transcripts. Filter on
+  the `session_meta` first line; see Step 2.
 - **Scoring non-Claude-Code sessions with the capture hook's scorer.** See the
   note in Step 4 — it parses one tool's shape and quietly flattens the rest.
 - **Date encoding mismatches.** Each tool dates sessions differently. Always normalize
-  to ISO `YYYY-MM-DD` in the report.
+  to ISO `YYYY-MM-DD` in the report. Codex's true start is `payload.timestamp` in the
+  `session_meta` event; a Claude Code session's is its first event's timestamp, not
+  the file mtime (long-running sessions drift days past their start date).
 - **Forgetting to dereference the working directory.** Claude Code and Cursor encode
   the cwd into the path. Use the encoding rules from `references/storage-paths.md`.
