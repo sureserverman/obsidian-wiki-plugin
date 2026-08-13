@@ -1,0 +1,41 @@
+name: tests
+
+# The suite is hermetic — it builds its own fixtures under mktemp and needs no
+# vault, no registry and no populated HOME (verified by running it under
+# `env -i HOME=<tmp>`). Everything it shells out to (bash, python3, git, jq,
+# flock, realpath, find, grep) is preinstalled on ubuntu-latest.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Shell syntax
+        run: find plugins -name '*.sh' -exec bash -n {} \;
+
+      - name: Python syntax
+        run: python3 -m py_compile plugins/obsidian-wiki/scripts/*.py
+
+      - name: Manifests parse
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          for p in ['.claude-plugin/marketplace.json',
+                    'plugins/obsidian-wiki/.claude-plugin/plugin.json',
+                    'plugins/vault-context/.claude-plugin/plugin.json']:
+              json.loads(pathlib.Path(p).read_text())
+              print(f'ok {p}')
+          PY
+
+      - name: Test suite
+        run: bash tests/run.sh
