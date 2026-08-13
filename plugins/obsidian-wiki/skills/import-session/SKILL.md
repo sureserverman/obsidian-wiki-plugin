@@ -47,8 +47,8 @@ raw/sessions/<tool>-<YYYY-MM-DD>-<short-id>.md
 
 Where:
 - `<YYYY-MM-DD>` is the session start date (from filename or first event timestamp).
-- `<short-id>` is the first 8 chars of the session UUID, or, for OpenCode (no UUID),
-  the first 8 chars of the project hash.
+- `<short-id>` is the first 8 chars of the session UUID, or, for OpenCode, its
+  `ses_` id with the prefix stripped (`ses_04661ff6…` → `04661ff6`).
 
 **Cursor** adds one twist: session UUIDs are not globally unique across Cursor
 project contexts. The idempotency key for Cursor is `(project_dir, session_uuid)`.
@@ -272,7 +272,9 @@ vault files and need the caller's context about user intent.
 - **Wrong tool detection.** A session moved or symlinked from another location may
   fool the path-based detection. Read the first event to confirm — Claude Code events
   have a recognizable `type: "user"` shape; Codex events look different.
-- **Missing UUID.** OpenCode sessions don't have UUIDs. Use the first 8 chars of the
+- **Missing UUID.** OpenCode session ids are `ses_`-prefixed, not UUIDs; strip the
+  prefix and take 8 chars. (Older builds stored no id at all — if you meet one, use
+  the first 8 chars of the
   project hash (the JSON filename) as the short-id.
 - **Date drift.** The session's filesystem mtime is not the session start date. Use
   the first event's timestamp (or, for Codex, parse the ISO timestamp from the

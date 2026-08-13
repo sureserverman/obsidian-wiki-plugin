@@ -46,7 +46,16 @@ fastest enumerations:
   files which are tool outputs only; for the SQLite fallback see the reference)
 - **Gemini**: `find ~/.gemini/tmp -path '*/chats/session-*.json' -mtime -<days>`
   (**not** `~/.gemini/history/`, which holds only `.project_root` markers)
-- **OpenCode**: `find ~/.local/share/opencode/storage/project -name '*.json' -mtime -<days>`
+- **OpenCode**: query the SQLite store — sessions are no longer JSON files:
+  ```bash
+  sqlite3 "file:$HOME/.local/share/opencode/opencode.db?mode=ro" \
+    "SELECT id, title, directory FROM session
+     WHERE time_updated > (strftime('%s','now') - <days>*86400)*1000
+     ORDER BY time_updated DESC;"
+  ```
+  Use `$HOME`, not `~` — a tilde inside the quoted `file:` URI is not expanded by
+  the shell or by SQLite, and the open fails. **Not** `storage/project/*.json`,
+  which is a stale project registry.
 
 If a tool's directory doesn't exist, skip it silently — the user may not use all 5.
 
@@ -67,8 +76,8 @@ For each candidate session, derive the canonical raw filename:
 raw/sessions/<tool>-<YYYY-MM-DD>-<short-id>.md
 ```
 
-Where `<short-id>` is the first 8 chars of the session UUID (or, for OpenCode, the
-first 8 chars of the project hash).
+Where `<short-id>` is the first 8 chars of the session UUID — for OpenCode, its
+`ses_` id with the prefix stripped (`ses_04661ff6…` → `04661ff6`).
 
 Then check both idempotency conditions:
 
@@ -78,8 +87,8 @@ Then check both idempotency conditions:
 If **neither** is true, the session is a fresh candidate — score it and include it.
 
 If **either** is true, do not silently drop it. Some tools (Cursor in particular,
-also Claude Code sessions resumed with `--continue`, and OpenCode project-scoped JSON)
-append to the same session file across days, so the imported extraction may be stale.
+also Claude Code sessions resumed with `--continue`, and OpenCode via its
+`time_updated` column) keep growing the same session across days, so the imported extraction may be stale.
 Apply the **staleness check**:
 
 ```

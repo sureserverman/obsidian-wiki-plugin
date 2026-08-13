@@ -44,4 +44,10 @@ actually parsing a session — the skill body only names which tool applies.
   KB to ~1 MB). Shape: `{sessionId, projectHash, startTime, lastUpdated, messages:
   [{id, timestamp, type, content: [{text}]}]}` where `type` is `user` or `gemini`.
   Every message carries its own timestamp, so dates need no mtime inference.
-- **OpenCode JSON**: read the file (small), find the messages/turns array, iterate.
+- **OpenCode SQLite**: sessions live in `~/.local/share/opencode/opencode.db`, not
+  in `storage/project/*.json` (a stale project registry). Open read-only
+  (`file:…?mode=ro`) — the app may be running and a WAL is present. Join `message`
+  to `part` on `message_id`, keep parts whose `json_extract(data,'$.type')` is
+  `text`, and order by `m.time_created, p.id`; the role is
+  `json_extract(m.data,'$.role')`. Skip `tool`, `step-start`, `step-finish` and
+  `reasoning` parts unless the tool call is the point.
