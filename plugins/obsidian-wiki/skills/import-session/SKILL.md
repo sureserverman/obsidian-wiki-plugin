@@ -64,6 +64,22 @@ where `<project-slug>` is a 6–10 char hint derived from the encoded cwd
 (e.g. `emptywin`, `pihole`, `healthalert`). Only add the suffix when a
 collision is detected.
 
+**Codex** needs the same twist for a different reason: its session IDs are UUIDv7,
+so the first 8 chars are a creation timestamp and sessions started within the same
+few minutes share a short-id (one measured week: 32 rollouts, 29 unique short-ids,
+one prefix covering three sessions 19 seconds apart). Compare the **full**
+`session_id` from the source's `session_meta` event against the imported file's
+`source-session:` frontmatter. If they differ, this is a different session with a
+colliding short-id — disambiguate identically:
+
+```
+raw/sessions/codex-<YYYY-MM-DD>-<short-id>-<project-slug>.md
+```
+
+deriving the slug from `payload.cwd`; if that also matches, widen the short-id to
+the UUID's first two groups (13 chars, e.g. `019ff7bf-981b`) rather than adding a
+counter.
+
 Then check **both** conditions:
 
 1. Does `<vault>/raw/sessions/<filename>` already exist?

@@ -106,11 +106,33 @@ raw/sessions/cursor-<YYYY-MM-DD>-<short-id>-<project-slug>.md
 ```
 
 Where `<project-slug>` is a short (6–10 char) hint derived from the encoded cwd —
-e.g. `emptywin`, `pihole`, `healthalert`. This is the **only** tool where this
-applies; other tools' session IDs are globally unique.
+e.g. `emptywin`, `pihole`, `healthalert`.
 
-Show counts: fresh candidates, refresh candidates, dropped-as-current, and (Cursor)
-new-with-colliding-UUID separately, so the user can tell the scan was thorough.
+### Codex-specific: short-ID collisions within a day
+
+Codex session IDs are **UUIDv7**, whose first 8 hex chars encode the creation
+timestamp — so they are not random and sessions started within the same few minutes
+share a `<short-id>`. In one measured 7-day window, 32 rollouts produced 29 unique
+short-IDs: one prefix covered three sessions started 19 seconds apart. Writing them
+under the plain name would silently overwrite.
+
+Dedupe Codex candidates by the **full** `session_id` from the `session_meta` event,
+not the short-id, and disambiguate the raw filename the same way as Cursor:
+
+```
+raw/sessions/codex-<YYYY-MM-DD>-<short-id>-<project-slug>.md
+```
+
+deriving `<project-slug>` from `payload.cwd`. If two colliding sessions also share a
+cwd, widen the short-id to the UUID's first two groups (13 chars, e.g.
+`019ff7bf-981b`) instead of adding a counter.
+
+Cursor and Codex are the only tools needing this; Claude Code, Gemini and OpenCode
+IDs are unique within a day.
+
+Show counts: fresh candidates, refresh candidates, dropped-as-current, dropped as
+non-interactive (Codex), and new-with-colliding-ID (Cursor, Codex) separately, so the
+user can tell the scan was thorough.
 
 ## Step 4 — Score for vault-worthiness
 
@@ -274,6 +296,8 @@ session — those benefit from the caller's context about user intent.
   window are `codex_exec` (non-interactive) or `subagent` threads — in one measured
   week, 25 of 32. They read as sessions but are review-agent transcripts. Filter on
   the `session_meta` first line; see Step 2.
+- **Deduping Codex by short-id.** UUIDv7 prefixes are timestamps, so sessions
+  minutes apart collide. Use the full `session_id`. See Step 3.
 - **Scoring non-Claude-Code sessions with the capture hook's scorer.** See the
   note in Step 4 — it parses one tool's shape and quietly flattens the rest.
 - **Date encoding mismatches.** Each tool dates sessions differently. Always normalize
