@@ -1,5 +1,6 @@
 ---
 name: import-session
+allowed-tools: Read, Glob, Grep, Write, Bash(bash:*)
 description: >
   Use when the user picks a specific AI coding session (Claude Code, Cursor, Codex, Gemini,
   OpenCode) to extract into the vault, mentions "/obsidian-wiki:import-session", or asks to

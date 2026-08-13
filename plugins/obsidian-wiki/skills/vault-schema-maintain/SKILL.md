@@ -1,5 +1,6 @@
 ---
 name: vault-schema-maintain
+allowed-tools: Read, Glob, Grep, Edit, Bash(bash:*)
 description: >
   Use when the user wants to update the vault's CLAUDE.md schema, change naming or ingest
   conventions, or mentions "update the wiki schema", "change how ingest works", or
