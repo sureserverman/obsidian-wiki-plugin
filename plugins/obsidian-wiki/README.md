@@ -334,7 +334,8 @@ obsidian-wiki-plugin/                # marketplace root
 │   ├── daily-cursor-codex.sh   # SessionStart hook: daily Cursor/Codex enqueue
 │   ├── daily-index.sh          # SessionStart hook: daily vault-index enqueue
 │   ├── drain-queue.sh          # SessionStart hook: drain queue → additionalContext
-│   ├── score-session.py        # JSONL scorer used by capture-session.sh
+│   ├── score-session.py        # JSONL scorer for capture-session.sh (Claude Code only;
+│   │                           #   refuses other tools' transcripts — see scan-sessions Step 4)
 │   ├── statusline-snippet.sh   # opt-in snippet for statusline badge
 │   └── lib/
 │       ├── queue.sh            # queue write/list/drain helpers (flock-serialized)

@@ -12,6 +12,12 @@ to stdout, where:
   - topic:      first user prompt sanitized to a single line, ≤60 chars
   - errors:     count of `"is_error":true` events (tool failure signal)
 
+Claude Code only. Given a Codex rollout, a Cursor transcript, or any other
+tool's session it exits 2 with a message on stderr and prints nothing — those
+shapes parse as JSON but carry no roles, text or error markers here, so scoring
+them would emit a confident, meaningless number. Cross-tool scoring lives in
+the scan-sessions skill (Step 4), which samples and judges instead.
+
 Signals (mirrors scan-sessions SKILL.md, simplified to what a hook can
 compute without vault context):
 
@@ -80,6 +86,37 @@ def parse_line(line: bytes) -> object:
         return None
 
 
+CC_EVENT_TYPES = {"user", "assistant", "summary", "system"}
+
+
+def looks_like_claude_code(lines: list[bytes]) -> bool | None:
+    """Does this transcript use the Claude Code event shape?
+
+    Returns True/False, or None when the sample carried no parseable JSON at
+    all (empty or non-JSONL file) — the caller keeps its legacy behavior there
+    rather than blaming the tool.
+
+    The signals every Claude Code event carries and no other supported tool
+    does: a `message` object with a `role`, or a top-level `type` naming a
+    transcript event. Codex nests everything under `payload`; Cursor puts
+    `role` at the top level with no `type`. Both parse fine as JSON and then
+    yield no text, no roles and no errors — which scores as a flat, meaningless
+    number instead of failing. Hence this check.
+    """
+    parsed = 0
+    for line in lines[:50]:
+        obj = parse_line(line)
+        if not isinstance(obj, dict):
+            continue
+        parsed += 1
+        msg = obj.get("message")
+        if isinstance(msg, dict) and isinstance(msg.get("role"), str):
+            return True
+        if obj.get("type") in CC_EVENT_TYPES:
+            return True
+    return None if parsed == 0 else False
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         print("0|0||0")
@@ -94,6 +131,19 @@ def main() -> int:
         return 0
 
     turn_count = len(lines)
+
+    # Refuse other tools' transcripts rather than scoring them to a flat
+    # number. capture-session.sh treats a nonzero exit as "skip this
+    # session", so this can only ever suppress a capture, never crash a hook.
+    if looks_like_claude_code(lines) is False:
+        print(
+            f"score-session.py: {path} is not a Claude Code transcript "
+            "(no message.role, no transcript event type). This scorer parses "
+            "the Claude Code shape only — score Codex/Cursor/Gemini/OpenCode "
+            "sessions with the scan-sessions Step 4 signals instead.",
+            file=sys.stderr,
+        )
+        return 2
 
     first_user = ""
     final_assistant = ""
