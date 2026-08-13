@@ -1,6 +1,6 @@
 ---
 name: gaps
-allowed-tools: Read, Glob, Grep, Bash
+allowed-tools: Read, Glob, Grep, Bash(bash:*)
 description: >
   Use when the user asks to find content gaps in their Obsidian vault, missing pages,
   topics that should have a dedicated note, or mentions "/obsidian-wiki:gaps". Trigger on
@@ -8,7 +8,7 @@ description: >
   notes", or "entities I keep mentioning but don't have a page for".
 ---
 
-> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+> **Vault path:** `<vault>` refers to the path returned by `bash "$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh"`. Run it first to resolve the vault location. Invoke it via `bash` — this skill's `allowed-tools` grants `Bash(bash:*)`, not arbitrary executable paths.
 
 # Vault Gaps
 

@@ -1,7 +1,7 @@
 ---
 name: vault-scanner
 description: Read-only scanner for an Obsidian vault. Use for bulk file enumeration, wikilink/frontmatter extraction, grepping many files, and sampling AI-coding session JSONL files. Returns structured findings. Never writes to the vault. Delegate here from lint, index, and scan-sessions when the scan phase is read-heavy.
-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash(find:*), Bash(ls:*), Bash(stat:*), Bash(wc:*), Bash(head:*), Bash(tail:*), Bash(grep:*), Bash(rg:*), Bash(jq:*)
 model: haiku
 ---
 

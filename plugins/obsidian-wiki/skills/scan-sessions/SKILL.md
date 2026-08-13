@@ -1,6 +1,6 @@
 ---
 name: scan-sessions
-allowed-tools: Read, Glob, Grep, Bash
+allowed-tools: Read, Glob, Grep, Bash(bash:*), Bash(find:*), Bash(sqlite3:*), Bash(head:*), Bash(tail:*), Bash(wc:*), Bash(ls:*), Bash(stat:*)
 description: >
   Use when the user asks to find vault-worthy moments from recent AI coding sessions
   across Claude Code, Cursor, Codex, Gemini, or OpenCode, mentions "/obsidian-wiki:scan-sessions",
@@ -9,7 +9,7 @@ description: >
   or "scan recent agent sessions for raw/".
 ---
 
-> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+> **Vault path:** `<vault>` refers to the path returned by `bash "$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh"`. Run it first to resolve the vault location. Invoke it via `bash` — this skill's `allowed-tools` grants `Bash(bash:*)`, not arbitrary executable paths.
 
 # Vault Session Scan
 
