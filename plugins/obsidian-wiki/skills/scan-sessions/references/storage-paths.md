@@ -90,6 +90,25 @@ A measured 7-day window on this host held 32 rollouts: 18 `codex_exec`, 7
 carry no diagnostic arc. Always read line 1 and drop anything that is not
 `codex-tui` + `user` unless the user explicitly asked for automation runs.
 
+**Codex short-IDs collide — they are timestamps, not random.** Codex session IDs are
+UUIDv7, whose first 8 hex chars encode the creation time in milliseconds. Sessions
+started within the same ~4-minute bucket therefore share a `<short-id>`. Observed in
+one 7-day window: `019ff7bf` covered three sessions started 19 seconds apart, and
+`019fe5ce` two started 10 seconds apart — 32 rollouts yielded only 29 unique
+short-IDs. The plain `codex-<date>-<short-id>.md` name would silently overwrite.
+Disambiguate exactly as Cursor does, with a slug derived from `payload.cwd`:
+
+```
+raw/sessions/codex-<YYYY-MM-DD>-<short-id>-<project-slug>.md
+```
+
+Only add the suffix when a collision actually exists. If two colliding sessions
+share a cwd as well, extend the short-id to the UUID's **first two groups**
+(13 chars, e.g. `019ff7bf-981b`) rather than inventing a counter — the second
+group carries the low bits of the millisecond timestamp, which separates
+same-project runs seconds apart. The three sessions above become `019ff7bf-981b`,
+`019ff7bf-4f59` and `019ff7bf-6f27`.
+
 **Filtering**:
 - Recent sessions: `find ~/.codex/sessions/2026/<MM> -name 'rollout-*.jsonl' -mtime -7`
 - The directory tree is already date-organized so date filters are cheap.
@@ -265,7 +284,15 @@ Where:
 Example: `raw/sessions/claude-code-2026-04-07-2b7b05df.md`
 
 This makes the source filename self-describing and prevents filename collisions
-across tools.
+across tools. It does **not** prevent collisions *within* a tool — two tools need a
+project-slug suffix:
+
+- **Cursor**, because it reuses UUIDs across project contexts (see above).
+- **Codex**, because UUIDv7 short-IDs are timestamps and sessions started in the
+  same few minutes share one (see above).
+
+For those two, check for an existing file with the same `<tool>-<date>-<short-id>`
+stem before writing, and fall back to `-<project-slug>` when one exists.
 
 ---
 
@@ -284,5 +311,9 @@ stale. See `SKILL.md` Step 3 for the exact staleness formula (mtime delta + size
 growth). Stale imports go into a separate "Refresh" bucket in the scan report
 and are re-imported with `--force`.
 
-For Cursor only, the idempotency key is `(project_dir, session_uuid)` not just
+For Cursor, the idempotency key is `(project_dir, session_uuid)` not just
 the UUID — see the Cursor UUID-reuse note above.
+
+For Codex, the key is the **full** `session_id`, never the 8-char short-id — see the
+UUIDv7 collision note above. A short-id match is a *candidate* collision to resolve,
+not proof the session is already imported.
