@@ -254,8 +254,14 @@ mkdir -p "$CACHE_DIR" 2>/dev/null || exit 0
 (
     nohup bash -c '
         set -u
-        CACHE_FILE="'"$CACHE_FILE"'"
-        MARKETPLACE_DIR="'"$MARKETPLACE_DIR"'"
+        # Positional, not interpolated — see capture-session.sh for why baking
+        # values into the script text is a command-injection hole. These two are
+        # far less reachable (a cache dir and the marketplace clone path owned by
+        # this plugin) but the pattern is the same, so it gets the same
+        # treatment. NOTE: no apostrophes in comments inside this block — it is a
+        # single-quoted string and one would terminate it.
+        CACHE_FILE="$1"
+        MARKETPLACE_DIR="$2"
 
         # Best-effort fetch. --quiet suppresses progress output; --no-tags avoids
         # pulling tag history we do not care about; --prune keeps refs tidy.
@@ -312,7 +318,7 @@ mkdir -p "$CACHE_DIR" 2>/dev/null || exit 0
 }
 EOF
         mv "$tmp" "$CACHE_FILE" 2>/dev/null || rm -f "$tmp"
-    ' >/dev/null 2>&1 &
+    ' _ "$CACHE_FILE" "$MARKETPLACE_DIR" >/dev/null 2>&1 &
 ) >/dev/null 2>&1
 disown 2>/dev/null || true
 

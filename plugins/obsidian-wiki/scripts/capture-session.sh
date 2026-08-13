@@ -90,8 +90,9 @@ threshold="${OBSIDIAN_WIKI_CAPTURE_THRESHOLD:-2}"
 # Spawn the detached background scorer. Foreground returns immediately —
 # the user's session-end is never blocked on JSONL parsing or disk I/O.
 #
-# All variables needed by the background block are baked in via single-quote
-# expansion (the same pattern check-update.sh uses). The background block's
+# All variables needed by the background block are passed as positional
+# arguments (the same pattern check-update.sh uses). They are NOT interpolated
+# into the script text — see the note inside the block. The background block's
 # own output is sent to /dev/null so stray messages can't leak into the
 # Claude Code session.
 # ---------------------------------------------------------------------------
@@ -99,14 +100,22 @@ threshold="${OBSIDIAN_WIKI_CAPTURE_THRESHOLD:-2}"
     nohup bash -c '
         set -u
 
-        SESSION_ID="'"$session_id"'"
-        TRANSCRIPT="'"$transcript_path"'"
-        CWD_VAL="'"$cwd_val"'"
-        REASON="'"$reason"'"
-        VAULT="'"$vault_path"'"
-        THRESHOLD="'"$threshold"'"
-        SCORER="'"$scorer"'"
-        QUEUE_LIB="'"$queue_lib"'"
+        # Values arrive as positional arguments, never interpolated into the
+        # text of this script. Interpolation was a command-injection hole: the
+        # values landed inside a double-quoted assignment in the generated
+        # script, so a `$(...)` anywhere in one of them was executed by this
+        # shell. `cwd` is attacker-reachable — it is whatever directory the user
+        # ran Claude Code in, and a directory name may legally contain `$( )`.
+        # NOTE: no apostrophes in comments here — this whole block is a
+        # single-quoted string, and one would terminate it.
+        SESSION_ID="$1"
+        TRANSCRIPT="$2"
+        CWD_VAL="$3"
+        REASON="$4"
+        VAULT="$5"
+        THRESHOLD="$6"
+        SCORER="$7"
+        QUEUE_LIB="$8"
 
         SHORT_ID="${SESSION_ID:0:8}"
         LOG="$VAULT/log.md"
@@ -207,7 +216,8 @@ print(json.dumps({
                 queue_write auto-import "$SHORT_ID" "$JOB_BODY" >/dev/null 2>&1 || true
             fi
         fi
-    ' >/dev/null 2>&1 &
+    ' _ "$session_id" "$transcript_path" "$cwd_val" "$reason" "$vault_path" \
+        "$threshold" "$scorer" "$queue_lib" >/dev/null 2>&1 &
 ) >/dev/null 2>&1
 disown 2>/dev/null || true
 
