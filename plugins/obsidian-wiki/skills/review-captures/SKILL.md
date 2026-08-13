@@ -1,6 +1,6 @@
 ---
 name: review-captures
-allowed-tools: Read, Glob, Grep, Bash
+allowed-tools: Read, Glob, Grep, Bash(bash:*)
 description: >
   Use when the user asks to review pending session captures, asks "what did the
   hook flag", asks to triage auto-captured Claude Code sessions, mentions
@@ -10,7 +10,7 @@ description: >
   auto-captured", or "import the flagged sessions".
 ---
 
-> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+> **Vault path:** `<vault>` refers to the path returned by `bash "$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh"`. Run it first to resolve the vault location. Invoke it via `bash` — this skill's `allowed-tools` grants `Bash(bash:*)`, not arbitrary executable paths.
 
 # Vault Capture Review
 
