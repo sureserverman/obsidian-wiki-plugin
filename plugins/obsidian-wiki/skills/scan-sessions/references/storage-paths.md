@@ -219,29 +219,50 @@ the user is specifically looking for a conversation they remember.
 
 **Path pattern**:
 ```
-~/.gemini/history/<project-name>/
-~/.gemini/history/<project-name>/.project_root        # marker file
+~/.gemini/tmp/<project>/chats/session-<YYYY-MM-DDTHH-MM>-<short-id>.json
+~/.gemini/tmp/<project>/logs.json                     # prompt index, not conversations
 ```
 
-The `history/` directory has one subdir per project the user has worked on. Inside,
-the actual conversation files are version-dependent — recent Gemini versions store
-sessions in proprietary formats and locations that change frequently.
+`<project>` is the project's plain name in current versions and a 64-char hash in
+older ones — both shapes coexist in one `tmp/` tree, so accept either.
 
-Other relevant Gemini dirs:
-- `~/.gemini/agents/` — agent configurations
-- `~/.gemini/commands/` — slash command definitions
-- `~/.gemini/skills/` — installed skills
-- `~/.gemini/antigravity/` — Gemini Code Assist's "antigravity" workspace
-  - `code_tracker/`, `knowledge/`, `brain/` — interesting subdirs that may contain
-    session-derived knowledge
+> **Not `~/.gemini/history/`.** That directory exists and has one subdir per
+> project, but it contains **only** `.project_root` marker files — no conversation
+> data, in any version observed. A scan pointed there returns zero files and reports
+> "no sessions" no matter how much the user has used Gemini. This reference said
+> otherwise until 0.7.2; if you are working from memory, discard it.
 
-**Pragmatic recommendation**: Gemini's session storage is the least stable of the
-five tools. Treat it as best-effort: list `history/<project>/` for files, read what
-you can identify, and tell the user if you can't find structured conversation data.
+**File format**: one JSON document per session (not JSONL) — slurpable, they run
+tens of KB to ~1 MB:
 
-If `~/.gemini/antigravity/knowledge/` or `~/.gemini/antigravity/brain/` contains
-markdown files, those are often Gemini's own auto-summaries — high-value sources for
-import.
+```json
+{"sessionId": "305f8c3d-d627-4b57-89dd-5ffc25a99a38",
+ "projectHash": "afac67f9…",
+ "startTime": "2026-02-21T10:00:30.532Z",
+ "lastUpdated": "2026-02-21T10:33:57.693Z",
+ "messages": [{"id": "3327392c-…",
+               "timestamp": "2026-02-21T10:00:30.532Z",
+               "type": "user",
+               "content": [{"text": "Analyze all the code and find the problems"}]}]}
+```
+
+`type` is `user` or `gemini`. Text lives at `content[].text`. Every message carries
+its own timestamp, so date derivation needs no mtime guessing — and the filename
+already encodes the start datetime plus an 8-char short-id, which maps onto the
+vault naming convention directly.
+
+**Filtering**:
+- Recent sessions: `find ~/.gemini/tmp -path '*/chats/session-*.json' -mtime -<days>`
+- `logs.json` beside each `chats/` dir is a flat array of `{sessionId, messageId,
+  type, message, timestamp}` covering **user prompts only** (including slash
+  commands like `/quit`). Useful as a cheap index of what a session was about;
+  never a substitute for the chat file.
+
+**Other Gemini dirs** (none hold sessions): `agents/`, `commands/`, `skills/`,
+`config/`, and `antigravity/` — the Code Assist workspace. Its `knowledge/` and
+`brain/` subdirs are frequently empty (on the reference host, `brain/` is empty and
+`knowledge/` holds a single zero-byte lock file). If markdown does appear there it
+may be worth reading, but do not report their emptiness as "no Gemini sessions".
 
 ---
 
