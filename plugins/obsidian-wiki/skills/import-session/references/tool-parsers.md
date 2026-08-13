@@ -7,9 +7,18 @@ actually parsing a session — the skill body only names which tool applies.
 - **Claude Code JSONL**: each line is `{type, message: {role, content}}`. `content` is
   an array of blocks; pull `text` blocks from assistant, skip `tool_use`/`tool_result`
   unless errored.
-- **Codex JSONL**: similar event structure but the field names differ (`role` may be
-  nested under `payload` or `message` depending on version). Inspect first 5 lines to
-  determine the schema.
+- **Codex JSONL**: every event is `{timestamp, ordinal, type, payload}`; the real
+  content lives under `payload`, whose shape depends on `type` (`session_meta`,
+  `event_msg`, `response_item`, …), so field names differ from Claude Code's.
+  Inspect the first 5 lines to confirm the schema for the installed `cli_version`.
+  Line 1 is always `session_meta` and carries `payload.session_id` (full UUIDv7 —
+  the idempotency key), `payload.cwd`, `payload.timestamp` (true session start,
+  earlier than the enclosing event's own timestamp), and `payload.originator` /
+  `payload.thread_source`. **Check those last two before extracting anything**: only
+  `codex-tui` + `user` is a real interactive session. `codex_exec` is non-interactive
+  automation and `subagent` is a spawned thread — both produce transcripts that look
+  session-shaped but carry no diagnostic arc, and both are usually the majority of a
+  window. If the caller handed you one anyway, say so rather than importing it.
 - **Cursor agent-transcripts JSONL** (primary): path shape
   `~/.cursor/projects/<encoded-cwd>/agent-transcripts/<uuid>/<uuid>.jsonl`. Each
   line is `{"role": "user"|"assistant", "message": {"content": [...]}}`. Content

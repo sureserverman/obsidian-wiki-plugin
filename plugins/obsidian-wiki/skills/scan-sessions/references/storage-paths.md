@@ -59,9 +59,41 @@ and a UUID.
 **File format**: JSONL events. Schema differs from Claude Code but conceptually similar
 (messages, tool calls, tool results). Stream-parse.
 
+The **first line** is a `session_meta` event whose `payload` carries the session
+identity — read it before anything else:
+
+```json
+{"timestamp": "...", "ordinal": 0, "type": "session_meta",
+ "payload": {"session_id": "019ff796-edd4-7911-a814-519676def646",
+             "cwd": "/home/user/dev/foo",
+             "timestamp": "2026-08-12T20:08:11.486Z",
+             "originator": "codex-tui",
+             "thread_source": "user",
+             "cli_version": "0.147.0"}}
+```
+
+Use `payload.timestamp` as the true session start date — it is the value encoded in
+the filename, and it is earlier than the enclosing event's own `timestamp`.
+
+**Most rollouts are not user sessions.** Codex writes a rollout for every kind of
+run, including non-interactive automation. Filter on the `session_meta` payload:
+
+| `originator` | `thread_source` | What it is | Import? |
+|---|---|---|---|
+| `codex-tui` | `user` | A real interactive session | **yes** |
+| `codex_exec` | `user` | `codex exec` — non-interactive automation (review agents, CI-style runs) | no |
+| `codex-tui` | `subagent` | A subagent spawned by another session | no |
+
+A measured 7-day window on this host held 32 rollouts: 18 `codex_exec`, 7
+`subagent`, and only **7** genuine interactive sessions. Importing unfiltered fills
+`raw/sessions/` with reviewer-verdict transcripts ("Critical: None. APPROVE") that
+carry no diagnostic arc. Always read line 1 and drop anything that is not
+`codex-tui` + `user` unless the user explicitly asked for automation runs.
+
 **Filtering**:
 - Recent sessions: `find ~/.codex/sessions/2026/<MM> -name 'rollout-*.jsonl' -mtime -7`
 - The directory tree is already date-organized so date filters are cheap.
+- Then drop non-interactive rollouts via the `session_meta` table above.
 
 **Other relevant dirs**:
 - `~/.codex/memories/` — long-term memory store (separate from sessions)
