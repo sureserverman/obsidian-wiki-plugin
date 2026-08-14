@@ -1,6 +1,6 @@
 ---
 name: index
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash(bash:*), Bash(python3:*)
+allowed-tools: Read, Glob, Grep, Write, Edit
 description: >
   Use when the user asks to regenerate the vault index, mentions "/obsidian-wiki:index",
   says the vault index is stale, asks for a machine-readable digest of every vault page,
@@ -8,6 +8,14 @@ description: >
   Trigger on "rebuild the index", "regenerate vault index", "index the vault",
   "the index is out of date", or any reference to the vault-wide `index.md`.
 ---
+
+> **This skill holds no shell grant.** The deterministic step runs in the
+> `/obsidian-wiki:index` command, which hands its output here. If you were invoked
+> without that output, ask the user to run the command — do not attempt to run the
+> script yourself. A command runs only on explicit user action; a skill can be
+> triggered by natural language, so the shell call is deliberately kept where an
+> injected instruction cannot reach it.
+
 
 # Vault Index
 
