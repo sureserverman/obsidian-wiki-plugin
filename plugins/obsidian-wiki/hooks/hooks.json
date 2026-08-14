@@ -30,6 +30,15 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/drain-queue.sh"
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/index-sessions.sh"
+          }
+        ]
       }
     ],
     "SessionEnd": [

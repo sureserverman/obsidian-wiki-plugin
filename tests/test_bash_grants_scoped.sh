@@ -77,13 +77,25 @@ do
 done
 ok "the four components named by the audit scope Bash or declare none"
 
-# scan-sessions genuinely needs these to do its job; if a future edit trims them
-# the skill breaks at runtime rather than failing here, so assert them.
-for cmd in bash find sqlite3; do
-    grep -qE "Bash\($cmd:" plugins/obsidian-wiki/skills/scan-sessions/SKILL.md \
-        || fail "scan-sessions lost Bash($cmd:*), which its discovery steps require"
-done
-ok "scan-sessions retains bash/find/sqlite3 — the commands its Step 2 documents"
+# scan-sessions is the sharpest case in the repo: its inputs are untrusted
+# transcripts from five external tools. As of 0.9.1 discovery moved into the
+# index-sessions hook, so it holds NO shell grant — in particular no
+# Bash(sqlite3:*), whose .shell/.system dot-commands are RCE regardless of a
+# read-only database URI.
+grep -qE '^allowed-tools:.*Bash' plugins/obsidian-wiki/skills/scan-sessions/SKILL.md \
+    && fail "scan-sessions reintroduced a Bash grant; discovery belongs in the hook"
+grep -q 'sessions-index.json' plugins/obsidian-wiki/skills/scan-sessions/SKILL.md \
+    || fail "scan-sessions no longer reads the hook-published session index"
+ok "scan-sessions holds no shell grant and reads the published index"
+
+# The hook and indexer that make that possible must stay present and wired.
+grep -q 'index-sessions.sh' plugins/obsidian-wiki/hooks/hooks.json \
+    || fail "index-sessions.sh is not wired into hooks.json"
+[ -x plugins/obsidian-wiki/scripts/index-sessions.sh ] \
+    || fail "index-sessions.sh missing or not executable"
+[ -f plugins/obsidian-wiki/scripts/index-sessions.py ] \
+    || fail "index-sessions.py missing"
+ok "index-sessions hook + indexer present and wired"
 
 # The 0.9.0 vault-path refactor: a skill whose only shell need WAS resolving the
 # vault must now declare no Bash at all, and must tell the agent to Read the
