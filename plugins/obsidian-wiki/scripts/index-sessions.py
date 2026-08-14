@@ -70,15 +70,32 @@ def _note(path, exc):
     sys.stderr.write(f"index-sessions: skipped {path}: {type(exc).__name__}\n")
 
 
+SESSION_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
 def claude_code(cutoff):
+    """Sessions live at projects/<encoded-cwd>/<session-uuid>.jsonl — exactly one
+    level deep, named by UUID.
+
+    Everything deeper is something else. `<project>/<uuid>/subagents/agent-*.jsonl`
+    holds SUBAGENT transcripts, and there are far more of them than sessions: a
+    30-day window here held 1071 subagent files against 464 real sessions. Walking
+    them in would have filled the vault with dispatched-agent chatter — the same
+    defect this indexer already filters for Codex (`thread_source: subagent`), so
+    it is filtered here too rather than left for the caller to notice.
+    """
     root = os.path.join(HOME, ".claude", "projects")
     out = []
     for dirpath, _d, files in os.walk(root):
+        rel_depth = os.path.relpath(dirpath, root).count(os.sep)
         for fn in files:
             if not fn.endswith(".jsonl"):
                 continue
             p = os.path.join(dirpath, fn)
             if not _within(p, cutoff):
+                continue
+            # depth 0 == directly under projects/<encoded-cwd>/
+            if rel_depth != 0 or not SESSION_UUID_RE.match(fn[:-6]):
                 continue
             # True start is the first event's timestamp; the file mtime is the
             # LAST write and drifts days past it on long-running sessions.
