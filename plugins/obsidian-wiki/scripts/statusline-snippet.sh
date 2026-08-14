@@ -38,7 +38,7 @@
 # Shows "obsidian-wiki ⬆ N" when the SessionStart hook has detected upstream
 # updates. Requires jq. Silent (no badge) when there is no cache file, no
 # update, or jq is unavailable.
-ow_cache="/tmp/claude/obsidian-wiki-update-check.json"
+ow_cache="${XDG_STATE_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}}/obsidian-wiki/state/update-check.json"
 if [ -f "$ow_cache" ] && command -v jq >/dev/null 2>&1; then
     if jq -e '.update_available == true' "$ow_cache" >/dev/null 2>&1; then
         ow_ahead=$(jq -r '.commits_ahead // 0' "$ow_cache")

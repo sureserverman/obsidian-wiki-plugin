@@ -190,7 +190,7 @@ Open Claude Code with `~/dev/knowledge` as the working directory.
 
 A `SessionStart` hook (`scripts/check-update.sh`) runs a `git fetch` against
 the marketplace clone in the background at most once every 6 hours, writes the
-result to `/tmp/claude/obsidian-wiki-update-check.json`, and prints a one-line
+result to `${XDG_STATE_HOME:-~/.config}/obsidian-wiki/state/update-check.json`, and prints a one-line
 nudge at session start when an update is available. The hook never modifies
 any file — it only reports. Running `/obsidian-wiki:update` is what actually
 applies the update, and it will prompt before changing anything.
