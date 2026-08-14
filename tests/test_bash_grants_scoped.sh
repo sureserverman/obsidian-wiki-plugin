@@ -64,10 +64,18 @@ for f in \
     plugins/obsidian-wiki/skills/gaps/SKILL.md
 do
     [ -f "$f" ] || fail "$f is gone — update this test if it moved"
-    grep -qE '^(allowed-tools|tools):.*Bash\(' "$f" \
-        || fail "$f no longer declares any scoped Bash grant"
+    # Scoped is acceptable; NO Bash at all is better. As of 0.9.0 the vault path
+    # comes from a SessionStart hook via Read, so review-captures and gaps
+    # declare no Bash whatsoever — asserting they still carry a grant would
+    # punish the stronger outcome.
+    line="$(grep -m1 -E '^(allowed-tools|tools):' "$f")"
+    case "$line" in
+        *"Bash("*) : ;;                       # scoped grant, fine
+        *Bash*)   fail "$f declares an unscoped Bash grant" ;;
+        *)        : ;;                        # no Bash at all, better
+    esac
 done
-ok "the four components named by the audit still carry scoped grants"
+ok "the four components named by the audit scope Bash or declare none"
 
 # scan-sessions genuinely needs these to do its job; if a future edit trims them
 # the skill breaks at runtime rather than failing here, so assert them.
@@ -76,5 +84,28 @@ for cmd in bash find sqlite3; do
         || fail "scan-sessions lost Bash($cmd:*), which its discovery steps require"
 done
 ok "scan-sessions retains bash/find/sqlite3 — the commands its Step 2 documents"
+
+# The 0.9.0 vault-path refactor: a skill whose only shell need WAS resolving the
+# vault must now declare no Bash at all, and must tell the agent to Read the
+# path the SessionStart hook publishes. If a future edit reintroduces the
+# resolve-vault shell-out, the grant comes back with it — this catches that.
+NO_SHELL_SKILLS="ask gaps import-session ingest merge rebuild-home related review-captures vault-schema-maintain"
+for name in $NO_SHELL_SKILLS; do
+    f="$(find plugins -path "*/skills/$name/SKILL.md" | head -1)"
+    [ -n "$f" ] || fail "skill $name not found — update this test if it moved"
+    grep -qE '^(allowed-tools|tools):.*Bash' "$f" \
+        && fail "$f reintroduced a Bash grant; it should Read the published vault path"
+    grep -q 'state/vault-path' "$f" \
+        || fail "$f does not tell the agent to Read the hook-published vault path"
+done
+ok "the 9 vault-path-only skills declare no Bash and Read the published path"
+
+# The hook that makes that possible must stay wired, or every one of them
+# silently falls back to config.json and loses the $OBSIDIAN_VAULT_PATH override.
+grep -q 'publish-vault-path.sh' plugins/obsidian-wiki/hooks/hooks.json \
+    || fail "publish-vault-path.sh is not wired into hooks.json"
+[ -x plugins/obsidian-wiki/scripts/publish-vault-path.sh ] \
+    || fail "publish-vault-path.sh is missing or not executable"
+ok "publish-vault-path.sh exists and is wired into SessionStart"
 
 echo "ALL OK"
