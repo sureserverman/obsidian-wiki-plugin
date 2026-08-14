@@ -1,6 +1,6 @@
 ---
 name: link
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash(bash:*)
+allowed-tools: Read, Glob, Grep, Write, Edit
 description: >
   Use when the user asks what their Obsidian vault knows about the current project
   repo, asks to link/refresh vault context for a project, or mentions
@@ -9,6 +9,14 @@ description: >
   for this codebase", "brief me on this project from my vault", or when a SessionStart
   hook reports that no vault-context.md exists yet.
 ---
+
+> **This skill holds no shell grant.** The `/vault-context:link` command runs the
+> deterministic pipeline — resolve-vault, extract-project-signals, match-index,
+> write-context, validate-link — and hands you its output. If you were invoked
+> without it, ask the user to run the command; do not run the scripts yourself.
+> This skill writes into arbitrary project directories, so the shell call is kept
+> where an injected instruction cannot reach it.
+
 
 # Vault Link Project
 

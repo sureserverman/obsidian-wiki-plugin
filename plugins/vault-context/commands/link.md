@@ -1,10 +1,29 @@
 ---
 description: Scan the current project, match against the vault index, and write a vault-context sidecar
+allowed-tools: Bash(bash:*), Bash(python3:*), Read, Write, Edit, Glob, Grep
 ---
 
-Use the `link` skill to scan the current project, match against
-`<vault>/index.md`, and write `<project>/.claude/vault-context.md` with the relevant
-vault pages. Also adds a delimited `@.claude/vault-context.md` import block to project
+**Run the deterministic pipeline here, in the command, then invoke the skill.**
+Every mechanical step is a plugin script; none of it belongs in the model:
+
+```bash
+VAULT="$(bash "$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh")"
+bash "$CLAUDE_PLUGIN_ROOT/scripts/extract-project-signals.sh" \
+  | python3 "$CLAUDE_PLUGIN_ROOT/scripts/match-index.py" "$VAULT/index.md"
+bash "$CLAUDE_PLUGIN_ROOT/scripts/write-context.sh" "<project name>" "$VAULT"
+bash "$CLAUDE_PLUGIN_ROOT/scripts/validate-link.sh"
+```
+
+`write-context.sh` enforces the area-directory guard itself (DEC-001: containment
+decides what a project is), so a refusal here is authoritative — do not work around it.
+
+Then use the `link` skill to add the `CLAUDE.md` import block, interpret the
+validator output and report.
+
+The shell grant lives at this layer deliberately. This command writes into whatever
+project directory the session happens to be in — the surface the 2026-08-13 audit
+rated HIGH — and a command runs only when the user types it, whereas a skill can be
+triggered by natural language influenced by an ingested source. Also adds a delimited `@.claude/vault-context.md` import block to project
 `CLAUDE.md` so future Claude Code sessions load the briefing automatically.
 
 **Arguments**: `$ARGUMENTS` — pass `--force` to overwrite an existing sidecar without
