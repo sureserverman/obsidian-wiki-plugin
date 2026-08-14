@@ -10,7 +10,7 @@ cache is missing or stale, the command runs the check synchronously.
 **Arguments**: none.
 
 The command touches only the marketplace clone (via `git` and the `claude`
-CLI) and its own cache file at `/tmp/claude/obsidian-wiki-update-check.json`.
+CLI) and its own cache file at `${XDG_STATE_HOME:-~/.config}/obsidian-wiki/state/update-check.json`.
 It never modifies the user's vault, project files, or any other state.
 
 ## Procedure
@@ -18,7 +18,7 @@ It never modifies the user's vault, project files, or any other state.
 ### 1. Resolve paths
 
 The marketplace clone lives at `~/.claude/plugins/marketplaces/obsidian-wiki`
-and the cache file at `/tmp/claude/obsidian-wiki-update-check.json`. If the
+and the cache file at `${XDG_STATE_HOME:-~/.config}/obsidian-wiki/state/update-check.json`. If the
 marketplace directory does not exist, or is not a git work tree, report
 `obsidian-wiki marketplace is not installed as a git clone; nothing to check`
 and exit — this can happen if the user added the marketplace from a local
@@ -28,7 +28,7 @@ path instead of a GitHub source.
 
 Prefer the cached result over running `git fetch` again:
 
-- If `/tmp/claude/obsidian-wiki-update-check.json` exists AND its mtime is
+- If `${XDG_STATE_HOME:-~/.config}/obsidian-wiki/state/update-check.json` exists AND its mtime is
   less than 6 hours old, parse it (it has `update_available`, `local_sha`,
   `remote_sha`, `remote_ref`, `commits_ahead`, `checked`).
 - Otherwise, run the checker script synchronously this time — but not via
@@ -138,7 +138,7 @@ report that.
 ### 7. Clear the cache
 
 ```bash
-rm -f /tmp/claude/obsidian-wiki-update-check.json
+rm -f ${XDG_STATE_HOME:-~/.config}/obsidian-wiki/state/update-check.json
 ```
 
 This prevents the SessionStart hook from showing a stale "update available"

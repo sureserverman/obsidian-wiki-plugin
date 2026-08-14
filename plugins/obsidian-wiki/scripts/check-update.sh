@@ -3,7 +3,7 @@
 #
 # Three phases, all best-effort, none allowed to crash the host session:
 #
-#   1. READ CACHE: parse /tmp/claude/obsidian-wiki-update-check.json if it
+#   1. READ CACHE: parse <state>/obsidian-wiki/state/update-check.json if it
 #      exists. Cross-check the cache's recorded local_sha against the
 #      marketplace clone's actual HEAD; if they differ, treat the cache as
 #      stale (it was written before the clone moved, e.g. by
@@ -27,12 +27,18 @@
 #      `git fetch` so the next session has fresh data.
 #
 # The script NEVER modifies any plugin, marketplace, or user file. It only
-# writes its own cache file under /tmp/claude/.
+# writes its own cache file under XDG state (never /tmp — see CACHE_DIR).
 
 set -u  # fail on undefined vars, but NOT -e — we want best-effort behavior
 
-CACHE_DIR="/tmp/claude"
-CACHE_FILE="$CACHE_DIR/obsidian-wiki-update-check.json"
+# Not /tmp/claude: that directory is world-writable (mode 1777) and shared with
+# other tooling, so another local user could pre-create this file or point it
+# elsewhere by symlink before we write. The cache only holds git SHAs and a
+# boolean, but there is no reason to keep it somewhere anyone can shape it. This
+# plugin already keeps its queue and sentinels under XDG state; the cache joins
+# them. Nothing outside this plugin reads it, so the move needs no coordination.
+CACHE_DIR="${XDG_STATE_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}}/obsidian-wiki/state"
+CACHE_FILE="$CACHE_DIR/update-check.json"
 MARKETPLACE_DIR="$HOME/.claude/plugins/marketplaces/obsidian-wiki"
 TTL_SECONDS=21600  # 6 hours
 SYNC_FETCH_TIMEOUT=2  # seconds we are willing to block session start on fetch
