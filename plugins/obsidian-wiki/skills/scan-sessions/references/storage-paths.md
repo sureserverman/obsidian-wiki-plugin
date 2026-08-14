@@ -20,7 +20,7 @@ every `/` replaced by `-` and a leading `-`. Example:
 
 | Working dir | Encoded |
 |---|---|
-| `/home/alice/dev/tools/my-project` | `-home-alice-dev-my-project` |
+| `/home/alice/dev/tools/my-project` | `-home-alice-dev-tools-my-project` |
 | `/home/alice/dev/knowledge` | `-home-alice-dev-knowledge` |
 
 **File format**: JSONL — one JSON event per line. Event types include:
