@@ -1,12 +1,20 @@
 ---
 name: lint
-allowed-tools: Read, Glob, Grep, Edit, Bash(bash:*)
+allowed-tools: Read, Glob, Grep, Edit
 description: >
   Use when the user asks for a vault health check, mentions "/obsidian-wiki:lint", or asks about orphan
   pages, broken wikilinks, contradictions between notes, stale claims, or missing backlinks
   in their Obsidian vault. Trigger on "lint my vault", "check wiki health", "find orphans",
   or "any broken links in my notes".
 ---
+
+> **This skill holds no shell grant.** The deterministic step runs in the
+> `/obsidian-wiki:lint` command, which hands its output here. If you were invoked
+> without that output, ask the user to run the command — do not attempt to run the
+> script yourself. A command runs only on explicit user action; a skill can be
+> triggered by natural language, so the shell call is deliberately kept where an
+> injected instruction cannot reach it.
+
 
 > **Vault path:** `<vault>` is published by the SessionStart hook at
 > `${XDG_CONFIG_HOME:-~/.config}/obsidian-wiki/state/vault-path` — **Read** that file;

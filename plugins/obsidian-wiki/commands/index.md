@@ -1,9 +1,19 @@
 ---
 description: Regenerate the vault-wide index file at <vault>/index.md
+allowed-tools: Bash(python3:*), Read, Write, Edit, Glob, Grep
 ---
 
-Use the `index` skill to walk the Obsidian vault and write a fresh `<vault>/index.md`
-listing every page's title, tags, topics, one-line summary, and last-updated date.
+**Run the builder here, in the command, then invoke the skill.** Extraction is
+deterministic and belongs in the script, not in the model:
+
+```bash
+python3 "$CLAUDE_PLUGIN_ROOT/scripts/build-index.py" --vault "<vault>"
+```
+
+Then use the `index` skill to review what it produced, resolve anything the script
+flagged, and report. The skill holds no shell grant: a command runs only when the
+user types it, while a skill can be triggered by natural language, so the one
+interpreter call stays at the command layer.
 
 **Arguments**: none.
 
