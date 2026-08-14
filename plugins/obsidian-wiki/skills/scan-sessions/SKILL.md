@@ -1,6 +1,6 @@
 ---
 name: scan-sessions
-allowed-tools: Read, Glob, Grep, Bash(bash:*), Bash(find:*), Bash(sqlite3:*), Bash(head:*), Bash(tail:*), Bash(wc:*), Bash(ls:*), Bash(stat:*)
+allowed-tools: Read, Glob, Grep
 description: >
   Use when the user asks to find vault-worthy moments from recent AI coding sessions
   across Claude Code, Cursor, Codex, Gemini, or OpenCode, mentions "/obsidian-wiki:scan-sessions",
@@ -37,30 +37,45 @@ For each tool the user named (or all 5 if no tool was specified), enumerate the
 candidate session files within the time window (default: last 7 days; configurable via
 the `<days>` argument).
 
-For each tool, the discovery method differs — see `references/storage-paths.md`. The
-fastest enumerations:
+Discovery is **already done for you**. The SessionStart hook
+`scripts/index-sessions.sh` runs `index-sessions.py` once per UTC day and writes
+`${XDG_CONFIG_HOME:-~/.config}/obsidian-wiki/state/sessions-index.json`. **Read that
+file.** Do not shell out — this skill holds no Bash grant, deliberately: its inputs are
+untrusted transcripts from five external tools, and pairing that with a shell is the
+exact combination the 2026-08-13 audit rated HIGH.
 
-- **Claude Code**: `find ~/.claude/projects -name '*.jsonl' -mtime -<days>`
-- **Codex**: `find ~/.codex/sessions/<YYYY>/<MM> -name 'rollout-*.jsonl' -mtime -<days>`
-  then **drop non-interactive rollouts** — read line 1 (`session_meta`) of each and
-  keep only `payload.originator == "codex-tui"` with `payload.thread_source ==
-  "user"`. `codex_exec` runs and `subagent` threads are automation, not sessions,
-  and are typically the majority of the window (see the reference)
-- **Cursor**: `find ~/.cursor/projects -path '*/agent-transcripts/*/*.jsonl' -mtime -<days>`
-  (full transcripts — these are the real conversations, not the `agent-tools/*.txt`
-  files which are tool outputs only; for the SQLite fallback see the reference)
-- **Gemini**: `find ~/.gemini/tmp -path '*/chats/session-*.json' -mtime -<days>`
-  (**not** `~/.gemini/history/`, which holds only `.project_root` markers)
-- **OpenCode**: query the SQLite store — sessions are no longer JSON files:
-  ```bash
-  sqlite3 "file:$HOME/.local/share/opencode/opencode.db?mode=ro" \
-    "SELECT id, title, directory FROM session
-     WHERE time_updated > (strftime('%s','now') - <days>*86400)*1000
-     ORDER BY time_updated DESC;"
-  ```
-  Use `$HOME`, not `~` — a tilde inside the quoted `file:` URI is not expanded by
-  the shell or by SQLite, and the open fails. **Not** `storage/project/*.json`,
-  which is a stale project registry.
+The index is a JSON object:
+
+```json
+{"generated_at": "...", "window_days": 14,
+ "tools": {"codex": {"total": 32, "store_present": true,
+                     "sessions": [{"tool": "codex", "path": "...", "session_id": "...",
+                                   "short_id": "019ff7bf", "date": "2026-08-12",
+                                   "date_source": "session_meta", "interactive": false,
+                                   "originator": "codex_exec", "thread_source": "user"}]}}}
+```
+
+Three fields carry rules that used to be yours to remember, and are now computed:
+
+- **`interactive`** — for Codex, true only for `codex-tui` + `thread_source: user`;
+  for OpenCode, true only when `parent_id` is null. **Scan only `interactive` entries**
+  unless the user explicitly asked for automation runs. On a measured week, 25 of 32
+  Codex rollouts were `codex_exec` automation or subagent threads.
+- **`date_source`** — where the date came from (`first-event`, `session_meta`,
+  `startTime`, `filename`, `time_created`, or `mtime`). Anything other than `mtime` is
+  a true session start; `mtime` is a fallback that drifts on long-running sessions.
+- **`store_present`** — whether the tool's storage exists at all. `total: 0` with
+  `store_present: true` means "nothing in the window"; `store_present: false` means
+  "this tool is not installed here". Report which one you found; never a bare zero.
+
+If the index file is missing or its `generated_at` is older than the user's window,
+say so and ask them to start a new session (the hook refreshes daily) or run
+`python3 "$CLAUDE_PLUGIN_ROOT/scripts/index-sessions.py" --days <N> --out <path>`
+themselves. Do not fall back to walking the stores yourself — you have no Bash grant,
+and an index you cannot refresh is a fact to report, not to work around.
+
+Sampling a candidate's content for Step 4 is a **Read**, not a shell command: read the
+first and last stretch of the transcript at `path`.
 
 If a tool's directory doesn't exist, skip it silently — the user may not use all 5.
 
