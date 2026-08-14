@@ -120,4 +120,28 @@ grep -q 'publish-vault-path.sh' plugins/obsidian-wiki/hooks/hooks.json \
     || fail "publish-vault-path.sh is missing or not executable"
 ok "publish-vault-path.sh exists and is wired into SessionStart"
 
+# BL-027 end state: NO skill and NO agent holds any Bash grant. Every remaining
+# shell call lives in a command, which runs only when the user types it — a skill
+# can be triggered by natural language that an ingested source influenced, so this
+# is the boundary that matters. Commands are allowed to hold grants; skills are not.
+BAD_SKILL=0
+while IFS= read -r f; do
+    grep -qE '^(allowed-tools|tools):.*Bash' "$f" || continue
+    echo "  SKILL/AGENT WITH SHELL: ${f#./}" >&2
+    BAD_SKILL=$((BAD_SKILL + 1))
+done < <(find plugins -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' \) | sort)
+[ "$BAD_SKILL" -eq 0 ] \
+    || fail "$BAD_SKILL skill/agent file(s) hold a Bash grant; move the call to the command layer"
+ok "no skill or agent holds a Bash grant — shell lives only in user-typed commands"
+
+# ...and a command that runs a pipeline must actually declare what it uses, rather
+# than inheriting silently. index.md and link.md both had no key at all before.
+for c in plugins/obsidian-wiki/commands/lint.md plugins/obsidian-wiki/commands/index.md \
+         plugins/vault-context/commands/link.md; do
+    [ -f "$c" ] || fail "$c is gone — update this test if it moved"
+    grep -qE '^allowed-tools:.*Bash\(' "$c" \
+        || fail "$c runs a script but declares no scoped Bash grant"
+done
+ok "the three pipeline commands declare their own scoped grants"
+
 echo "ALL OK"
