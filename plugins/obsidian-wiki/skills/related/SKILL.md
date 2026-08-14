@@ -1,6 +1,6 @@
 ---
 name: related
-allowed-tools: Read, Glob, Grep, Edit, Bash(bash:*)
+allowed-tools: Read, Glob, Grep, Edit
 description: >
   Use when the user asks to find missing cross-references for a specific page in their
   Obsidian vault, mentions "/obsidian-wiki:related", or asks "what should this page link to" or
@@ -8,7 +8,12 @@ description: >
   or any request to enrich a single page's wikilinks.
 ---
 
-> **Vault path:** `<vault>` refers to the path returned by `$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh`. Run it first to resolve the vault location.
+> **Vault path:** `<vault>` is published by the SessionStart hook at
+> `${XDG_CONFIG_HOME:-~/.config}/obsidian-wiki/state/vault-path` — **Read** that file;
+> do not shell out. If it is missing (hooks disabled, or a first session before the
+> hook has run), read `default_vault` from `~/.config/obsidian-wiki/config.json`, and
+> fall back to `~/dev/knowledge`. The hook is the only place `$OBSIDIAN_VAULT_PATH` is
+> honoured, so reading its output keeps skills and hooks pointed at the same vault.
 
 # Vault Related
 

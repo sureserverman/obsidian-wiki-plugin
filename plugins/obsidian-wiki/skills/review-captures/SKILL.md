@@ -1,6 +1,6 @@
 ---
 name: review-captures
-allowed-tools: Read, Glob, Grep, Bash(bash:*)
+allowed-tools: Read, Glob, Grep
 description: >
   Use when the user asks to review pending session captures, asks "what did the
   hook flag", asks to triage auto-captured Claude Code sessions, mentions
@@ -10,7 +10,12 @@ description: >
   auto-captured", or "import the flagged sessions".
 ---
 
-> **Vault path:** `<vault>` refers to the path returned by `bash "$CLAUDE_PLUGIN_ROOT/scripts/resolve-vault.sh"`. Run it first to resolve the vault location. Invoke it via `bash` — this skill's `allowed-tools` grants `Bash(bash:*)`, not arbitrary executable paths.
+> **Vault path:** `<vault>` is published by the SessionStart hook at
+> `${XDG_CONFIG_HOME:-~/.config}/obsidian-wiki/state/vault-path` — **Read** that file;
+> do not shell out. If it is missing (hooks disabled, or a first session before the
+> hook has run), read `default_vault` from `~/.config/obsidian-wiki/config.json`, and
+> fall back to `~/dev/knowledge`. The hook is the only place `$OBSIDIAN_VAULT_PATH` is
+> honoured, so reading its output keeps skills and hooks pointed at the same vault.
 
 # Vault Capture Review
 
