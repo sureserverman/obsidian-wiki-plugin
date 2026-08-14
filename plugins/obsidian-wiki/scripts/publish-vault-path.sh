@@ -49,7 +49,11 @@ state_dir="${XDG_CONFIG_HOME:-$HOME/.config}/obsidian-wiki/state"
 mkdir -p "$state_dir" 2>/dev/null || exit 0
 
 # Write atomically: a skill reading this file must never see a partial path.
-tmp="$state_dir/.vault-path.$$"
+# mktemp, not "$$": a PID is predictable, and writing a fixed-name temp file is
+# the same class of hazard this plugin just moved its update cache out of /tmp to
+# avoid. The directory is user-owned, so the risk is small — which is exactly why
+# it would have been easy to leave.
+tmp="$(mktemp "$state_dir/.vault-path.XXXXXX" 2>/dev/null)" || exit 0
 printf '%s\n' "$vault_path" > "$tmp" 2>/dev/null || { rm -f "$tmp" 2>/dev/null; exit 0; }
 mv "$tmp" "$state_dir/vault-path" 2>/dev/null || rm -f "$tmp" 2>/dev/null
 

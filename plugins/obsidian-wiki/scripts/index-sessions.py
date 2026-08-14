@@ -42,6 +42,7 @@ import os
 import re
 import sqlite3
 import sys
+import tempfile
 import time
 
 HOME = os.path.expanduser("~")
@@ -56,6 +57,17 @@ def _within(path: str, cutoff: float) -> bool:
         return os.path.getmtime(path) >= cutoff
     except OSError:
         return False
+
+
+def _note(path, exc):
+    """Record a per-file parse failure without crashing the run.
+
+    A broad catch is the right shape here — this parses transcripts from five
+    external tools and one malformed file must never sink the index — but
+    swallowing silently hid which file failed. bandit B110 / ruff S110 flag the
+    bare `pass`; the answer is to say something, not to narrow the catch.
+    """
+    sys.stderr.write(f"index-sessions: skipped {path}: {type(exc).__name__}\n")
 
 
 def claude_code(cutoff):
@@ -75,8 +87,8 @@ def claude_code(cutoff):
                 with open(p, encoding="utf-8", errors="replace") as fh:
                     first = fh.readline()
                 start = (json.loads(first).get("timestamp") or "")[:10] or None
-            except Exception:
-                pass
+            except Exception as e:      # malformed transcript: fall back, do not crash
+                _note(p, e)
             out.append({
                 "tool": "claude-code", "path": p,
                 "session_id": fn[:-6], "short_id": fn[:8],
@@ -102,8 +114,8 @@ def codex(cutoff):
             try:
                 with open(p, encoding="utf-8", errors="replace") as fh:
                     meta = (json.loads(fh.readline()) or {}).get("payload") or {}
-            except Exception:
-                pass
+            except Exception as e:      # malformed transcript: fall back, do not crash
+                _note(p, e)
             originator = meta.get("originator")
             thread_source = meta.get("thread_source")
             sid = meta.get("session_id") or ""
@@ -171,8 +183,8 @@ def gemini(cutoff):
                     d = json.load(fh)
                 sid = d.get("sessionId")
                 start = (d.get("startTime") or "")[:10] or None
-            except Exception:
-                pass
+            except Exception as e:      # malformed transcript: fall back, do not crash
+                _note(p, e)
             m = re.match(r"session-(\d{4}-\d{2}-\d{2})T[\d-]+-([0-9a-f]{8})", fn)
             out.append({
                 "tool": "gemini", "path": p,
@@ -253,8 +265,9 @@ def main(argv=None):
     text = json.dumps(index, indent=1, sort_keys=True)
     if a.out:
         os.makedirs(os.path.dirname(a.out), exist_ok=True)
-        tmp = f"{a.out}.{os.getpid()}"
-        with open(tmp, "w") as fh:
+        # tempfile, not a PID suffix — a PID is predictable.
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(a.out), prefix=".sessions-index.")
+        with os.fdopen(fd, "w") as fh:
             fh.write(text + "\n")
         os.replace(tmp, a.out)
     else:

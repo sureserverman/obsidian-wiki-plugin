@@ -32,8 +32,8 @@ LIB_DIR="$script_dir/lib"
 # but Claude Code may pipe JSON in.
 cat >/dev/null 2>&1 || true
 
-# Resolve queue root once
-QROOT="$(queue_root)" || exit 0
+# The queue root is resolved per-kind by the queue lib; a module-level copy here
+# was assigned and never read.
 
 # ---------------------------------------------------------------------------
 # describe_<kind> <job-path> -> prints one plaintext line per item.

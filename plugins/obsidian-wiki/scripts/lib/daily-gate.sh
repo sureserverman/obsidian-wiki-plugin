@@ -51,11 +51,15 @@ daily_gate_acquire() {
     local f
     f="$(daily_gate_today_filename "$kind")" || return 1
 
+    # Create-exclusively rather than test-then-create. Two SessionStart hooks
+    # firing at once (two Claude Code windows opening together) could both pass
+    # an `[ -f ]` check and both enqueue the day's job. `set -o noclobber` with
+    # `>` fails if the file exists, so exactly one caller wins the race and the
+    # gate means what it claims.
     if [ -f "$f" ]; then
         return 1
     fi
-
-    : > "$f" 2>/dev/null || return 1
+    ( set -o noclobber; : > "$f" ) 2>/dev/null || return 1
 
     # Prune old sentinels of the same kind. We deliberately use -not -name
     # rather than mtime — the file's date is encoded in its name, which is
