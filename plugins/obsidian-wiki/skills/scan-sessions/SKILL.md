@@ -101,8 +101,18 @@ Where `<short-id>` is the first 8 chars of the session UUID — for OpenCode, it
 
 Then check both idempotency conditions:
 
-1. Does `<vault>/raw/sessions/<filename>` exist?
+1. Does some file in `<vault>/raw/sessions/` carry this session's `source-uuid`
+   (and, for Cursor, the same `source-project`)?
 2. Does any wiki page's frontmatter `sources:` contain that path?
+
+**Match on identity, not on the filename.** The name embeds a date, and the two
+sides derive that date differently: `import-session` uses the first-event
+timestamp, while the index falls back to the file mtime whenever no event
+timestamp is reachable — always for Cursor, which has none. When they disagree
+the session reads as un-imported and is written a second time under the wrong
+date. Measured on the 2026-08-14 worklist: 64 of 606 "pending" rows were already
+in the vault under a different date. `source-uuid` does not drift; the filename
+does. `scripts/build-worklist.py` applies this same key.
 
 If **neither** is true, the session is a fresh candidate — score it and include it.
 

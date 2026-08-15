@@ -40,7 +40,7 @@ full. Note:
 
 For each "discussed" entity from Step 1, search the vault for a page that covers it:
 
-- Grep all six category directories for the entity name.
+- Grep every category directory named in the vault's `CLAUDE.md` for the entity name.
 - Match against page filenames (case-insensitive) and against `aliases:` frontmatter.
 - For each candidate page, briefly skim it to confirm it's actually about that entity
   (not just a name-drop in a different page).

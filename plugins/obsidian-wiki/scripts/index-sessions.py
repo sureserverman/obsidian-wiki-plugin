@@ -47,6 +47,12 @@ import time
 
 HOME = os.path.expanduser("~")
 
+# Claude Code writes untimestamped header events (last-prompt, mode,
+# permission-mode, bridge-session, file-history-snapshot) before the first real
+# one, so the start date can sit several lines in. Bounded so a malformed or
+# header-only transcript still costs O(1) rather than a full scan.
+PREAMBLE_MAX_LINES = 50
+
 
 def _iso(epoch: float) -> str:
     return time.strftime("%Y-%m-%d", time.gmtime(epoch))
@@ -102,8 +108,17 @@ def claude_code(cutoff):
             start = None
             try:
                 with open(p, encoding="utf-8", errors="replace") as fh:
-                    first = fh.readline()
-                start = (json.loads(first).get("timestamp") or "")[:10] or None
+                    for _ in range(PREAMBLE_MAX_LINES):
+                        line = fh.readline()
+                        if not line:
+                            break
+                        try:
+                            ts = json.loads(line).get("timestamp")
+                        except ValueError:  # one bad line, keep looking
+                            continue
+                        if ts:
+                            start = ts[:10]
+                            break
             except Exception as e:      # malformed transcript: fall back, do not crash
                 _note(p, e)
             out.append({

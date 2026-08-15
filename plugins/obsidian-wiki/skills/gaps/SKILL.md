@@ -27,7 +27,7 @@ have a source).
 
 ## Step 1 — Build the entity universe
 
-Scan the six category directories for capitalized names that look like entities. The
+Scan every category directory named in the vault's `CLAUDE.md` for capitalized names that look like entities. The
 heuristic:
 
 - Multi-word `Title Case` runs in prose: "Tor Bootstrap", "Caddy ACME", "GrapheneOS
