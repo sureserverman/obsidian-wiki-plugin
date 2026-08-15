@@ -41,7 +41,7 @@ candidates for regeneration.
 
 ## Step 2 — Inventory the filesystem
 
-For each page file under the six category directories:
+For each page file under the category directories named in the vault's `CLAUDE.md`:
 
 - Read the file's frontmatter (`title`, `tags`, optional `summary` or first-line
   description).

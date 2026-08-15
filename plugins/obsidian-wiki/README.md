@@ -76,7 +76,7 @@ The plugin is configured for a vault at `~/dev/knowledge` with this layout:
 └── .obsidian/           # Obsidian config (untouched)
 ```
 
-The six category directories and `Home.md` already exist. The bootstrap step adds
+The category directories and `Home.md` already exist. The bootstrap step adds
 `CLAUDE.md`, `log.md`, and `raw/`. **No existing files are touched.**
 
 ## Install
