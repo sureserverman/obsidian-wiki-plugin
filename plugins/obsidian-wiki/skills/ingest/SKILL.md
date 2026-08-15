@@ -21,7 +21,7 @@ Incorporate a new source into the Obsidian vault at `<vault>` by writing or
 updating a wiki page, adding cross-references to related pages, and logging the activity.
 
 The vault already has its own structure — do not restructure it. Work within the existing
-six category directories and use `Home.md` as the navigation index.
+category directories the vault's `CLAUDE.md` defines, and use `Home.md` as the navigation index.
 
 ## Preconditions
 
@@ -53,19 +53,31 @@ descriptive filename (date prefix optional). For PDFs or images, keep the binary
 
 ## Category selection
 
-The existing wiki uses six top-level directories. Pick exactly one:
+**The vault's `CLAUDE.md` is the authority on which categories exist — read it and use
+its list, not this one.** Vaults differ, and this table has been wrong before: it listed
+six directories against a vault that defined twelve, so anything belonging to one of the
+missing six had nowhere correct to go and got filed under a near-miss instead.
+
+A common layout, for orientation only:
 
 | Directory | What goes here |
 |---|---|
 | `Architecture/` | System-level designs spanning multiple components |
+| `Decisions/` | ADR-style rationale for choosing one option over another |
 | `Gotchas/` | Surprises, footguns, non-obvious failure modes you want to remember |
+| `Incidents/` | Post-mortems of specific events — timeline, fix, lessons |
 | `Patterns/` | Reusable approaches and conventions |
+| `Plans/` | Staged build plans for one arc — stage gates, dependencies, cuts |
 | `Platforms/` | Platform-specific notes (macOS, Linux, Android, etc.) |
 | `Projects/` | Per-project notes (one file per project) |
+| `Runbooks/` | Step-by-step operational procedures |
 | `Technologies/` | Per-tool / per-protocol notes (one file per technology) |
+| `Threat Models/` | Adversary profiles, trust boundaries, attack surfaces |
+| `Tooling/` | AI-tooling artifacts you maintain (skills, subagents, plugins) |
 
-Read `CLAUDE.md` for the tie-breaker rules when a source could fit in more than one
-category. When in doubt, ask the user — do not guess silently.
+Pick exactly one. Read `CLAUDE.md` for the tie-breaker rules when a source could fit in
+more than one category, and for any category not listed above. When in doubt, ask the
+user — do not guess silently.
 
 **Prefer updating over creating.** Before writing a new page, grep the target category
 for an existing page on the same topic. If one exists and the source extends it, update
