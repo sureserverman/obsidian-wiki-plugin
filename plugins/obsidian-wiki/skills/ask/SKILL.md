@@ -35,7 +35,7 @@ tables and list the 3–8 pages most likely to contain relevant material. Do not
 every page the index mentions — just the plausible matches.
 
 If `Home.md` does not exist or is empty, the vault may not be fully bootstrapped. In
-that case, fall back to `ls` of the six category directories plus grep for keywords —
+that case, fall back to `ls` of the category directories named in the vault's `CLAUDE.md` plus grep for keywords —
 but tell the user the index is missing.
 
 ## Step 2 — Targeted reads
@@ -48,7 +48,7 @@ Do **not** read every page in a category just because the category name sounds
 relevant. Only read pages that `Home.md` specifically identified.
 
 If after reading the identified pages you still don't have an answer, expand the
-search: grep the six category directories for specific terms from the question, then
+search: grep the category directories named in the vault's `CLAUDE.md` for specific terms from the question, then
 read any new hits. Note in your answer that you had to go outside the index.
 
 ## Step 3 — Synthesis with citations

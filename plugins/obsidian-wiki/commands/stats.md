@@ -13,7 +13,7 @@ report directly from the filesystem and `log.md`.
 
 ## Procedure
 
-1. **Page counts**: count `.md` files in each of the six category dirs (Architecture,
+1. **Page counts**: count `.md` files in each category dir named in the vault's `CLAUDE.md` (commonly Architecture,
    Gotchas, Patterns, Platforms, Projects, Technologies). Show as a table with totals.
 2. **Hub pages (top 10)**: rank pages by inbound `[[wikilink]]` count. Exclude
    `Home.md`.
