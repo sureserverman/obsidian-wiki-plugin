@@ -364,8 +364,18 @@ stem before writing, and fall back to `-<project-slug>` when one exists.
 
 A session is "already imported" if **either**:
 
-1. A file exists at `raw/sessions/<tool>-<date>-<short-id>.md`, OR
+1. Some file in `raw/sessions/` carries this session's `source-uuid` — plus the
+   same `source-project`, for Cursor — OR
 2. Some wiki page's `sources:` frontmatter array contains that path.
+
+Condition 1 is deliberately **not** "a file exists at
+`raw/sessions/<tool>-<date>-<short-id>.md`". That name embeds a date, and the
+scan and the import derive it differently: the import uses the session's
+first-event timestamp, the index falls back to file mtime whenever no event
+timestamp is reachable — which for Cursor is always, since its transcripts carry
+no timestamps at all. Whenever the two disagree the session looks fresh and is
+imported again under the wrong date. On the 2026-08-14 worklist that was 64 of
+606 rows. Identity does not drift; the filename does.
 
 When scanning, surface only sessions that are NOT already imported — **unless** the
 source has grown past the staleness threshold since the last import. Many tools
