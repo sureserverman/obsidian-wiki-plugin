@@ -88,8 +88,15 @@ counter.
 
 Then check **both** conditions:
 
-1. Does `<vault>/raw/sessions/<filename>` already exist?
+1. Does some file in `<vault>/raw/sessions/` already carry this session's
+   `source-uuid` (and, for Cursor, the same `source-project`)?
 2. Does any wiki page's frontmatter `sources:` array contain that path?
+
+Check (1) by **identity, not by filename**. The filename embeds a date, and the
+date computed here (first event) is not the date the index computed (file mtime,
+whenever no event timestamp is reachable — always for Cursor). A filename-only
+check therefore misses a prior import whose date differs and writes a duplicate:
+64 of the 606 rows on the 2026-08-14 worklist were in exactly that state.
 
 If either is true, the default behavior is to **stop and tell the user** which
 page already references this session — do not silently overwrite. Two reasons to
