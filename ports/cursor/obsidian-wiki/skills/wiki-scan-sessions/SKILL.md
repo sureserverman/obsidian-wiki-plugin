@@ -1,8 +1,8 @@
 ---
-name: scan-sessions
+name: wiki-scan-sessions
 description: >
   Use when the user asks to find vault-worthy moments from recent AI coding sessions
-  across Claude Code, Cursor, Codex, Gemini, or OpenCode, mentions "/scan-sessions",
+  across Claude Code, Cursor, Codex, Gemini, or OpenCode, mentions "/wiki-scan-sessions",
   or asks "what should I capture from my agent sessions". Trigger on "mine my sessions
   for the wiki", "find lessons from yesterday's debugging", "what did I learn this week",
   or "scan recent agent sessions for raw/".
@@ -17,7 +17,7 @@ description: >
 
 Discover recent sessions across the user's AI coding tools (Claude Code, Codex, Cursor,
 Gemini, OpenCode), score them for vault-worthiness, and present candidates the user can
-import into the wiki via `import-session`.
+import into the wiki via `wiki-import-session`.
 
 This skill is **read-only** — it never writes to `raw/`, the wiki, or `log.md`. It only
 surfaces candidates.
@@ -108,7 +108,7 @@ Then check both idempotency conditions:
 2. Does any wiki page's frontmatter `sources:` contain that path?
 
 **Match on identity, not on the filename.** The name embeds a date, and the two
-sides derive that date differently: `import-session` uses the first-event
+sides derive that date differently: `wiki-import-session` uses the first-event
 timestamp, while the index falls back to the file mtime whenever no event
 timestamp is reachable — always for Cursor, which has none. When they disagree
 the session reads as un-imported and is written a second time under the wrong
@@ -221,7 +221,7 @@ Tag each candidate with any of four **canonical trigger heuristics** it exhibits
 (these are the exact labels the coder-plugins `session-analyzer` / `skill-workshop`
 use — spell them identically so the two toolchains stay in sync). These are a
 **secondary label**, not a second scoring pass: the numeric 0–5 score above is
-unchanged; the trigger tags ride into the report so an `import-session` pick
+unchanged; the trigger tags ride into the report so an `wiki-import-session` pick
 inherits the "why this mattered" context.
 
 | Trigger | Signal in the session | Related Step-4 row |
@@ -241,7 +241,7 @@ Group by tool, sort by score within each group. Separate **Fresh** candidates
 (never imported) from **Refresh** candidates (already imported but the source
 has grown past the staleness threshold — Step 3). Annotate each candidate with
 any trigger heuristics it matched (e.g. `[user-correction, error-resolved]`) so
-the reason it scored is visible at a glance and rides along into `import-session`.
+the reason it scored is visible at a glance and rides along into `wiki-import-session`.
 
 ```markdown
 # Session scan — last 7 days
@@ -263,7 +263,7 @@ the reason it scored is visible at a glance and rides along into `import-session
 3. **2026-04-02 — long-running skill dev session** (190 → 2100 turns, 11×)
    - Imported: `raw/sessions/claude-code-2026-04-02-aaaaaaaa.md` (extracted 2026-04-03)
    - Source mtime: 2026-04-12
-   - Re-import with `/import-session --force` to refresh
+   - Re-import with `/wiki-import-session --force` to refresh
 
 ## Codex (2 fresh)
 ...
@@ -288,7 +288,7 @@ considered, they can re-run the scan — it's idempotent.
 
 ## What never to do
 
-- **Do not write to `raw/`.** That's `import-session`'s job.
+- **Do not write to `raw/`.** That's `wiki-import-session`'s job.
 - **Do not modify any wiki page.** Scanning is read-only.
 - **Do not slurp full session files into context.** A 100MB JSONL will blow your
   context window. Stream-parse, sample head/tail/errors only.
@@ -300,7 +300,7 @@ considered, they can re-run the scan — it's idempotent.
 ## Delegation (optional, for cost/speed)
 
 Steps 2 (discovery) and 4 (scoring by sampling JSONL head/tail/error windows) are
-the read-heavy phases. Delegate them to the `vault-scanner` Cursor subagent
+the read-heavy phases. Delegate them to the `wiki-vault-scanner` Cursor subagent
 (read-only). Give it:
 
 - the list of tool storage roots to walk,

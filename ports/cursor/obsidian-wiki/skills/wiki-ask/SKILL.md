@@ -1,8 +1,8 @@
 ---
-name: ask
+name: wiki-ask
 description: >
   Use when the user asks a research or recall question that their Obsidian vault at
-  <vault> might answer, or mentions "/ask". Trigger on "what do I know about X",
+  <vault> might answer, or mentions "/wiki-ask". Trigger on "what do I know about X",
   "what's in my notes about Y", "check my wiki for Z", or any factual question about tools,
   protocols, decisions, or gotchas the user has written up in their notes.
 ---
@@ -88,7 +88,7 @@ first.** Do not file unprompted.
 When the user agrees:
 
 1. Pick the category (usually `Gotchas/` or `Patterns/` for synthesized answers).
-2. Write the page using the schema from `CLAUDE.md` (same frontmatter as `ingest`
+2. Write the page using the schema from `CLAUDE.md` (same frontmatter as `wiki-ingest`
    would use).
 3. Cite every wiki page that fed into the synthesis.
 4. If the answer was derived from a concrete question, record the question in the

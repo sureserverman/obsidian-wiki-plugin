@@ -1,9 +1,9 @@
 ---
-name: ingest
+name: wiki-ingest
 description: >
   Use when the user asks to ingest a source into their Obsidian vault at <vault>,
   add an article/PDF/page to the wiki, process something dropped into raw/, or mentions
-  "/ingest". Trigger on "ingest this", "add this to my notes", "process this article",
+  "/wiki-ingest". Trigger on "ingest this", "add this to my notes", "process this article",
   "put this in the wiki", or when a new file appears under <vault>/raw/.
 ---
 
@@ -210,7 +210,7 @@ append-mostly, and needs to see conflicts explicitly.
 The summary-page drafting (frontmatter + TL;DR + key points + details sections
 from the source content) is a content-transformation job that a smaller worker
 handles well at lower cost than the caller. Delegate the page authoring to the
-`vault-writer` Cursor subagent. Give it:
+`wiki-vault-writer` Cursor subagent. Give it:
 
 - the vault path and chosen category dir,
 - the source path (under `raw/`),

@@ -1,5 +1,5 @@
 ---
-name: vault-scanner
+name: wiki-vault-scanner
 description: Read-only scanner for an Obsidian vault. Use for bulk file enumeration, wikilink/frontmatter extraction, grepping many files, and sampling AI-coding session JSONL files. Returns structured findings. Never writes to the vault. Delegate here from lint, index, and scan-sessions when the scan phase is read-heavy.
 readonly: true
 ---
