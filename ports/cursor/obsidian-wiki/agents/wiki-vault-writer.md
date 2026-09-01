@@ -1,5 +1,5 @@
 ---
-name: vault-writer
+name: wiki-vault-writer
 description: Writes wiki pages into an Obsidian vault from structured input — summarizing a raw source into a categorized page, converting an AI-coding session JSONL into a narrative `raw/sessions/*.md`, or merging two overlapping pages into one. Use for content-transformation tasks where the caller has already decided *what* to write and needs a smaller worker to produce the actual page body and land it on disk. Bounded to the vault path. Never edits outside the vault or touches `index.md`/`CLAUDE.md`.
 ---
 

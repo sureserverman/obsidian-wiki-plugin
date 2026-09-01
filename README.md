@@ -55,8 +55,8 @@ This adds `CLAUDE.md`, `log.md`, `raw/`, and a tiny config file at `~/.config/ob
 
 ## Cursor port (manual skills only)
 
-`ports/cursor/` holds a Cursor plugin with the five limit-heavy skills (`ingest`,
-`import-session`, `scan-sessions`, `ask`, `related`) and the two subagents, so heavy
+`ports/cursor/` holds a Cursor plugin with the five limit-heavy skills (`wiki-ingest`,
+`wiki-import-session`, `wiki-scan-sessions`, `wiki-ask`, `wiki-related`) and the two subagents, so heavy
 imports can run on Cursor's quota. It ships no hooks or daily jobs — Claude Code keeps
 the automation. Install with `bash ports/cursor/install.sh`; details in
 [ports/cursor/README.md](ports/cursor/README.md).

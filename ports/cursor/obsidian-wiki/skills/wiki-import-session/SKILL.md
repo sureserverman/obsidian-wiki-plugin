@@ -1,11 +1,11 @@
 ---
-name: import-session
+name: wiki-import-session
 description: >
   Use when the user picks a specific AI coding session (Claude Code, Cursor, Codex, Gemini,
-  OpenCode) to extract into the vault, mentions "/import-session", or asks to
+  OpenCode) to extract into the vault, mentions "/wiki-import-session", or asks to
   "import that session", "save this debugging arc to the wiki", "extract this conversation
   into raw/", or "turn yesterday's session into a note". Trigger after the user reviews a
-  candidate from `scan-sessions` and chooses one.
+  candidate from `wiki-scan-sessions` and chooses one.
 ---
 
 > **Vault path:** `<vault>` is `default_vault` in `~/.config/obsidian-wiki/config.json` —
@@ -16,12 +16,12 @@ description: >
 # Vault Session Import
 
 Take a single AI coding session — identified by path, UUID, or candidate ID from a prior
-`scan-sessions` run — and turn it into a markdown source file under
-`<vault>/raw/sessions/`. Optionally chain to `ingest` to file the resulting
+`wiki-scan-sessions` run — and turn it into a markdown source file under
+`<vault>/raw/sessions/`. Optionally chain to `wiki-ingest` to file the resulting
 source into the wiki proper.
 
 This skill **writes one new file** in `raw/sessions/`. It does not edit existing wiki
-pages — that's `ingest`'s job. The two-skill split lets the user review the
+pages — that's `wiki-ingest`'s job. The two-skill split lets the user review the
 extracted markdown before it lands in the wiki.
 
 ## Step 1 — Resolve the session
@@ -38,7 +38,7 @@ If the input is ambiguous, ask the user to confirm before continuing.
 
 Identify the **tool** (claude-code, codex, cursor, gemini, opencode) from the path. The
 tool determines the parser and the filename prefix. See
-`../scan-sessions/references/storage-paths.md` for path-to-tool mapping.
+`../wiki-scan-sessions/references/storage-paths.md` for path-to-tool mapping.
 
 ## Step 2 — Idempotency check
 
@@ -222,7 +222,7 @@ entry's heading and `<short-id>` is the same 8-char prefix of the session
 UUID. This is the **only** authoritative marker that `review-captures`
 uses to tell pending captures from imported ones, so do not skip it for
 capture-driven imports. Manual imports (where the user passed a path
-directly to `/import-session` and there's no capture entry
+directly to `/wiki-import-session` and there's no capture entry
 in the log) omit this line.
 
 ## Step 6 — Offer to chain into ingest
@@ -231,10 +231,10 @@ After writing the raw file and logging, ask the user:
 
 > Wrote `raw/sessions/<filename>`. Want to ingest it into the wiki now? (Y/n)
 
-If yes, hand off to `ingest` with the new file as input. The ingest skill handles
+If yes, hand off to `wiki-ingest` with the new file as input. The ingest skill handles
 category selection, cross-refs, and the wiki page creation independently.
 
-If no, leave the file in `raw/sessions/`. The user can run `/ingest
+If no, leave the file in `raw/sessions/`. The user can run `/wiki-ingest
 raw/sessions/<filename>` later.
 
 ## What never to do
@@ -242,7 +242,7 @@ raw/sessions/<filename>` later.
 - **Do not slurp the entire session file into context.** A 100MB JSONL will blow your
   context window. Stream-parse line-by-line, extract only the relevant events.
 - **Do not write into a wiki category dir** (`Architecture/`, `Gotchas/`, etc.). That's
-  `ingest`'s job, not this skill's. Session imports always land in
+  `wiki-ingest`'s job, not this skill's. Session imports always land in
   `raw/sessions/` first.
 - **Do not fabricate content.** If a session has no extractable narrative (pure code
   generation, no diagnostic turns), tell the user. Don't invent insights to justify the
@@ -262,7 +262,7 @@ raw/sessions/<filename>` later.
 
 Step 3 (stream-parse extraction) and Step 4 (writing the structured raw file)
 are exactly the content-transformation shape a smaller worker is built for.
-Delegate both to the `vault-writer` Cursor subagent. Give it:
+Delegate both to the `wiki-vault-writer` Cursor subagent. Give it:
 
 - the resolved session path, the tool name, the canonical `raw/sessions/`
   filename, and the session UUID/short-id,
