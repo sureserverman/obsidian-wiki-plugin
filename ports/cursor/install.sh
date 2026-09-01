@@ -23,6 +23,7 @@ for arg in "$@"; do
     esac
 done
 
+[ -d "$src" ] || { echo "install.sh: $src not found (run from the repo, or fix the path)" >&2; exit 1; }
 [ -d "$src/.cursor-plugin" ] || { echo "install.sh: $src is not a Cursor plugin dir (no .cursor-plugin/)" >&2; exit 1; }
 command -v rsync >/dev/null 2>&1 || { echo "install.sh: rsync is required" >&2; exit 1; }
 if [ -L "$dest" ]; then
@@ -31,5 +32,5 @@ if [ -L "$dest" ]; then
 fi
 
 mkdir -p "$(dirname "$dest")"
-rsync -a --delete $dry --exclude '__pycache__' "$src/" "$dest/"
+rsync -a --delete ${dry:+"$dry"} --exclude '__pycache__' "$src/" "$dest/"
 echo "obsidian-wiki Cursor port -> $dest${dry:+ (dry run)}"

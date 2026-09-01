@@ -221,7 +221,7 @@ Tag each candidate with any of four **canonical trigger heuristics** it exhibits
 (these are the exact labels the coder-plugins `session-analyzer` / `skill-workshop`
 use — spell them identically so the two toolchains stay in sync). These are a
 **secondary label**, not a second scoring pass: the numeric 0–5 score above is
-unchanged; the trigger tags ride into the report so an `wiki-import-session` pick
+unchanged; the trigger tags ride into the report so a `wiki-import-session` pick
 inherits the "why this mattered" context.
 
 | Trigger | Signal in the session | Related Step-4 row |
