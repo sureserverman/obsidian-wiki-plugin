@@ -1,0 +1,12 @@
+{
+  "name": "obsidian-wiki",
+  "description": "Karpathy-style LLM wiki workflow for an Obsidian vault, Cursor port: ingest sources, import AI coding sessions, scan session stores for vault-worthy candidates, and query the vault with citations. Manual invocation only — no hooks, no daily jobs; the Claude Code plugin keeps the automation.",
+  "version": "0.9.8",
+  "author": {
+    "name": "Sure Serverman"
+  },
+  "homepage": "https://github.com/sureserverman/obsidian-wiki-plugin",
+  "repository": "https://github.com/sureserverman/obsidian-wiki-plugin",
+  "license": "MIT",
+  "keywords": ["obsidian", "wiki", "knowledge-base", "sessions", "ingest", "cursor"]
+}
