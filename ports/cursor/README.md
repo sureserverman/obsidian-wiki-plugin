@@ -43,6 +43,14 @@ are `wiki-vault-writer` and `wiki-vault-scanner`.
 
 ## What is deliberately NOT ported
 
+- **The tool-enforced "no shell" boundary on scan-sessions.** In Claude Code that skill
+  carries `allowed-tools: Read, Glob, Grep`, so it *cannot* run a shell against the five
+  untrusted session stores (the combination the 2026-08-13 audit rated HIGH). Cursor has no
+  per-skill tool allowlist, so in `wiki-scan-sessions` that boundary is prose only: the skill
+  text permits exactly one fixed indexer command and forbids walking or querying the stores.
+  A security control that used to be enforced by tooling is enforced here by the model
+  following instructions. Run heavy scans in Claude Code if that matters to you.
+
 - **Hooks and everything they drive:** `hooks.json`, session capture on exit, the
   auto-import queue and its drain, the daily Cursor/Codex import job, the daily index
   rebuild, the update check, the vault-path publisher, the statusline snippet, and the

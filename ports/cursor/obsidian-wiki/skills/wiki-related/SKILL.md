@@ -96,7 +96,7 @@ frontmatter to mention the target (bidirectional link). Ask first.
 ## What never to do
 
 - **Auto-apply suggestions.** Always report-only by default.
-- **Edit the candidate pages without asking.** The skill is named "related" — its job
+- **Edit the candidate pages without asking.** This skill's job
   is to enrich the *target*, not rewrite five other pages.
 - **Suggest links to `Home.md`.** The index is hand-curated and lives separately.
 - **Suggest backlinks for entities the target doesn't actually discuss.** Pure name-drops
