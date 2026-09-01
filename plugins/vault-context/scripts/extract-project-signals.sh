@@ -22,6 +22,19 @@ NOISE_DIRS_RE='^(node_modules|\.git|target|dist|build|out|bin|obj|\.venv|venv|__
 
 STOPWORDS=" the a an is are was were be been being have has had do does did will would should could may might must can shall this that these those there here where when how why what who which not nor too very just only also more most some any all each every both few several about above below over under between through during before after into onto upon down off again further while because however therefore thus although though unless until whether either neither such "
 
+# grep whose "no match" is a normal outcome, not a failure.
+#
+# Every call site below is the head of a pipeline, and the script runs under
+# `set -o pipefail`: a bare grep that matches nothing exits 1, poisons the whole
+# pipeline, and `set -e` then aborts collect_signals mid-way. The signals emitted
+# before that point are still written, so the caller sees a short, plausible list
+# rather than an error — a Cargo *workspace* manifest (no `[package] name`) cut
+# real projects down to a single token, and every vault page then matched on the
+# recency boost alone. Exit 2+ is a genuine grep error and still propagates.
+grep_optional() {
+    grep "$@" || [ $? -eq 1 ]
+}
+
 normalize_tokens() {
     tr '[:upper:]' '[:lower:]' \
         | tr -c 'a-z0-9-\n' ' ' \
@@ -52,19 +65,19 @@ except Exception:
 PY
                 ;;
             pyproject.toml)
-                grep -E '^\s*name\s*=' "$cwd/$f" 2>/dev/null \
+                grep_optional -E '^\s*name\s*=' "$cwd/$f" 2>/dev/null \
                     | head -n 1 \
                     | sed -E 's/.*=\s*"([^"]+)".*/\1/; s/.*=\s*'"'"'([^'"'"']+)'"'"'.*/\1/' \
                     | normalize_tokens
                 ;;
             Cargo.toml)
-                grep -E '^\s*name\s*=' "$cwd/$f" 2>/dev/null \
+                grep_optional -E '^\s*name\s*=' "$cwd/$f" 2>/dev/null \
                     | head -n 1 \
                     | sed -E 's/.*=\s*"([^"]+)".*/\1/' \
                     | normalize_tokens
                 ;;
             go.mod)
-                grep -E '^module\s+' "$cwd/$f" 2>/dev/null \
+                grep_optional -E '^module\s+' "$cwd/$f" 2>/dev/null \
                     | head -n 1 \
                     | awk '{print $2}' \
                     | tr '/' '\n' \
@@ -115,7 +128,7 @@ PY
             | head -n 30 \
             | tr '/' '\n' \
             | normalize_tokens
-        grep -E '^require\s+[^(]' "$cwd/go.mod" 2>/dev/null \
+        grep_optional -E '^require\s+[^(]' "$cwd/go.mod" 2>/dev/null \
             | head -n 30 \
             | awk '{print $2}' \
             | tr '/' '\n' \
@@ -131,13 +144,13 @@ PY
 
     # 3. Top-level dirs
     find "$cwd" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null \
-        | grep -Ev "$NOISE_DIRS_RE" \
+        | grep_optional -Ev "$NOISE_DIRS_RE" \
         | normalize_tokens
 
     # 4. README headings
     for readme in README.md readme.md Readme.md README.MD README; do
         [ -f "$cwd/$readme" ] || continue
-        grep -E '^#{1,2}\s+' "$cwd/$readme" 2>/dev/null \
+        grep_optional -E '^#{1,2}\s+' "$cwd/$readme" 2>/dev/null \
             | sed -E 's/^#+\s+//' \
             | normalize_tokens
         break
