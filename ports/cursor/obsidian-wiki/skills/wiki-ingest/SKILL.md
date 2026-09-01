@@ -126,7 +126,7 @@ For each hit:
 
 A `[[wikilink]]` is one-directional **in the file**: if the new page links to `[[X]]`,
 page `X` is not linked back unless you edit `X` too. Obsidian's backlinks pane computes
-the reverse view, but the text-based `lint` orphan check, and a reader skimming `X`, only
+the reverse view, but the text-based `lint` orphan check (Claude Code-side), and a reader skimming `X`, only
 see links that actually exist in the file. A new page that links *out* but is never
 linked *to* is an orphan the moment it is written.
 

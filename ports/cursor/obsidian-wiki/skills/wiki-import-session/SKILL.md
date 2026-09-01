@@ -209,7 +209,8 @@ documents this list.
 
 ### Cross-reference back to a capture entry
 
-If the import was triggered from `review-captures` (the user picked a
+If the import was triggered from `review-captures` (a Claude Code-side skill, not
+in this port: the user picked a
 capture queued by the Claude Code plugin's session capture), append one extra bullet that points
 back to the originating `session-capture` entry:
 
@@ -219,7 +220,7 @@ back to the originating `session-capture` entry:
 
 Where `<capture-date>` is the `[YYYY-MM-DD]` from the original capture
 entry's heading and `<short-id>` is the same 8-char prefix of the session
-UUID. This is the **only** authoritative marker that `review-captures`
+UUID. This is the **only** authoritative marker that the Claude Code-side `review-captures`
 uses to tell pending captures from imported ones, so do not skip it for
 capture-driven imports. Manual imports (where the user passed a path
 directly to `/wiki-import-session` and there's no capture entry
