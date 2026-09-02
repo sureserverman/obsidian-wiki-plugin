@@ -53,6 +53,14 @@ This adds `CLAUDE.md`, `log.md`, `raw/`, and a tiny config file at `~/.config/ob
 /obsidian-wiki:index              # build the machine-readable digest at <vault>/index.md
 ```
 
+## Cursor port (manual skills only)
+
+`ports/cursor/` holds a Cursor plugin with the five limit-heavy skills (`wiki-ingest`,
+`wiki-import-session`, `wiki-scan-sessions`, `wiki-ask`, `wiki-related`) and the two subagents, so heavy
+imports can run on Cursor's quota. It ships no hooks or daily jobs — Claude Code keeps
+the automation. Install with `bash ports/cursor/install.sh`; details in
+[ports/cursor/README.md](ports/cursor/README.md).
+
 ## Companion plugin: vault-context
 
 `obsidian-wiki` runs from inside the vault. Its companion `vault-context` runs from inside your **project repos** and surfaces vault knowledge there — without you having to remember the vault has notes on what you're working on.
