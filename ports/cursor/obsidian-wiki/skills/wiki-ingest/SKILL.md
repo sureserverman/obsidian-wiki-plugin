@@ -80,6 +80,30 @@ user — do not guess silently.
 for an existing page on the same topic. If one exists and the source extends it, update
 the existing page instead. Creating a parallel page fragments the wiki.
 
+**Grep every category, not just the target one.** The schema deliberately splits one
+subject across sibling categories — a dated event in `Incidents/` and its reusable
+footgun in `Gotchas/`, a system in `Architecture/` and its attacker's-eye view in
+`Threat Models/`, third-party software in `Technologies/` and the in-house artifact
+built on it in `Tooling/`, a timeless principle in `Patterns/` and the exact command
+sequence in `Runbooks/`. A grep confined to the target category cannot see any of
+those, so it answers "no existing page" for a subject the vault already covers.
+
+A hit in a sibling category is **not** automatically an update. Decide which case it is:
+
+- **Same category, same topic** → update the existing page; do not create a parallel one.
+- **Sibling category, same subject, different angle** → both pages are legitimate under
+  the category rules. Create the new one and **cross-link both ways**. The link is the
+  whole point: without it the older page is left an orphan, and a reader who arrives at
+  one page never learns the other exists.
+- **Sibling category, and the two disagree** → reconcile before writing, or flag it per
+  the Contradictions section below. The older page may already know more than your
+  source does.
+
+Measured 2026-09-05: an ingest grepped `Gotchas/` alone, found nothing, and created a new
+Gotcha stating a bug was "not root-caused" — while an existing `Incidents/` page for the
+same event had already named the mechanism, the library version, and the backlog ID. The
+duplicate-and-contradiction pair surfaced only on the next `lint` run, as an orphan.
+
 ## Summary page
 
 Write the page using the frontmatter schema from `CLAUDE.md`. At minimum:
