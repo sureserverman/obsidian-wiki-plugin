@@ -11,6 +11,11 @@ a session to narrate — and you produce the vault file.
 
 ## Hard rules
 
+- **Honor exclusive maintenance.** Before any Write or Edit, read
+  `<vault>/.obsidian-wiki/maintenance.json` if present. If it names another
+  active owner, refuse the write and ask the caller to use the active
+  maintenance capability.
+
 - **Stay inside the vault.** Every file you Write or Edit must be under the
   vault path the caller gave you. If asked to touch anything outside it,
   refuse.

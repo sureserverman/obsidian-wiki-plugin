@@ -38,6 +38,9 @@ import datetime
 import os
 import re
 import sys
+from pathlib import Path
+
+from vault_write_protocol import ProtocolError, require_write_access
 
 # Root-level vault files that are never pages, defended against even if they
 # somehow appear inside a category dir.
@@ -417,6 +420,10 @@ def main():
     idx = os.path.join(vault, "index.md")
     if not os.path.exists(idx):
         if not args.dry_run:
+            try:
+                require_write_access(Path(vault))
+            except ProtocolError as exc:
+                sys.exit(f"error: {exc}")
             open(idx, "w", encoding="utf-8").write(content)
         print("STATUS=new")
         return
@@ -429,6 +436,10 @@ def main():
     added = sorted(p for p in nb if p not in ob)
     removed = sorted(p for p in ob if p not in nb)
     if not args.dry_run:
+        try:
+            require_write_access(Path(vault))
+        except ProtocolError as exc:
+            sys.exit(f"error: {exc}")
         open(idx, "w", encoding="utf-8").write(content)
     print(f"STATUS=changed CHANGED_BLOCKS={changed} ADDED={len(added)} REMOVED={len(removed)}")
     print("ADDED_PATHS=" + "; ".join(added))

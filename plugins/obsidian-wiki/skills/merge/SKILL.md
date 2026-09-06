@@ -17,6 +17,12 @@ description: >
 
 # Vault Merge
 
+## Shared-vault maintenance
+
+Before each confirmed write phase, read `<vault>/.obsidian-wiki/maintenance.json`
+if it exists. Stop if it names a different active owner. The coordinator must
+supply the active capability; follow `docs/workflows/WF-VAULT-WRITE-MAINTENANCE.md`.
+
 Merge two pages in `<vault>` into one canonical page and update every inbound
 `[[wikilink]]` across the vault to point to the survivor. This is the consolidation
 operation — what you do when ingest discovered a duplicate, or when you found two
