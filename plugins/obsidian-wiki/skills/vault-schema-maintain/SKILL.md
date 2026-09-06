@@ -19,6 +19,13 @@ description: >
 
 # Vault Schema Maintain
 
+## Shared-vault maintenance
+
+Before the approved `CLAUDE.md` or `log.md` edit, read
+`<vault>/.obsidian-wiki/maintenance.json` if it exists. Stop if it names a
+different active owner. The coordinator must supply the active capability;
+follow `docs/workflows/WF-VAULT-WRITE-MAINTENANCE.md`.
+
 Edit the vault's `CLAUDE.md` to evolve its conventions over time. This is the only
 skill that is allowed to modify `CLAUDE.md`. All other skills (`ingest`,
 `ask`, `lint`) read it but never write to it.

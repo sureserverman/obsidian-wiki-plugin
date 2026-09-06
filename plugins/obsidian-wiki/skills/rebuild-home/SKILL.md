@@ -17,6 +17,13 @@ description: >
 
 # Vault Home Rebuild
 
+## Shared-vault maintenance
+
+Before each confirmed `Home.md` or `log.md` edit, read
+`<vault>/.obsidian-wiki/maintenance.json` if it exists. Stop if it names a
+different active owner. The coordinator must supply the active capability;
+follow `docs/workflows/WF-VAULT-WRITE-MAINTENANCE.md`.
+
 Regenerate the tables in `<vault>/Home.md` from the actual filesystem state,
 catching drift caused by manual page additions, renames, or deletions in Obsidian.
 
