@@ -29,7 +29,7 @@ cd "$ROOT"
 
 # Every wiki .md except the non-page trees build-index.py also excludes.
 all_md="$tmp/all_md"
-find . -type d \( -name raw -o -name .obsidian -o -name .git \) -prune -o \
+find . -type d \( -name raw -o -name .obsidian -o -name .obsidian-wiki -o -name .git \) -prune -o \
        -type f -name '*.md' -print | sed 's|^\./||' | sort > "$all_md"
 
 # Checkable wiki pages: nested at least one dir deep (excludes root-level
