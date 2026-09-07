@@ -83,6 +83,13 @@ def token_digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def new_token() -> str:
+    # Prefix capabilities so a token can always be passed as the value of a
+    # conventional ``--token VALUE`` CLI option; urlsafe randomness may begin
+    # with ``-`` and otherwise looks like another option to argparse.
+    return "m_" + secrets.token_urlsafe(32)
+
+
 def write_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=".maintenance-", dir=path.parent)
@@ -121,7 +128,7 @@ def start(root: Path, owner: str, purpose: str, lease_seconds: int) -> dict[str,
         if is_expired(existing):
             raise ProtocolError("maintenance window is stale; run recover with explicit acknowledgement")
         raise ProtocolError("an exclusive maintenance window is already active")
-    token = secrets.token_urlsafe(32)
+    token = new_token()
     manifest = make_manifest(owner, purpose, lease_seconds, token)
     # Mutual exclusion comes from the owner-confirmed maintenance window, not
     # from os.replace.  Do not use this operation concurrently on unproven
@@ -166,7 +173,7 @@ def recover(root: Path, owner: str, purpose: str, lease_seconds: int, acknowledg
     if previous.exists():
         raise ProtocolError("stale maintenance history already exists; inspect it before recovery")
     write_json(previous, existing)
-    token = secrets.token_urlsafe(32)
+    token = new_token()
     manifest = make_manifest(owner, purpose, lease_seconds, token)
     write_json(manifest_path(root), manifest)
     return {"token": token, "manifest": manifest}

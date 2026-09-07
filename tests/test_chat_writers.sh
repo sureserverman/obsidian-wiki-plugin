@@ -15,6 +15,7 @@ python3 "$PROTOCOL" --vault "$VAULT" status | jq -e '.state == "open"' >/dev/nul
 START="$(python3 "$PROTOCOL" --vault "$VAULT" start --owner fixture-owner --purpose writer-test --lease-seconds 300)"
 TOKEN="$(printf '%s' "$START" | jq -r '.token')"
 [ "${#TOKEN}" -gt 20 ]
+[[ "$TOKEN" == m_* ]]
 
 if python3 "$PROTOCOL" --vault "$VAULT" check >/dev/null 2>&1; then
     echo "foreign writer was allowed" >&2
@@ -49,6 +50,7 @@ if python3 "$PROTOCOL" --vault "$VAULT" recover --owner replacement --purpose re
 fi
 RECOVERED="$(python3 "$PROTOCOL" --vault "$VAULT" recover --owner replacement --purpose recovery --lease-seconds 300 --acknowledge-stale)"
 NEW_TOKEN="$(printf '%s' "$RECOVERED" | jq -r '.token')"
+[[ "$NEW_TOKEN" == m_* ]]
 [ "$(find "$VAULT/.obsidian-wiki/maintenance-history" -type f -name '*.json' | wc -l)" -eq 1 ]
 if python3 "$PROTOCOL" --vault "$VAULT" finish --token "$TOKEN" >/dev/null 2>&1; then
     echo "stale owner finished replacement window" >&2
