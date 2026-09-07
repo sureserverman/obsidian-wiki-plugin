@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 from typing import Any
@@ -39,6 +40,14 @@ def load(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ApplyError("JSON record must be an object")
     return value
+
+
+def validate_batch_file(path: Path) -> None:
+    validator = Path(__file__).with_name("validate-chat.py")
+    result = subprocess.run([sys.executable, str(validator), "--batch", str(path), "--json"],
+                            capture_output=True, text=True, check=False)
+    if result.returncode:
+        raise ApplyError("batch validation failed before any write")
 
 
 def sha_file(path: Path) -> str | None:
@@ -137,6 +146,7 @@ def checked_journal(path: Path) -> dict[str, Any] | None:
 
 
 def apply(batch_path: Path, vault: Path, roots: list[Path], accepted: str) -> dict[str, Any]:
+    validate_batch_file(batch_path)
     batch = load(batch_path)
     identifier, changes = parse_batch(batch, vault, roots, accepted)
     journal_file = journal_path(vault, identifier)
@@ -170,8 +180,16 @@ def apply(batch_path: Path, vault: Path, roots: list[Path], accepted: str) -> di
         })
     journal = {"format": 1, "batch_id": identifier, "batch_digest": accepted, "state": "planned", "changes": records}
     write_json(journal_file, journal)
+    test_interrupt_after = os.environ.get("OBSIDIAN_WIKI_TEST_INTERRUPT_AFTER")
+    if test_interrupt_after is not None:
+        try:
+            interrupt_after = int(test_interrupt_after)
+        except ValueError as exc:
+            raise ApplyError("OBSIDIAN_WIKI_TEST_INTERRUPT_AFTER must be an integer") from exc
+    else:
+        interrupt_after = 0
     try:
-        for change, record in zip(changes, records):
+        for sequence, (change, record) in enumerate(zip(changes, records), start=1):
             try:
                 require_write_access(vault)
             except ProtocolError as exc:
@@ -182,6 +200,8 @@ def apply(batch_path: Path, vault: Path, roots: list[Path], accepted: str) -> di
             record["applied"] = True
             journal["state"] = "applying"
             write_json(journal_file, journal)
+            if interrupt_after and sequence >= interrupt_after:
+                raise ApplyError("test interruption after durable journal transition")
         journal["state"] = "committed"
         write_json(journal_file, journal)
     except Exception:
@@ -196,6 +216,10 @@ def recover(vault: Path, journal_file: Path) -> dict[str, Any]:
         require_write_access(vault)
     except ProtocolError as exc:
         raise ApplyError(str(exc)) from exc
+    journal_root = (vault / ".obsidian-wiki" / "chat-journals").resolve()
+    journal_file = journal_file.resolve()
+    if not journal_file.is_relative_to(journal_root) or journal_file.suffix != ".json":
+        raise ApplyError("recovery journal must be under the vault chat-journals directory")
     journal = load(journal_file)
     if journal.get("format") != 1 or not isinstance(journal.get("changes"), list):
         raise ApplyError("unsupported journal format")
