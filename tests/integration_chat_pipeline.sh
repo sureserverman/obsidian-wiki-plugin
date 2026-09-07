@@ -2,7 +2,7 @@
 set -eu
 R="$(cd "$(dirname "$0")/.." && pwd)"; V="$(mktemp -d)"; Z="$(mktemp --suffix=.zip)"; E="$(mktemp)"; B="$(mktemp)"; trap 'rm -rf "$V" "$Z" "$E" "$B"' EXIT
 mkdir -p "$V/Gotchas"; printf 'old\n' > "$V/Gotchas/chat.md"
-python3 -c 'import json,sys,zipfile; z=zipfile.ZipFile(sys.argv[1],"w"); z.writestr("export.json",json.dumps({"messages":[{"event_id":"fixture-event","type":"m.room.message"}]})); z.close()' "$Z"
+python3 -c 'import json,sys,zipfile; z=zipfile.ZipFile(sys.argv[1],"w"); z.writestr("export.json",json.dumps({"messages":[{"event_id":"fixture-event","room_id":"!fixture:example","origin_server_ts":1,"type":"m.room.message","content":{"msgtype":"m.text","body":"fixture"}}]})); z.close()' "$Z"
 python3 "$R/plugins/obsidian-wiki/scripts/import-chat.py" "$Z" --json | jq -e '.ok and .events == 1' >/dev/null
 printf '%s\n' '{"event_id":"fixture-event"}' > "$E"
 python3 "$R/plugins/obsidian-wiki/scripts/sanitize-chat.py" "$E" | jq -e '.event_key|startswith("ev_")' >/dev/null

@@ -83,8 +83,9 @@ def permitted_target(vault: Path, relative: Path, roots: list[Path]) -> Path:
 
 
 def write_bytes(path: Path, payload: bytes) -> None:
-    if not path.parent.is_dir():
-        raise ApplyError(f"target directory does not exist: {path.parent}")
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if not path.parent.is_dir() or path.parent.is_symlink():
+        raise ApplyError(f"target directory is unsafe: {path.parent}")
     fd, temporary = tempfile.mkstemp(prefix=".chat-stage-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as handle:
