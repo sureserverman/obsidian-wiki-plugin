@@ -103,6 +103,7 @@ def parse_index(path: Path):
                     "summary": "",
                     "tags": [],
                     "topics": [],
+                    "aliases": [],
                     "updated": "",
                 }
                 continue
@@ -124,6 +125,10 @@ def parse_index(path: Path):
                 ]
             elif key == "topics":
                 current_page["topics"] = [
+                    t.strip() for t in value.split(",") if t.strip()
+                ]
+            elif key == "aliases":
+                current_page["aliases"] = [
                     t.strip() for t in value.split(",") if t.strip()
                 ]
             elif key == "updated":
@@ -200,6 +205,9 @@ def score_page(page: dict, signals: set, today: date) -> float:
     # Title-token overlap (weight 1)
     title_set = set(title_tokens(page.get("title", "")))
     score += TITLE_WEIGHT * len(title_set & signals)
+
+    alias_set = {token for alias in page.get("aliases", []) for token in title_tokens(alias)}
+    score += TITLE_WEIGHT * len(alias_set & signals)
 
     # Recency boost
     updated = page.get("updated", "")
