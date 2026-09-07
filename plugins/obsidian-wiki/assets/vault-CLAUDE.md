@@ -23,6 +23,8 @@ The vault has six top-level category directories plus a few root-level files:
 | `Patterns/` | Reusable approaches and conventions |
 | `Platforms/` | Per-platform notes (one file per platform) |
 | `Projects/` | Per-project notes (one file per project) |
+| `Sources/` | Safe source cards with opaque source and revision identifiers |
+| `Systems/` | Dated reported or observed system state; never a project registry |
 | `Technologies/` | Per-tool / per-protocol notes (one file per technology) |
 | `Home.md` | Hand-curated Map-of-Content index. Tables link every wiki page. |
 | `log.md` | Append-only activity log (ingest / query / lint / schema entries). |
@@ -59,6 +61,8 @@ tags: [<topic>, <subtopic>]
 created: <YYYY-MM-DD>
 updated: <YYYY-MM-DD>
 sources: [raw/<filename>]  # files in raw/ this page summarizes
+evidence-status: <observed|participant-reported|hypothesis|proposed|failed>
+verification-status: <verified|unverified|contradicted>
 related: [[Other Page]]    # related wiki pages, in [[wikilink]] form
 ---
 ```
