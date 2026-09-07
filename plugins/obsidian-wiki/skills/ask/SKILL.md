@@ -63,8 +63,9 @@ Rules:
 
 - **Every claim is cited.** If you can't cite it, you can't include it.
 - **Cite the specific page**, not the category.
-- **If a claim came from a `raw/` source** (an article that was ingested), cite both
-  the wiki page and the original file: `([[DNS Leaks]], raw/dns-leak-research.md)`.
+- **Chat-derived claims use safe evidence anchors only.** Cite the published page
+  and its opaque event anchor. Never expose a `raw/` path, protected locator, or
+  participant identity; protected originals need an explicit authorized route.
 - **Prefer quoting** for surprising or technical claims — paraphrasing loses nuance.
 - **If the vault doesn't answer the question**, say so explicitly. Do not fill in from
   general knowledge without flagging it.
