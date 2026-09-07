@@ -402,8 +402,8 @@ def build(vault, categories, date):
            "Re-run after ingesting new sources.\n",
            f"Vault: {vault}\nPages indexed: {total}\n"]
     for cat in categories:
+        out.append(f"## {cat}/\n")
         if blocks_by_cat.get(cat):
-            out.append(f"## {cat}/\n")
             out.append("\n".join(blocks_by_cat[cat]))
     if pint_blocks:
         out.append("## Portfolio Integrations/\n")
