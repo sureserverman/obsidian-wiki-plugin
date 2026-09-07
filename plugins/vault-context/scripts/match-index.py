@@ -143,7 +143,7 @@ def parse_index(path: Path):
 def title_tokens(title: str):
     """Lowercase alphanumeric+hyphen tokens from a page title."""
     return [
-        t for t in re.split(r"[^a-z0-9-]+", title.lower()) if len(t) >= 3
+        t for t in re.split(r"[^\w-]+", title.lower()) if len(t) >= 3
     ]
 
 
