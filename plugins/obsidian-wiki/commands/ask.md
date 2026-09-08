@@ -9,8 +9,8 @@ Use the `ask` skill to answer a question against the wiki at `<vault>`.
 
 **Arguments**: `$ARGUMENTS` — the question to answer.
 
-If `$ARGUMENTS` is empty, ask what to look up. The skill reads `Home.md` first as the
-index, drills into relevant pages, and cites every claim with `[[Page Name]]`. If the
+If `$ARGUMENTS` is empty, ask what to look up. The skill reads `index.md` first as the
+index (with `Home.md` as a legacy fallback), drills into relevant pages, and cites every claim with `[[Page Name]]`. If the
 answer has lasting value, the skill offers to file it back as a new wiki page.
 
 **Examples**:

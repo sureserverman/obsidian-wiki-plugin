@@ -47,6 +47,11 @@ if a page mentions "DNS over TLS" and the vault has both `Technologies/Caddy.md`
 mentions DoT) and `Gotchas/DNS over TLS Through Xray.md` (about DoT specifically),
 suggest the latter.
 
+For chat-derived pages, shared `source-id`, `revision-id`, event anchors, or an opaque
+archive name are provenance, not a topical relationship. Do not suggest the source card
+or a sibling page merely because it shares that provenance. Suggest it only when the
+target actually discusses the source inventory, extraction, or review process.
+
 ## Step 3 — Filter out existing links
 
 Remove from the candidate set any page the target already links to with `[[Name]]`.
@@ -98,9 +103,13 @@ frontmatter to mention the target (bidirectional link). Ask first.
 - **Auto-apply suggestions.** Always report-only by default.
 - **Edit the candidate pages without asking.** This skill's job
   is to enrich the *target*, not rewrite five other pages.
-- **Suggest links to `Home.md`.** The index is hand-curated and lives separately.
+- **Suggest links to `index.md` or `Home.md`.** They are retrieval indexes and live
+  separately from the knowledge graph.
 - **Suggest backlinks for entities the target doesn't actually discuss.** Pure name-drops
   are noise.
+- **Treat shared chat provenance as a related-topic signal.** It belongs in `sources:`;
+  a cross-reference would imply a substantive relationship that the evidence may not
+  establish.
 
 ## Common pitfalls
 
