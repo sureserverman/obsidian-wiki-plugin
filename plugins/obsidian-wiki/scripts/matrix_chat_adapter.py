@@ -20,7 +20,9 @@ import zipfile
 PARSER_VERSION = "element-zip-v1"
 MAX_MEMBERS = 10_000
 MAX_MEMBER_BYTES = 128 * 1024 * 1024
-MAX_TOTAL_BYTES = 1024 * 1024 * 1024
+# Trusted local Element exports with media commonly exceed 1 GiB expanded.
+# Keep a hard ceiling to retain zip-bomb resistance for untrusted input.
+MAX_TOTAL_BYTES = 4 * 1024 * 1024 * 1024
 MAX_COMPRESSION_RATIO = 200
 
 
