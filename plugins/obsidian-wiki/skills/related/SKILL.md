@@ -40,7 +40,8 @@ full. Note:
 
 For each "discussed" entity from Step 1, search the vault for a page that covers it:
 
-- Grep every category directory named in the vault's `CLAUDE.md` for the entity name.
+- Grep every category directory named in the vault's `CLAUDE.md` for the entity name,
+  excluding `raw/`, protected records, and identity maps.
 - Match against page filenames (case-insensitive) and against `aliases:` frontmatter.
 - For each candidate page, briefly skim it to confirm it's actually about that entity
   (not just a name-drop in a different page).
@@ -49,6 +50,11 @@ If multiple pages match the same entity, prefer the most specific one. For examp
 if a page mentions "DNS over TLS" and the vault has both `Technologies/Caddy.md` (which
 mentions DoT) and `Gotchas/DNS over TLS Through Xray.md` (about DoT specifically),
 suggest the latter.
+
+For chat-derived pages, shared `source-id`, `revision-id`, event anchors, or an opaque
+archive name are provenance, not a topical relationship. Do not suggest the source card
+or a sibling page merely because it shares that provenance. Suggest it only when the
+target actually discusses the source inventory, extraction, or review process.
 
 ## Step 3 — Filter out existing links
 
@@ -101,9 +107,13 @@ frontmatter to mention the target (bidirectional link). Ask first.
 - **Auto-apply suggestions.** Always report-only by default.
 - **Edit the candidate pages without asking.** The skill is named "related" — its job
   is to enrich the *target*, not rewrite five other pages.
-- **Suggest links to `Home.md`.** The index is hand-curated and lives separately.
+- **Suggest links to `index.md` or `Home.md`.** They are retrieval indexes and live
+  separately from the knowledge graph.
 - **Suggest backlinks for entities the target doesn't actually discuss.** Pure name-drops
   are noise.
+- **Treat shared chat provenance as a related-topic signal.** It belongs in `sources:`;
+  a cross-reference would imply a substantive relationship that the evidence may not
+  establish.
 
 ## Common pitfalls
 

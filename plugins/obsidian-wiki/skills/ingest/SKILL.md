@@ -17,6 +17,13 @@ description: >
 
 # Vault Ingest
 
+## Shared-vault maintenance
+
+Before creating or editing a page, `Home.md`, or `log.md`, read
+`<vault>/.obsidian-wiki/maintenance.json` if it exists. Stop if it names a
+different active owner. The coordinator must supply the active capability;
+follow `docs/workflows/WF-VAULT-WRITE-MAINTENANCE.md`.
+
 Incorporate a new source into the Obsidian vault at `<vault>` by writing or
 updating a wiki page, adding cross-references to related pages, and logging the activity.
 

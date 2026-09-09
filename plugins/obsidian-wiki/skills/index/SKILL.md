@@ -19,6 +19,13 @@ description: >
 
 # Vault Index
 
+## Shared-vault maintenance
+
+`build-index.py` enforces an active maintenance window before it writes
+`index.md`. When an owner has an exclusive window, the coordinator provides
+`OBSIDIAN_WIKI_MAINTENANCE_TOKEN`; otherwise the builder refuses the write.
+See `docs/workflows/WF-VAULT-WRITE-MAINTENANCE.md`.
+
 Generate `<vault>/index.md` — a machine-readable, human-scannable digest of every page
 in the Obsidian vault. The index lists each page's title, path, tags, topic mentions,
 one-line summary, and last-updated date. Other tools (notably the `vault-context`

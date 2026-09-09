@@ -38,6 +38,9 @@ import datetime
 import os
 import re
 import sys
+from pathlib import Path
+
+from vault_write_protocol import ProtocolError, require_write_access
 
 # Root-level vault files that are never pages, defended against even if they
 # somehow appear inside a category dir.
@@ -74,7 +77,8 @@ STOP = {
 
 def parse_frontmatter(text):
     """Return (meta, body). meta has title/updated/tags."""
-    meta = {"title": None, "updated": None, "tags": []}
+    meta = {"title": None, "updated": None, "tags": [], "aliases": [],
+            "evidence_status": "", "verification_status": ""}
     if not text.startswith("---"):
         return meta, text
     lines = text.split("\n")
@@ -112,6 +116,13 @@ def parse_frontmatter(text):
                     j += 1
                 meta["tags"] = tags
                 i = j - 1
+        elif key == "aliases":
+            if val.startswith("["):
+                meta["aliases"] = [a.strip().strip('"\'') for a in val.strip("[]").split(",") if a.strip()]
+        elif key in {"evidence-status", "evidence_status"}:
+            meta["evidence_status"] = val.strip('"\'')
+        elif key in {"verification-status", "verification_status"}:
+            meta["verification_status"] = val.strip('"\'')
         i += 1
     return meta, body
 
@@ -215,13 +226,18 @@ def extract_topics(body, headings):
     return list(seen.values())
 
 
-def page_block(title, rel, summary, tags, topics, updated):
+def page_block(title, rel, summary, tags, topics, updated, aliases=(), evidence_status="", verification_status=""):
+    summary = re.sub(r'\b(?:raw|protected)/[^\s`\])]+', '[protected]', summary)
+    summary = re.sub(r'\bprotected_locator_ref:\s*\S+', '[protected]', summary)
     return (
         f"### [[{title}]]\n"
         f"- path: {rel}\n"
         f"- summary: {summary}\n"
         f"- tags: {', '.join(tags)}\n"
         f"- topics: {', '.join(topics)}\n"
+        f"- aliases: {', '.join(aliases)}\n"
+        f"- evidence-status: {evidence_status}\n"
+        f"- verification-status: {verification_status}\n"
         f"- updated: {updated}\n"
     )
 
@@ -371,7 +387,8 @@ def build(vault, categories, date):
                 os.path.getmtime(fp)).isoformat()
             hs = headings_of(body)
             block = page_block(title, f"{cat}/{fn}", extract_summary(body),
-                               meta["tags"], extract_topics(body, hs), updated)
+                               meta["tags"], extract_topics(body, hs), updated,
+                               meta["aliases"], meta["evidence_status"], meta["verification_status"])
             entries.append((title.lower(), block))
             total += 1
         entries.sort(key=lambda x: x[0])
@@ -385,8 +402,8 @@ def build(vault, categories, date):
            "Re-run after ingesting new sources.\n",
            f"Vault: {vault}\nPages indexed: {total}\n"]
     for cat in categories:
+        out.append(f"## {cat}/\n")
         if blocks_by_cat.get(cat):
-            out.append(f"## {cat}/\n")
             out.append("\n".join(blocks_by_cat[cat]))
     if pint_blocks:
         out.append("## Portfolio Integrations/\n")
@@ -417,6 +434,10 @@ def main():
     idx = os.path.join(vault, "index.md")
     if not os.path.exists(idx):
         if not args.dry_run:
+            try:
+                require_write_access(Path(vault))
+            except ProtocolError as exc:
+                sys.exit(f"error: {exc}")
             open(idx, "w", encoding="utf-8").write(content)
         print("STATUS=new")
         return
@@ -429,6 +450,10 @@ def main():
     added = sorted(p for p in nb if p not in ob)
     removed = sorted(p for p in ob if p not in nb)
     if not args.dry_run:
+        try:
+            require_write_access(Path(vault))
+        except ProtocolError as exc:
+            sys.exit(f"error: {exc}")
         open(idx, "w", encoding="utf-8").write(content)
     print(f"STATUS=changed CHANGED_BLOCKS={changed} ADDED={len(added)} REMOVED={len(removed)}")
     print("ADDED_PATHS=" + "; ".join(added))

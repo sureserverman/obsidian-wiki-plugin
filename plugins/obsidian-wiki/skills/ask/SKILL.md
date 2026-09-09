@@ -20,23 +20,23 @@ description: >
 Answer a question against the Obsidian vault at `<vault>`, citing every claim,
 and optionally filing the answer back as a new wiki page if it has lasting value.
 
-The vault has an existing hand-curated index at `Home.md`. Always use it as the search
-entry point before falling back to grep.
+The vault has an auto-generated retrieval index at `index.md`. Always use it as the
+search entry point before falling back to the legacy `Home.md` Map-of-Content or grep.
 
-## Step 1 — Scan `Home.md`
+## Step 1 — Scan `index.md`
 
-Read `<vault>/Home.md` first. It is a Map-of-Content containing tables organized
-by category (Infrastructure, Android, Browser Extensions, Installers, Security,
-Desktop Tools, Router Firmware, AI Tooling, Technology Index, Patterns Index, Gotchas
-Index, Architecture Index, Platform Index).
+Read `<vault>/index.md` first. It is the current generated inventory of published
+pages, grouped by category with paths, summaries, tags, aliases, topics, and evidence
+metadata. It excludes protected records and raw/private paths.
 
 Treat the links in these tables as a retrieval index. For the user's question, skim the
 tables and list the 3–8 pages most likely to contain relevant material. Do not read
 every page the index mentions — just the plausible matches.
 
-If `Home.md` does not exist or is empty, the vault may not be fully bootstrapped. In
-that case, fall back to `ls` of the category directories named in the vault's `CLAUDE.md` plus grep for keywords —
-but tell the user the index is missing.
+If `index.md` does not exist or is empty, fall back to `Home.md` if it exists. If
+neither index exists, the vault may not be fully bootstrapped: fall back to `ls` of the
+category directories named in the vault's `CLAUDE.md` plus grep for keywords — but tell
+the user the generated index is missing.
 
 ## Step 2 — Targeted reads
 
@@ -45,7 +45,7 @@ under 200 lines) — read them end-to-end rather than grepping inside them. You 
 context.
 
 Do **not** read every page in a category just because the category name sounds
-relevant. Only read pages that `Home.md` specifically identified.
+relevant. Only read pages that the retrieval index specifically identified.
 
 If after reading the identified pages you still don't have an answer, expand the
 search: grep the category directories named in the vault's `CLAUDE.md` for specific terms from the question, then
@@ -63,8 +63,9 @@ Rules:
 
 - **Every claim is cited.** If you can't cite it, you can't include it.
 - **Cite the specific page**, not the category.
-- **If a claim came from a `raw/` source** (an article that was ingested), cite both
-  the wiki page and the original file: `([[DNS Leaks]], raw/dns-leak-research.md)`.
+- **Chat-derived claims use safe evidence anchors only.** Cite the published page
+  and its opaque event anchor. Never expose a `raw/` path, protected locator, or
+  participant identity; protected originals need an explicit authorized route.
 - **Prefer quoting** for surprising or technical claims — paraphrasing loses nuance.
 - **If the vault doesn't answer the question**, say so explicitly. Do not fill in from
   general knowledge without flagging it.
@@ -113,7 +114,7 @@ noise.
 
 ## Common pitfalls
 
-- **Answering without reading `Home.md` first.** The index is curated; using grep as
+- **Answering without reading `index.md` first.** The index is curated; using grep as
   the primary retrieval tool wastes context and misses the user's organization.
 - **Reading the whole vault.** Targeted reads only.
 - **Fabricating citations.** Every `[[link]]` in your answer must resolve to a real
