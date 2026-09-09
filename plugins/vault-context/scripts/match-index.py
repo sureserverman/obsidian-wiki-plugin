@@ -103,6 +103,7 @@ def parse_index(path: Path):
                     "summary": "",
                     "tags": [],
                     "topics": [],
+                    "aliases": [],
                     "updated": "",
                 }
                 continue
@@ -126,6 +127,10 @@ def parse_index(path: Path):
                 current_page["topics"] = [
                     t.strip() for t in value.split(",") if t.strip()
                 ]
+            elif key == "aliases":
+                current_page["aliases"] = [
+                    t.strip() for t in value.split(",") if t.strip()
+                ]
             elif key == "updated":
                 current_page["updated"] = value
 
@@ -138,7 +143,7 @@ def parse_index(path: Path):
 def title_tokens(title: str):
     """Lowercase alphanumeric+hyphen tokens from a page title."""
     return [
-        t for t in re.split(r"[^a-z0-9-]+", title.lower()) if len(t) >= 3
+        t for t in re.split(r"[^\w-]+", title.lower()) if len(t) >= 3
     ]
 
 
@@ -200,6 +205,9 @@ def score_page(page: dict, signals: set, today: date) -> float:
     # Title-token overlap (weight 1)
     title_set = set(title_tokens(page.get("title", "")))
     score += TITLE_WEIGHT * len(title_set & signals)
+
+    alias_set = {token for alias in page.get("aliases", []) for token in title_tokens(alias)}
+    score += TITLE_WEIGHT * len(alias_set & signals)
 
     # Recency boost
     updated = page.get("updated", "")

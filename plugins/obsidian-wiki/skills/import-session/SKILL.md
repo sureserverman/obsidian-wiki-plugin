@@ -18,6 +18,13 @@ description: >
 
 # Vault Session Import
 
+## Shared-vault maintenance
+
+Before creating the raw session record or appending `log.md`, read
+`<vault>/.obsidian-wiki/maintenance.json` if it exists. Stop if it names a
+different active owner. The coordinator must supply the active capability;
+follow `docs/workflows/WF-VAULT-WRITE-MAINTENANCE.md`.
+
 Take a single AI coding session — identified by path, UUID, or candidate ID from a prior
 `scan-sessions` run — and turn it into a markdown source file under
 `<vault>/raw/sessions/`. Optionally chain to `ingest` to file the resulting
