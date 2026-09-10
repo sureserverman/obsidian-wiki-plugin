@@ -9,5 +9,5 @@ trap 'rm -rf "$VAULT"' EXIT
 mkdir -p "$VAULT/Gotchas" "$VAULT/Sources"
 printf '%s\n' '---' 'title: Fixture' 'created: 2026-09-07' '---' '' '# Fixture' > "$VAULT/Gotchas/fixture.md"
 python3 "$BUILDER" --vault "$VAULT" --category Gotchas --category Sources >/dev/null
-rg -qx '## Sources/' "$VAULT/index.md"
+grep -qxF '## Sources/' "$VAULT/index.md"
 echo ALL OK

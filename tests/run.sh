@@ -10,6 +10,24 @@ set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TESTS_DIR="$ROOT/tests"
 
+# The suite's tool floor, checked rather than assumed. A missing tool does not
+# fail a test — it makes the assertions that shell out to it vacuous, and the
+# suite goes green having proved nothing. That is not hypothetical: `rg` is NOT
+# preinstalled on ubuntu-latest, and five tests used it, two of them for
+# "private data must NOT appear here" checks written as `rg -q … && fail`, which
+# cannot fire when rg exits 127. Those calls are grep now; this keeps the floor
+# honest. Everything listed is present on ubuntu-latest and on a normal
+# developer box — a tool outside this set belongs behind a test's own guard.
+MISSING=()
+for tool in bash python3 git jq flock realpath find grep; do
+    command -v "$tool" >/dev/null 2>&1 || MISSING+=("$tool")
+done
+if [ "${#MISSING[@]}" -gt 0 ]; then
+    echo "missing required tools: ${MISSING[*]}" >&2
+    echo "refusing to run: tests that shell out to them would pass without asserting anything" >&2
+    exit 1
+fi
+
 # Collect tests, sorted for determinism. Use -print0 / readarray to be
 # whitespace-safe even though we do not expect spaces in test filenames.
 mapfile -d '' -t FILES < <(

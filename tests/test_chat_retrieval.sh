@@ -7,9 +7,9 @@ printf '%s\n' '---' 'title: Matrix Source' 'aliases: [Матрица, Matrix exp
 for n in 2 3 4 5; do cp "$V/Sources/matrix.md" "$V/Sources/matrix-$n.md"; done
 printf '%s\n' '---' 'title: Matrix System' 'aliases: [Matrix]' 'evidence-status: observed' 'verification-status: verified' '---' '' '# Matrix System' 'A dated system record.' > "$V/Systems/matrix.md"
 python3 "$ROOT/plugins/obsidian-wiki/scripts/build-index.py" --vault "$V" --category Sources --category Systems >/dev/null
-rg -q 'aliases: Матрица, Matrix export' "$V/index.md"
-rg -q 'evidence-status: participant-reported' "$V/index.md"
-rg -q 'verification-status: verified' "$V/index.md"
-! rg -q 'raw/conversations/private|secret-123|do-not-index' "$V/index.md"
+grep -qF 'aliases: Матрица, Matrix export' "$V/index.md"
+grep -qF 'evidence-status: participant-reported' "$V/index.md"
+grep -qF 'verification-status: verified' "$V/index.md"
+! grep -qE 'raw/conversations/private|secret-123|do-not-index' "$V/index.md"
 printf 'матрица\n' | python3 "$ROOT/plugins/vault-context/scripts/match-index.py" "$V/index.md" | jq -e '.match_count >= 5' >/dev/null
 echo ALL OK

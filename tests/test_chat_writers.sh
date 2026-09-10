@@ -58,7 +58,7 @@ if python3 "$PROTOCOL" --vault "$VAULT" finish --token "$TOKEN" >/dev/null 2>&1;
 fi
 python3 "$PROTOCOL" --vault "$VAULT" finish --token "$NEW_TOKEN" | jq -e '.state == "open"' >/dev/null
 
-rg -q 'Matrix apply and recovery' "$ROOT/docs/workflows/WF-VAULT-WRITE-MAINTENANCE.md"
-rg -q 'Honor exclusive maintenance' "$ROOT/plugins/obsidian-wiki/agents/vault-writer.md"
-rg -q 'require_write_access' "$ROOT/plugins/obsidian-wiki/scripts/build-index.py"
+grep -qF 'Matrix apply and recovery' "$ROOT/docs/workflows/WF-VAULT-WRITE-MAINTENANCE.md"
+grep -qF 'Honor exclusive maintenance' "$ROOT/plugins/obsidian-wiki/agents/vault-writer.md"
+grep -qF 'require_write_access' "$ROOT/plugins/obsidian-wiki/scripts/build-index.py"
 echo ALL OK
