@@ -22,7 +22,7 @@ PY
 python3 "$SCRIPT" "$TMP/prep.zip" --source-id fixture --revision-out "$TMP/revision.json" --events-out "$TMP/events.redacted.jsonl" --attachments-out "$TMP/media-manifest.json" --worklist-out "$TMP/worklist.json" --protected-map-out "$TMP/protected-map.json" --json >"$TMP/out" || fail "safe preparation was rejected"
 jq -e '.events == 3 and .attachments == 1 and .unavailable_events == 1 and .attachment_mapping.candidate == 1' "$TMP/out" >/dev/null || fail "safe preparation summary wrong"
 python3 "$ROOT/plugins/obsidian-wiki/scripts/validate-chat.py" --revision "$TMP/revision.json" --json | jq -e '.ok' >/dev/null || fail "prepared revision failed validation"
-rg -q '\$private|!private:example|token=secret' "$TMP/revision.json" "$TMP/events.redacted.jsonl" "$TMP/media-manifest.json" "$TMP/worklist.json" && fail "public preparation artifact leaked private data"
+grep -qE '\$private|!private:example|token=secret' "$TMP/revision.json" "$TMP/events.redacted.jsonl" "$TMP/media-manifest.json" "$TMP/worklist.json" && fail "public preparation artifact leaked private data"
 ok "preparation emits opaque revision and complete safe worklist"
 mkdir "$TMP/vault"
 mkdir "$TMP/staging"
