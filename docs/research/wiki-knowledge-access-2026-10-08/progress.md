@@ -1,5 +1,7 @@
 # Wiki knowledge-access research
 
+Current status: all four stage gates passed on 2026-10-08. The earlier status entries below are historical snapshots. See [authorized real-wiki trial](./authorized-client-results.md) and [final close-out](./closeout.md) for current proof and limitations.
+
 Canonical plan: `/mnt/vault/Portfolio/ai-tools/obsidian-wiki-plugin/plans/2026-10-07-wiki-knowledge-access-research-plan.md`.
 
 Execution began 2026-10-08 from `fe817724d2b1eb39c11b64627ce9f9497bff97b2`. Research branch: `research/wiki-knowledge-access-2026-10-08`.

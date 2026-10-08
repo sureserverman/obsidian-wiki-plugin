@@ -1,5 +1,7 @@
 # Held-out and actual-client findings
 
+Current status: all four stage gates passed on 2026-10-08. The earlier status entries below are historical snapshots. See [authorized real-wiki trial](./authorized-client-results.md) and [final close-out](./closeout.md) for current proof and limitations.
+
 The finalist lock preceded the held-out opening. One pass evaluated ten held-out questions with SQLite B and full-page context; no ranking, prompt, model, context or label tuning followed. The full matrix retains 240 development/held-out pair dispositions. QMD modes were excluded from holdout because they were not locked finalists; this is not a measured QMD holdout comparison.
 
 | Held-out class | Questions | Recall@5 | Recall@10 | Complete section/term context |
