@@ -19,3 +19,7 @@ Stage 1 judgment remediation, round 1: independent evaluator identified malforme
 Additional Stage 1 label context: packaging rationale now explicitly includes user-detection evidence. Successful escalated synthetic client receipt identifies Claude Code 2.1.294; the initial timed-out sandbox probe used 2.1.293. The successful receipt is authoritative.
 
 Stage 1 gate PASS on 2026-10-08. Discovery validator authored during this run; independently executed by the default agent in goal-evaluator role, with judgment PASS after the documented full-class label repairs. Review scope light: Tier 1 not mandated, whole-plan Tier 2 due before close-out. Dispatch roster zero; all three research tasks inline. Evidence substrate: measured local workstation, NFS read-only source, actual Claude synthetic read probe. No real-wiki answer-quality or production-readiness claim. Corrected frozen workload fingerprint: `6a3116f73df75f58710b1e9b777282667fb829095a3faeecd0802bc9c0226fb9`.
+
+Stage 1 measured session handoff. context-usage: verdict=handoff now=132914 window=258400 pct=51.4 projected_pct=93.8 disjoint=True reason: rule context: now=132914 of window=258400 (rollout model_context_window) is 51.4% > 50%
+
+Resume at Task 2.1. Stage 2–4 have not started; technical research completion and owner usefulness acceptance are outstanding. Recovery state: `.claude/plan-progress.json`; private pack includes `RESUME.md`. Holdout remains closed for candidate tuning.
