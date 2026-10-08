@@ -2,7 +2,7 @@
 
 The finalist lock preceded the held-out opening. One pass evaluated ten held-out questions with SQLite B and full-page context; no ranking, prompt, model, context or label tuning followed. The full matrix retains 240 development/held-out pair dispositions. QMD modes were excluded from holdout because they were not locked finalists; this is not a measured QMD holdout comparison.
 
-| Held-out class | Questions | Recall@5 | Recall@10 | Complete labeled context |
+| Held-out class | Questions | Recall@5 | Recall@10 | Complete section/term context |
 | --- | ---: | ---: | ---: | ---: |
 | exact | 2 | 100.0% | 100.0% | 2/2 |
 | conceptual | 2 | 100.0% | 100.0% | 2/2 |
@@ -10,7 +10,7 @@ The finalist lock preceded the held-out opening. One pass evaluated ten held-out
 | synthesis | 2 | 75.0% | 100.0% | 1/2 |
 | historical | 2 | 100.0% | 100.0% | 2/2 |
 
-Overall held-out Recall@5 is 95%, Recall@10 is 100%, and complete labeled context is 9/10. Warm search p95 is 0.108 seconds including source checks over 50 repetitions. Two questions per class make these directional findings. Multi-page context still fails one question despite retrieving every required page. The larger development comparison remains the selection evidence.
+Overall held-out Recall@5 is 95%, Recall@10 is 100%, and complete section/term context is 9/10. Warm search p95 is 0.108 seconds including source checks over 50 repetitions. Two questions per class make these directional findings. Multi-page context still fails one question despite retrieving every required page. The larger development comparison remains the selection evidence.
 
 The existing Claude Code 2.1.294 / configured claude-opus-5-5 client completed five bounded synthetic-only trials through an isolated stdio MCP adapter over guarded SQLite. Available tools were exactly search, get and status; built-in tools, hooks and unrelated MCP configuration were disabled per process. No global configuration changed, and no real-wiki body was served. Ten fixed synthetic cases plus one date fixture passed actual local MCP search/read checks, including absent knowledge, protected content, instruction-as-data and lifecycle refusal.
 
@@ -26,3 +26,5 @@ Task 3.3 command check PASS: 40 questions, 240 pair dispositions, five actual sy
 
 Finalist-lock SHA256: `37726850ac3a400273a6dbd4d36d7e60ea3e668190a3c499e1aa5c79abacf3d5`.
 Combined run receipt SHA256: `2bdd2981bf446593c259165cca6ca8a1fba765d01da85e2b3b68742ea5c83e09`.
+
+Gate audit: full-page held-out section/term coverage remains 9/10. It is a source-location proxy; real-wiki answer correctness remains unmeasured. D improved development synthesis Recall@5 from 66.7% to 83.3%, while all-required-page coverage stayed 4/6. The preserved lock wording is clarified by private `finalist-lock-errata.json`; no selection changed.
