@@ -118,8 +118,9 @@ def validate_page(page):
         raise Refusal('index_unavailable') from None
 
 
-def build(path, pages, generation):
+def build(path, pages, generation, *, byte_budget=STORE_BYTES):
     capability()
+    integer(byte_budget, 4096, STORE_BYTES)
     if not re.fullmatch('[0-9a-f]{64}', generation):
         raise Refusal('index_unavailable')
     pages = list(pages)
@@ -131,6 +132,7 @@ def build(path, pages, generation):
     os.close(fd)
     try:
         with sqlite3.connect(path) as db:
+            db.execute('PRAGMA max_page_count='+str(byte_budget//4096))
             db.execute('PRAGMA journal_mode=OFF')
             db.execute('PRAGMA synchronous=OFF')
             db.executescript('''
@@ -163,10 +165,14 @@ def build(path, pages, generation):
             if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
                 raise Refusal('index_unavailable')
             db.execute("INSERT INTO search(search) VALUES('integrity-check')")
-        if path.stat().st_size > STORE_BYTES:
+        if path.stat().st_size > byte_budget:
             raise Refusal('budget_exhausted')
         with Store(path, generation): pass
-    except (sqlite3.Error, OSError):
+    except sqlite3.Error as exc:
+        if getattr(exc,'sqlite_errorcode',None) == sqlite3.SQLITE_FULL:
+            raise Refusal('budget_exhausted') from None
+        raise Refusal('index_unavailable') from None
+    except OSError:
         raise Refusal('index_unavailable') from None
 
 
