@@ -368,6 +368,24 @@ class StoreCases(unittest.TestCase):
             with self.assertRaises(contracts.Refusal): store.capability()
 
 
+    def test_sqlite_build_leaf_replacement_never_writes_a_source(self):
+        import tempfile,sqlite3,os
+        from unittest.mock import patch
+        from wiki_access import store
+        from wiki_access.policy import Policy,project
+        page=project('Runbooks/A.md',b'---\ntitle: A\ncreated: 2026-01-01\n---\nSafe.\n',Policy(['Runbooks']))
+        with tempfile.TemporaryDirectory() as tmp:
+            path=pathlib.Path(tmp)/'index.sqlite'; source=pathlib.Path(tmp)/'source'; source.write_bytes(b''); source.chmod(0o600)
+            original=sqlite3.connect
+            def mutate(*args,**kwargs):
+                if path.exists() and path.stat().st_size==0:
+                    path.unlink(); os.link(source,path)
+                return original(*args,**kwargs)
+            with patch('wiki_access.store.sqlite3.connect',side_effect=mutate):
+                with self.assertRaises(contracts.Refusal): store.build(path,[page],'d'*64)
+            self.assertEqual(source.read_bytes(),b'')
+
+
 class GenerationCases(unittest.TestCase):
     def fixture(self, tmp):
         from wiki_access.policy import Policy
@@ -536,6 +554,25 @@ class GenerationCases(unittest.TestCase):
                 self.assertLessEqual(manager.storage_size(),active+100)
             self.assertEqual((state/'current.json').read_bytes(),pointer)
             self.assertEqual(len(list((state/'generations').iterdir())),1)
+
+    def test_refresh_sqlite_leaf_injection_preserves_every_source_file(self):
+        import tempfile,sqlite3,os
+        from unittest.mock import patch
+        from wiki_access.generation import Manager
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=self.fixture(tmp); source=root/'untouched'; source.write_bytes(b''); source.chmod(0o600)
+            before={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+            original=sqlite3.connect; injected=False
+            def mutate(*args,**kwargs):
+                nonlocal injected
+                for path in (state/'generations').glob('staging-*/index.sqlite'):
+                    if not injected:
+                        path.unlink(); os.link(source,path); injected=True
+                return original(*args,**kwargs)
+            with patch('wiki_access.store.sqlite3.connect',side_effect=mutate):
+                with self.assertRaises(contracts.Refusal): Manager(root,state,policy).refresh()
+            self.assertTrue(injected)
+            self.assertEqual(before,{str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()})
 
 
 class LookupCases(unittest.TestCase):

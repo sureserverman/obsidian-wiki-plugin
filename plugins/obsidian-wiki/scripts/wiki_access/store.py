@@ -1,5 +1,6 @@
 """Immutable derived SQLite data. Callers must guard every disclosure separately."""
 import hashlib
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -39,7 +40,7 @@ def capability():
     if sys.version_info < (3, 12):
         raise Refusal('index_unavailable')
     try:
-        with sqlite3.connect(':memory:') as db:
+        with closing(sqlite3.connect(':memory:')) as db:
             db.execute("CREATE VIRTUAL TABLE probe USING fts5(body, tokenize='unicode61')")
     except sqlite3.Error:
         raise Refusal('index_unavailable') from None
@@ -129,9 +130,10 @@ def build(path, pages, generation, *, byte_budget=STORE_BYTES):
         raise Refusal('index_unavailable')
     path = Path(path)
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-    os.close(fd)
     try:
-        with sqlite3.connect(path) as db:
+        # SQLite normally reopens a filename after our safe create. Build in memory
+        # and serialize to the held inode so replacing the leaf cannot redirect writes.
+        with closing(sqlite3.connect(':memory:')) as db:
             db.execute('PRAGMA max_page_count='+str(byte_budget//4096))
             db.execute('PRAGMA journal_mode=OFF')
             db.execute('PRAGMA synchronous=OFF')
@@ -165,8 +167,17 @@ def build(path, pages, generation, *, byte_budget=STORE_BYTES):
             if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
                 raise Refusal('index_unavailable')
             db.execute("INSERT INTO search(search) VALUES('integrity-check')")
-        if path.stat().st_size > byte_budget:
+            serialized = db.serialize()
+        if len(serialized) > byte_budget:
             raise Refusal('budget_exhausted')
+        opened = os.fstat(fd); live = os.stat(path, follow_symlinks=False)
+        if (opened.st_dev,opened.st_ino) != (live.st_dev,live.st_ino) or opened.st_nlink != 1:
+            raise Refusal('generation_stale')
+        with os.fdopen(fd, 'wb', closefd=False) as output:
+            output.write(serialized); output.flush()
+        live = os.stat(path,follow_symlinks=False)
+        if (opened.st_dev,opened.st_ino) != (live.st_dev,live.st_ino) or os.fstat(fd).st_nlink != 1:
+            raise Refusal('generation_stale')
         with Store(path, generation): pass
     except sqlite3.Error as exc:
         if getattr(exc,'sqlite_errorcode',None) == sqlite3.SQLITE_FULL:
@@ -174,6 +185,8 @@ def build(path, pages, generation, *, byte_budget=STORE_BYTES):
         raise Refusal('index_unavailable') from None
     except OSError:
         raise Refusal('index_unavailable') from None
+    finally:
+        os.close(fd)
 
 
 class Store:
