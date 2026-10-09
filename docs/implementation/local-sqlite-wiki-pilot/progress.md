@@ -44,3 +44,5 @@ Stage 1 gate PASS at 703748b; 18 cases and both pilot wrappers pass after the do
 context-usage: verdict=handoff now=143928 window=258400 pct=55.7 projected_pct=100.8 disjoint=False reason: rule context: now=143928 of window=258400 (rollout model_context_window) is 55.7% > 50%
 
 Resume Task 2.1 from the canonical plan in a fresh session; branch feat/local-sqlite-wiki-pilot. All child agents and tool sessions completed; dispatch ledger NOT RUN (no log). Private path/frozen manifests in ignored plan-progress state. No active pilot/client route or model/source write was introduced.
+
+Task 2.1 PASS: immutable section-row SQLite schema, exact UTF-8 maps, weighted quoted-OR BM25 5/3/2/1/1, distinct-page ranking and bound SQL. StoreCases 5/5 pass. Independent default Tier-1 store_review: 0 Critical/3 Important; schema/FTS validation, strict malformed-record refusal and direct ranking/map/injection/runtime tests repaired with fix-scope PASS. Frozen research stopwords retained; v1 tokenizer preserves command switches and slash/colon tokens, and ATX splitting ignores fences. No historical recall claim or acceptance opening. Resumption baseline 40/40 wrappers passed.

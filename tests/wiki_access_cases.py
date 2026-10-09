@@ -272,6 +272,102 @@ class Stage1IntegrationCases(unittest.TestCase):
                 project(locator, manifest['notes'][0]['raw'].encode(), Policy(['Runbooks']))
             self.assertNotIn('PRIVATE_CANARY', contracts.encode(contracts.error('get', exc.exception.code)).decode())
 
+class StoreCases(unittest.TestCase):
+    def test_section_maps_weighted_or_and_distinct_page_ranking(self):
+        import tempfile
+        from wiki_access import store
+        from wiki_access.policy import Policy, project
+        policy = Policy(['Runbooks'])
+        pages = [project('Runbooks/'+name+'.md', ('---\ntitle: '+name+'\ncreated: 2026-01-01\n---\n'+body).encode(), policy)
+                 for name, body in [('Amber', '# Amber\nUse amberctl --check 😀.\n## Next\namberctl again.\n'),
+                                    ('Other', '# Other\nGolden fallback.\n')]]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp)/'index.sqlite'
+            store.build(path, pages, 'a'*64)
+            with store.Store(path, 'a'*64) as db:
+                hits = db.search('amberctl golden', 5, {})
+                self.assertEqual(len(hits), 2)
+                self.assertEqual(len({h['page_id'] for h in hits}), 2)
+                self.assertEqual(db.resolve('title', 'Amber')[0]['locator'], 'Runbooks/Amber.md')
+                self.assertEqual(db.resolve('alias', 'unknown'), [])
+                for row in db.sections():
+                    page = db.page(row['page_id'])
+                    self.assertEqual(page['body'].encode()[row['start']:row['end']].decode(), row['body'])
+                    self.assertTrue(row['mapping'])
+                self.assertEqual(db.metadata()['recipe'], store.RECIPE)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_literal_query_refuses_operators_and_binds_sql(self):
+        from wiki_access import store
+        for query in ('AND OR NOT NEAR', '"*"', '   ', 'the is a', 'x '*65):
+            with self.subTest(query=query), self.assertRaises(contracts.Refusal):
+                store.terms(query)
+        self.assertEqual(store.terms('amberctl --check Русский 😀'), ['amberctl', '--check', 'Русский'])
+        self.assertIn('"DROP"', store.expression("amber'; DROP TABLE pages; --"))
+
+    def test_integrity_schema_runtime_and_malformed_maps_refuse(self):
+        import tempfile, sqlite3, copy
+        from unittest.mock import patch
+        from wiki_access import store
+        from wiki_access.policy import Policy, project
+        page = project('Runbooks/A.md', b'---\ntitle: A\ncreated: 2026-01-01\n---\nSafe.\n', Policy(['Runbooks']))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp)/'index.sqlite'
+            bad = copy.deepcopy(page); bad['mapping'][0]['end'] += 1
+            with self.assertRaises(contracts.Refusal): store.build(path, [bad], 'b'*64)
+            self.assertFalse(path.exists())
+            store.build(path, [page], 'b'*64)
+            with sqlite3.connect(path) as db: db.execute("UPDATE meta SET value='unknown' WHERE key='schema'")
+            with self.assertRaises(contracts.Refusal): store.Store(path, 'b'*64)
+            path.write_bytes(b'corrupt')
+            with self.assertRaises(contracts.Refusal): store.Store(path, 'b'*64)
+        with patch('wiki_access.store.sqlite3.connect', side_effect=sqlite3.OperationalError()):
+            with self.assertRaises(contracts.Refusal): store.capability()
+
+    def test_missing_schema_and_every_malformed_record_shape_refuse(self):
+        import tempfile, sqlite3, copy
+        from wiki_access import store
+        from wiki_access.policy import Policy, project
+        page = project('Runbooks/A.md', b'---\ntitle: A\ncreated: 2026-01-01\n---\nSafe.\n', Policy(['Runbooks']))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp)/'index.sqlite'
+            for mutate in (lambda p: p.pop('omissions'), lambda p: p.update(body=4),
+                           lambda p: p.update(mapping=[['start','end','source_start','source_end']]),
+                           lambda p: p.update(omissions=[{}])):
+                bad = copy.deepcopy(page); mutate(bad)
+                with self.assertRaises(contracts.Refusal): store.build(path, [bad], 'b'*64)
+                self.assertFalse(path.exists())
+            with sqlite3.connect(path) as db:
+                db.execute('CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT)')
+                db.executemany('INSERT INTO meta VALUES (?,?)', [('schema', store.SCHEMA), ('recipe', store.RECIPE), ('generation','b'*64)])
+            with self.assertRaises(contracts.Refusal): store.Store(path, 'b'*64)
+
+    def test_weight_order_source_maps_and_executed_literal_sql(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access import store
+        from wiki_access.policy import Policy, project
+        originals = [('Runbooks/Title.md', b'---\ntitle: weighttoken\ncreated: 2026-01-01\n---\n# Step\nsharedtoken plain.\n## Sources\nraw/PRIVATE_CANARY.md\n## Next\nsharedtoken.\n'),
+                     ('Runbooks/Body.md', b'---\ntitle: other\ncreated: 2026-01-01\n---\n# Step\nsharedtoken weighttoken.\n')]
+        pages = [project(locator, raw, Policy(['Runbooks'])) for locator, raw in originals]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp)/'index.sqlite'; store.build(path, pages, 'c'*64)
+            before = path.read_bytes()
+            with store.Store(path, 'c'*64) as db:
+                self.assertEqual(db.search('weighttoken', 5, {})[0]['locator'], 'Runbooks/Title.md')
+                self.assertEqual(db.search('sharedtoken', 5, {}), db.search('sharedtoken', 5, {}))
+                db.search("sharedtoken'; DROP TABLE pages; --", 5, {})
+                self.assertEqual(len(db.resolve('title', 'other')), 1)
+                for row in db.sections():
+                    page = db.page(row['page_id']); raw = dict(originals)[page['locator']]
+                    for span in row['mapping']:
+                        self.assertEqual(raw[span['source_start']:span['source_end']],
+                                         page['body'].encode()[span['start']:span['end']])
+            self.assertEqual(path.read_bytes(), before)
+        with patch('wiki_access.store.sys.version_info', (3, 11)):
+            with self.assertRaises(contracts.Refusal): store.capability()
+
+
 def main():
     names = sys.argv[1:]
     if not names:
