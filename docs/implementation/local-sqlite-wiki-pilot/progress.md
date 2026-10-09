@@ -52,3 +52,7 @@ Task 2.2 PASS: private local generations, complete current-source/policy checks,
 Task 2.3 PASS: explicit unique/ambiguous/not-found resolution, bounded guarded distinct-page literal search, typed metadata/date filters and aggregate status. LookupCases 3/3 and Stage2IntegrationCases 3/3 PASS on development-only fixtures. Read receipts are absent from discovery; unavailable fields refuse, oversized responses refuse, source/refresh drift discards every buffered disclosure. Missing-guard negative control is detected. Real lookup/performance and Stage 3 evidence/CLI remain unproved.
 
 Stage 2 gate PASS: final regressions 40/40 wrappers (16.020 s), pilot unit 40 cases, integrated four cases; final fix-scope 22 cases. Independent Tier-2 found one Critical SQLite leaf reopen and no Important; round 1/2 fixes construction in memory with held-FD serialization. Independent Critical re-review PASS, hardlink/symlink replacements refuse without source changes. Full sanitized gate report: stage-2-gate.md. No client, acceptance or real-vault query executed. Next Task 3.1.
+
+Stage 2 gate commit 7e85f62. context-usage: verdict=handoff now=157813 window=258400 pct=61.1 projected_pct=111.6 disjoint=False reason: rule context: now=157813 of window=258400 (rollout model_context_window) is 61.1% > 50%
+
+Resume Task 3.1 in a fresh session from the canonical plan, branch feat/local-sqlite-wiki-pilot. All agents/tool sessions completed; ledger NOT RUN (no log). No Stage 3 task started.
