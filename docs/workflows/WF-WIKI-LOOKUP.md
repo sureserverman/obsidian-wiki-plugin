@@ -25,3 +25,22 @@ Optional file-back requires separate owner confirmation and the existing
 WF-VAULT-WRITE-MAINTENANCE / WF-CHAT-PUBLISH gates. Lookup does not acquire
 publication authority or replace WF-CHAT-IMPORT. No hooks, automatic refresh,
 link expansion, vault-context migration or normal-route adoption are included.
+
+Admission uses an owner-local explicit category list (the fourteen schema-listed
+published categories on the selected vault); Portfolio integration records require
+individual opt-in paths. Missing sensitivity is accepted only on a supported ordinary
+published-note shape with title and valid created date. Explicit nonpublic sensitivity,
+drafts, protected filenames/markers, unsafe locator mentions outside removed provenance,
+unknown metadata keys and unsupported YAML refuse. Scalars and flat string lists are
+the supported YAML subset. Frontmatter and recognized provenance sections are omitted
+from the body; safe dates/statuses are separately labeled. No participant identity or
+raw/protected locator enters a projection or denial. Reading walks every path component
+with directory file descriptors and O_NOFOLLOW, checks regular-file identity before/after
+reading, and refuses changes before returning bytes.
+
+Supported Portfolio integration exceptions use their existing `project` and fixed
+`depends_on`/`impacts` target/why schema; unknown or incomplete edges refuse.
+They do not need ordinary-note title/created fields. Edge metadata is omitted
+from output. Reserved protected/identity marker names outside removed provenance
+refuse independently of Markdown/JSON/key-value presentation. Supported ordinary
+record types/statuses are explicit allowlists, rather than a short denylist.

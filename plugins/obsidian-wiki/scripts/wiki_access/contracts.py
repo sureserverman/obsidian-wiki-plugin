@@ -61,8 +61,13 @@ def decode(raw):
 
 
 def text(value, ceiling=2048):
-    if not isinstance(value, str) or not value.strip() or len(value.encode('utf-8')) > ceiling:
+    if not isinstance(value, str) or not value.strip():
         raise Refusal()
+    try:
+        if len(value.encode('utf-8')) > ceiling:
+            raise Refusal()
+    except UnicodeError:
+        raise Refusal() from None
     if any(ord(c) < 32 for c in value):
         raise Refusal()
     return value
