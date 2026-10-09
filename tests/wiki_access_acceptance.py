@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'plugins/obsidian-wiki/scripts'))
-from wiki_access.contracts import Refusal, encode
+from wiki_access.contracts import Refusal, encode, text
 from wiki_access.policy import Policy, project
 
 CLASSES = ('exact', 'conceptual', 'rationale', 'historical')
@@ -16,7 +16,10 @@ CONTROL_CLASSES = ('absent', 'protected', 'ambiguous', 'contradictory', 'date', 
 
 
 def fingerprint(value):
-    return hashlib.sha256(encode(value)).hexdigest()
+    try:
+        return hashlib.sha256(encode(value)).hexdigest()
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        raise Refusal() from None
 
 
 def seal(manifest):
@@ -49,15 +52,19 @@ def validate_manifest(manifest, *, development=None):
         if not isinstance(note['topic'], str) or not note['topic']:
             raise Refusal()
         note_map[locator] = page
-    ids = set(); counts = {kind: 0 for kind in CLASSES}
+    ids = set(); queries = set(); counts = {kind: 0 for kind in CLASSES}
     for q in questions:
         if not isinstance(q, dict) or set(q) != {'id', 'class', 'query', 'note', 'support', 'answerable'}:
             raise Refusal()
-        if not isinstance(q['id'], str) or q['id'] in ids or q['class'] not in CLASSES or q['answerable'] is not True:
+        text(q['id'])
+        if not isinstance(q['id'], str) or q['id'] in ids or not isinstance(q['class'], str) or q['class'] not in CLASSES or q['answerable'] is not True:
             raise Refusal()
         ids.add(q['id']); counts[q['class']] += 1
-        if not isinstance(q['query'], str) or not q['query'].strip() or q['note'] not in note_map:
+        text(q['query'])
+        normalized = ' '.join(q['query'].casefold().split())
+        if normalized in queries or not isinstance(q['note'], str) or q['note'] not in note_map:
             raise Refusal()
+        queries.add(normalized)
         if not isinstance(q['support'], list) or not q['support']:
             raise Refusal()
         body = note_map[q['note']]['body'].encode()
@@ -70,36 +77,69 @@ def validate_manifest(manifest, *, development=None):
                 raise Refusal()
             if label['modality'] not in ('instruction', 'observation', 'rationale') or label['required'] is not True:
                 raise Refusal()
+            if q['class'] == 'historical' and (label['modality'] != 'observation' or label['event_date'] is None):
+                raise Refusal()
             if label['event_date'] is not None:
                 import datetime
                 try:
-                    datetime.date.fromisoformat(label['event_date'])
+                    if datetime.date.fromisoformat(label['event_date']).isoformat() != label['event_date']:
+                        raise ValueError()
                 except (TypeError, ValueError):
                     raise Refusal() from None
     minimum = 5 if manifest['kind'] == 'acceptance' else 1
     if any(count < minimum for count in counts.values()):
         raise Refusal()
-    if not isinstance(controls, list) or {c.get('class') for c in controls if isinstance(c, dict)} != set(CONTROL_CLASSES):
+    if not isinstance(controls, list) or len(controls) != len(CONTROL_CLASSES):
         raise Refusal()
+    control_classes = set()
     for control in controls:
-        if set(control) != {'id', 'class', 'query', 'expected', 'required', 'forbidden', 'support'} or control['id'] in ids:
+        if not isinstance(control, dict) or set(control) != {'id', 'class', 'query', 'expected', 'required', 'forbidden', 'support'}:
             raise Refusal()
+        text(control['id']); text(control['class']); text(control['query'])
+        if control['id'] in ids or control['class'] not in CONTROL_CLASSES or control['class'] in control_classes:
+            raise Refusal()
+        control_classes.add(control['class'])
         ids.add(control['id'])
         if control['expected'] not in ('abstain', 'ambiguous', 'qualified') or not isinstance(control['required'], list) or not isinstance(control['forbidden'], list):
+            raise Refusal()
+        expected = {'absent': 'abstain', 'protected': 'abstain', 'ambiguous': 'ambiguous',
+                    'contradictory': 'qualified', 'date': 'qualified', 'partial': 'abstain'}
+        if control['expected'] != expected[control['class']] or not control['forbidden']:
+            raise Refusal()
+        for claim in control['required'] + control['forbidden']:
+            text(claim)
+        minimum = 2 if control['class'] in ('contradictory', 'date') else 1 if control['class'] == 'ambiguous' else 0
+        if len(control['required']) < minimum:
             raise Refusal()
         if control['class'] in ('contradictory', 'date', 'partial') and not control['forbidden']:
             raise Refusal()
         if not isinstance(control['support'], list):
             raise Refusal()
-        if control['class'] in ('contradictory', 'date', 'partial') and not control['support']:
+        support_minimum = 2 if control['class'] in ('contradictory', 'date') else 1 if control['class'] == 'partial' else 0
+        if len(control['support']) < support_minimum:
             raise Refusal()
+        support_notes = set()
         for label in control['support']:
-            if set(label) != {'note', 'start', 'end', 'quote', 'modality', 'event_date'} or label['note'] not in note_map:
+            if not isinstance(label, dict) or set(label) != {'note', 'start', 'end', 'quote', 'modality', 'event_date'} or not isinstance(label['note'], str) or label['note'] not in note_map:
                 raise Refusal()
+            if label['note'] in support_notes:
+                raise Refusal()
+            support_notes.add(label['note'])
             body = note_map[label['note']]['body'].encode()
             if type(label['start']) is not int or type(label['end']) is not int or not 0 <= label['start'] < label['end'] <= len(body):
                 raise Refusal()
-            if body[label['start']:label['end']] != label['quote'].encode() or label['modality'] not in ('observation', 'limitation'):
+            if not isinstance(label['quote'], str) or body[label['start']:label['end']] != label['quote'].encode() or label['modality'] not in ('observation', 'limitation'):
+                raise Refusal()
+            if control['class'] in ('contradictory', 'date') and label['modality'] != 'observation':
+                raise Refusal()
+            if label['event_date'] is not None:
+                import datetime
+                try:
+                    if datetime.date.fromisoformat(label['event_date']).isoformat() != label['event_date']:
+                        raise ValueError()
+                except (TypeError, ValueError):
+                    raise Refusal() from None
+            elif control['class'] in ('contradictory', 'date', 'partial'):
                 raise Refusal()
 
     if development is not None:
@@ -108,6 +148,8 @@ def validate_manifest(manifest, *, development=None):
         if old_topics & {n['topic'] for n in notes} or {q['id'] for q in development['questions']} & ids:
             raise Refusal()
         if {n['hash'] for n in development['notes']} & {n['hash'] for n in notes}:
+            raise Refusal()
+        if queries & {' '.join(q['query'].casefold().split()) for q in development['questions']}:
             raise Refusal()
     return counts
 
