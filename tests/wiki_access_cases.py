@@ -52,6 +52,23 @@ class PolicyCases(unittest.TestCase):
                 page['body'].encode()[span['start']:span['end']])
         self.assertEqual(page['metadata']['created'], '2026-01-01')
 
+    def test_supported_category_and_record_class_matrix(self):
+        from wiki_access.policy import Policy, project, CATEGORIES, PUBLISHED_TYPES, PUBLISHED_STATUSES
+        policy = Policy(list(CATEGORIES))
+        for category in CATEGORIES:
+            page = project(category+'/Fixture.md', b'---\ntitle: Fixture\ncreated: 2026-01-01\n---\nSafe.\n', policy)
+            self.assertEqual(page['metadata']['category'], category)
+        for record in PUBLISHED_TYPES:
+            self.project(fm='type: '+record+'\n')
+        for status in PUBLISHED_STATUSES:
+            self.project(fm='status: "'+status+'"\n')
+        for classification in ('raw', 'original', 'draft', 'identity', 'unknown'):
+            with self.subTest(classification=classification), self.assertRaises(contracts.Refusal):
+                self.project(fm='type: '+classification+'\n')
+        for status in ('private', 'protected', 'unreviewed', 'pending'):
+            with self.subTest(status=status), self.assertRaises(contracts.Refusal):
+                self.project(fm='status: '+status+'\n')
+
     def test_provenance_and_locator_fields_are_omitted(self):
         raw, page = self.project('## Steps\nSafe.\n## Source provenance\nraw/CANARY.md\n## Next\nSafe again.\n',
                                 'sources: ["raw/CANARY.md"]\nsource-id: CANARY\n')
@@ -153,6 +170,66 @@ class PolicyCases(unittest.TestCase):
             with patch('wiki_access.policy.os.read', side_effect=mutate):
                 with self.assertRaises(contracts.Refusal):
                     safe_read(root, 'Runbooks/A.md')
+
+
+class WorkloadCases(unittest.TestCase):
+    def test_frozen_balanced_independent_workload(self):
+        import wiki_access_acceptance as acceptance
+        dev = acceptance.fake_manifest('development')
+        locked = acceptance.fake_manifest('acceptance')
+        self.assertEqual(acceptance.validate_manifest(locked, development=dev),
+                         dict.fromkeys(acceptance.CLASSES, 5))
+        self.assertEqual(len(locked['controls']), 6)
+
+    def test_implementation_lock_refuses_changed_or_missing_code(self):
+        import tempfile
+        import wiki_access_acceptance as a
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp)/'example.py'; path.write_text('version = 1')
+            lock = a.implementation_lock([path]); a.validate_implementation_lock(lock)
+            path.write_text('version = 2')
+            with self.assertRaises(contracts.Refusal):
+                a.validate_implementation_lock(lock)
+            path.unlink()
+            with self.assertRaises(contracts.Refusal):
+                a.validate_implementation_lock(lock)
+
+    def test_corrupt_empty_duplicate_overlap_and_incomplete_labels_refuse(self):
+        import copy
+        import wiki_access_acceptance as a
+        base = a.fake_manifest('acceptance'); dev = a.fake_manifest('development')
+        corruptions = [lambda m: m['questions'].clear(),
+                       lambda m: m['questions'].append(copy.deepcopy(m['questions'][0])),
+                       lambda m: m['questions'][0]['support'].clear(),
+                       lambda m: m['questions'][0]['support'][0].update(end=999999),
+                       lambda m: m['notes'][0].update(raw='tampered'),
+                       lambda m: m['notes'][0].update(topic=dev['notes'][0]['topic']),
+                       lambda m: m['controls'].clear()]
+        for corrupt in corruptions:
+            m = copy.deepcopy(base); corrupt(m); m.pop('fingerprint'); m=a.seal(m)
+            with self.subTest(corrupt=corrupt), self.assertRaises(contracts.Refusal):
+                a.validate_manifest(m, development=dev)
+        base['questions'][0]['query'] = 'changed after freeze'
+        with self.assertRaises(contracts.Refusal):
+            a.validate_manifest(base)
+
+
+class Stage1IntegrationCases(unittest.TestCase):
+    def test_whole_public_fixture_inventory_has_mapped_evidence(self):
+        import wiki_access_acceptance as a
+        from wiki_access.policy import project, Policy
+        manifest = a.fake_manifest('acceptance')
+        a.validate_manifest(manifest, development=a.fake_manifest('development'))
+        for note in manifest['notes']:
+            page = project(note['locator'], note['raw'].encode(), Policy(['Runbooks']))
+            self.assertNotIn('PRIVATE_CANARY', contracts.encode(page).decode())
+            for span in page['mapping']:
+                self.assertEqual(note['raw'].encode()[span['source_start']:span['source_end']],
+                                 page['body'].encode()[span['start']:span['end']])
+        for locator in ('raw/PRIVATE_CANARY.md', 'Runbooks/identity-map.md'):
+            with self.assertRaises(contracts.Refusal) as exc:
+                project(locator, manifest['notes'][0]['raw'].encode(), Policy(['Runbooks']))
+            self.assertNotIn('PRIVATE_CANARY', contracts.encode(contracts.error('get', exc.exception.code)).decode())
 
 def main():
     names = sys.argv[1:]
