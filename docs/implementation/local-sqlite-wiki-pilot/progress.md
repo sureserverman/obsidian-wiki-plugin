@@ -19,3 +19,22 @@ schema were swept. Enumeration: `rg -n 'UNSAFE|scalar\(|replace.*_|walked|PUBLIS
 Registered reviewer failed unsupported inherit model and earns no review credit.
 No private source payloads or historical research fixtures were used. Stage gate
 remains pending; workload and store/client evidence remain unproved.
+
+Task 1.3: fresh synthetic development (4 questions) and separately frozen acceptance
+(20 questions, five each exact/conceptual/rationale/historical), each with six separate
+absent/protected/ambiguous/contradictory/date/partial controls. Both include explicit
+claim labels over exact projected source byte spans, modality and event-date limits;
+contradiction/date/partial controls have separate labeled notes. No historical research
+holdout was copied or reopened. Development and acceptance topic/hash/ID overlap,
+empty class denominators, missing labels, changed freezes and implementation-lock drift
+refuse. Technical fake-only evidence does not establish real owner query usefulness.
+
+Metrics for later execution: Recall@5 counts the labeled distinct source page among
+five distinct page results, reports numerator/denominator by the four classes, and
+requires at least 17/20 overall. Exact resolution is scored separately with 100% unique
+selection and explicit ambiguity. Controls have separate denominators. Every emitted
+citation occurrence must bind to actual read spans; structural validity is separate
+from required/unsupported claim labels. CLI timing includes startup, scans and JSON;
+warm p95 <=0.5 s, actual RSS <=256 MiB, total pilot state <=128 MiB and every serialized
+read <=24,000 bytes. None of these performance/client criteria has run yet. Acceptance
+execution paths currently refuse until implemented, preventing invented proof.
