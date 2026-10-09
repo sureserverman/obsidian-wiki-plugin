@@ -368,6 +368,176 @@ class StoreCases(unittest.TestCase):
             with self.assertRaises(contracts.Refusal): store.capability()
 
 
+class GenerationCases(unittest.TestCase):
+    def fixture(self, tmp):
+        from wiki_access.policy import Policy
+        root = pathlib.Path(tmp)/'vault'; root.mkdir(); (root/'Runbooks').mkdir()
+        (root/'Runbooks/A.md').write_text('---\ntitle: Amber\ncreated: 2026-01-01\n---\n# Steps\nUse amberctl.\n')
+        return root, pathlib.Path(tmp)/'state', Policy(['Runbooks'])
+
+    def test_whole_inventory_mutations_refuse_old_generation(self):
+        import tempfile
+        from wiki_access.generation import Manager
+        for mutation in ('add', 'edit', 'delete', 'rename', 'reclassify', 'policy'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
+                root, state, policy = self.fixture(tmp); manager = Manager(root, state, policy)
+                manager.refresh()
+                with manager.pin() as pin:
+                    pin.check()
+                    note = root/'Runbooks/A.md'
+                    if mutation == 'add': (root/'Runbooks/B.md').write_bytes(note.read_bytes())
+                    elif mutation == 'edit': note.write_text(note.read_text()+'changed')
+                    elif mutation == 'delete': note.unlink()
+                    elif mutation == 'rename': note.rename(root/'Runbooks/B.md')
+                    elif mutation == 'reclassify': note.write_text(note.read_text().replace('created:', 'sensitivity: private\ncreated:'))
+                    else:
+                        from wiki_access.policy import Policy
+                        pin.manager.policy = Policy(['Runbooks', 'Patterns'])
+                    with self.assertRaises(contracts.Refusal): pin.check()
+
+    def test_local_private_creation_and_corrupt_pointer_refuse(self):
+        import tempfile, os
+        from unittest.mock import patch
+        from wiki_access.generation import Manager
+        with tempfile.TemporaryDirectory() as tmp:
+            root, state, policy = self.fixture(tmp)
+            with patch('wiki_access.generation.filesystem', return_value='nfs4'):
+                with self.assertRaises(contracts.Refusal): Manager(root, state, policy).refresh()
+            with self.assertRaises(contracts.Refusal): Manager(root, root/'state', policy).refresh()
+            alias = pathlib.Path(tmp)/'link'; alias.symlink_to(root, target_is_directory=True)
+            with self.assertRaises(contracts.Refusal): Manager(alias, state, policy).refresh()
+            manager = Manager(root, state, policy); manager.refresh()
+            for directory, dirs, files in os.walk(state):
+                self.assertEqual(pathlib.Path(directory).stat().st_mode & 0o777, 0o700)
+                for name in files: self.assertEqual((pathlib.Path(directory)/name).stat().st_mode & 0o777, 0o600)
+            (state/'current.json').write_text('{"generation":"../../vault"}')
+            with self.assertRaises(contracts.Refusal):
+                with manager.pin(): pass
+
+    def test_pinned_reader_retention_and_interrupted_refresh(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access.generation import Manager
+        with tempfile.TemporaryDirectory() as tmp:
+            root, state, policy = self.fixture(tmp); manager = Manager(root, state, policy)
+            first = manager.refresh()['generation']
+            with manager.pin() as pin:
+                note = root/'Runbooks/A.md'; note.write_text(note.read_text()+'new')
+                second = manager.refresh()['generation']
+                self.assertNotEqual(first, second)
+                self.assertTrue((state/'generations'/first).exists())
+                with self.assertRaises(contracts.Refusal): pin.check()
+            manager.refresh()
+            self.assertFalse((state/'generations'/first).exists())
+            pointer = (state/'current.json').read_bytes()
+            note.write_text(note.read_text()+'next')
+            with patch('wiki_access.generation.os.replace', side_effect=OSError()):
+                with self.assertRaises(contracts.Refusal): manager.refresh()
+            self.assertEqual((state/'current.json').read_bytes(), pointer)
+            with self.assertRaises(contracts.Refusal):
+                with manager.pin() as pin: pin.check()
+
+    def test_manifest_tamper_symlinks_and_disappearing_source_refuse(self):
+        import tempfile, json
+        from wiki_access.generation import Manager
+        for mutation in ('manifest', 'leaf', 'ancestor', 'missing'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
+                root, state, policy = self.fixture(tmp); manager = Manager(root, state, policy)
+                generation = manager.refresh()['generation']
+                if mutation == 'manifest': (state/'generations'/generation/'manifest.json').write_text('{}')
+                elif mutation == 'leaf':
+                    note = root/'Runbooks/A.md'; note.rename(root/'Runbooks/B.md'); note.symlink_to('B.md')
+                elif mutation == 'ancestor':
+                    (root/'Runbooks').rename(root/'Other'); (root/'Runbooks').symlink_to('Other', target_is_directory=True)
+                else: root.rename(pathlib.Path(tmp)/'missing')
+                with self.assertRaises(contracts.Refusal):
+                    with manager.pin() as pin: pin.check()
+
+
+    def test_large_inventory_and_mid_scan_addition(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access import generation
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=self.fixture(tmp)
+            for i in range(410): (root/'Runbooks'/('Fixture'+str(i)+'.md')).write_bytes((root/'Runbooks/A.md').read_bytes())
+            manager=generation.Manager(root,state,policy); gen=manager.refresh()['generation']
+            self.assertGreater((state/'generations'/gen/'manifest.json').stat().st_size,65536)
+            with manager.pin() as pin: pin.check()
+            original=generation.source_policy.safe_read; added=False
+            def mutate(*args):
+                nonlocal added
+                raw=original(*args)
+                if not added: (root/'Runbooks/New.md').write_bytes(raw); added=True
+                return raw
+            with patch('wiki_access.generation.source_policy.safe_read',side_effect=mutate):
+                with self.assertRaises(contracts.Refusal):
+                    with manager.pin() as pin: pin.check()
+
+    def test_state_path_swap_never_writes_to_source(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access import generation
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=self.fixture(tmp); manager=generation.Manager(root,state,policy)
+            original=generation.write_private_at; swapped=False
+            def mutate(parent,name,raw):
+                nonlocal swapped
+                if name.startswith('pointer-') and not swapped:
+                    state.rename(pathlib.Path(tmp)/'detached-state'); state.symlink_to(root,target_is_directory=True); swapped=True
+                return original(parent,name,raw)
+            before={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+            with patch('wiki_access.generation.write_private_at',side_effect=mutate):
+                with self.assertRaises(contracts.Refusal): manager.refresh()
+            self.assertEqual(before,{str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()})
+
+    def test_hardlinks_nested_mounts_and_replaced_lock_refuse(self):
+        import tempfile,os
+        from unittest.mock import patch
+        from wiki_access import generation
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=self.fixture(tmp); manager=generation.Manager(root,state,policy); manager.refresh()
+            real=generation.filesystem
+            with patch('wiki_access.generation.filesystem',side_effect=lambda p: 'nfs4' if p.name=='generations' else real(p)):
+                with self.assertRaises(contracts.Refusal):
+                    with manager.pin(): pass
+            note=root/'Runbooks/A.md'; note.chmod(0o600); (state/'refresh.lock').unlink(); os.link(note,state/'refresh.lock')
+            with self.assertRaises(contracts.Refusal): manager.refresh()
+            (state/'refresh.lock').unlink()
+            with self.assertRaises(contracts.Refusal):
+                with manager.lock(exclusive=True,create=True):
+                    (state/'refresh.lock').rename(state/'refresh.old')
+                    (state/'refresh.lock').write_bytes(b''); (state/'refresh.lock').chmod(0o600)
+
+
+    def test_fifo_state_files_refuse_without_blocking(self):
+        import tempfile,os
+        from wiki_access.generation import Manager
+        for filename in ('refresh.lock','index.sqlite'):
+            with self.subTest(filename=filename),tempfile.TemporaryDirectory() as tmp:
+                root,state,policy=self.fixture(tmp); manager=Manager(root,state,policy); gen=manager.refresh()['generation']
+                path=state/'refresh.lock' if filename=='refresh.lock' else state/'generations'/gen/filename
+                path.unlink(); os.mkfifo(path,0o600)
+                with self.assertRaises(contracts.Refusal):
+                    with manager.pin(): pass
+
+
+    def test_failed_refresh_keeps_total_storage_within_budget(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access import generation
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=self.fixture(tmp); manager=generation.Manager(root,state,policy); manager.refresh()
+            active=manager.storage_size(); pointer=(state/'current.json').read_bytes()
+            note=root/'Runbooks/A.md'; note.write_text(note.read_text()+'changed')
+            with patch('wiki_access.generation.STORE_BYTES',active+100):
+                with self.assertRaises(contracts.Refusal) as caught: manager.refresh()
+                self.assertEqual(caught.exception.code,'budget_exhausted')
+                self.assertLessEqual(manager.storage_size(),active+100)
+            self.assertEqual((state/'current.json').read_bytes(),pointer)
+            self.assertEqual(len(list((state/'generations').iterdir())),1)
+
+
 def main():
     names = sys.argv[1:]
     if not names:
