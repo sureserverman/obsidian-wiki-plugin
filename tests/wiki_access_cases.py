@@ -5,6 +5,8 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'plugins/obsidian-wiki/scripts'))
+# runpy-based discovery does not set Python's script-directory import path.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from wiki_access import contracts
 
 
