@@ -144,6 +144,10 @@ def validate_request(request, *, admin=False):
 
 
 def response(operation, value, *, state='ok', generation=None):
+    if not isinstance(operation, str) or operation not in FIELDS or not isinstance(state, str) or state not in ('ok', 'empty', 'ambiguous', 'not_found'):
+        raise Refusal()
+    if generation is not None:
+        text(generation, 128)
     result = {'schema': SCHEMA, 'ok': True, 'operation': operation,
               'state': state, 'value': value}
     if generation is not None:
@@ -152,6 +156,8 @@ def response(operation, value, *, state='ok', generation=None):
 
 
 def error(operation, code):
+    if not isinstance(operation, str) or not isinstance(code, str) or code not in CODES - {'ok', 'empty', 'ambiguous', 'not_found'}:
+        raise Refusal()
     return {'schema': SCHEMA, 'ok': False,
             'operation': operation if operation in FIELDS else 'unknown',
             'state': code, 'error': {'code': code}}

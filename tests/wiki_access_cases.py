@@ -23,6 +23,16 @@ class ContractCases(unittest.TestCase):
             with self.subTest(request=request), self.assertRaises(contracts.Refusal):
                 contracts.validate_request(request)
 
+    def test_public_envelopes_reject_unknown_and_nonscalar_context(self):
+        for operation, state in (('unlisted', 'ok'), ('search', 'unlisted'), ([], 'ok')):
+            with self.subTest(operation=operation, state=state), self.assertRaises(contracts.Refusal):
+                contracts.response(operation, {}, state=state)
+        for operation, code in (([], 'invalid_request'), ('search', {'private-path': '/raw/CANARY'}),
+                                ('search', 'unlisted'), ('search', 'ok')):
+            with self.subTest(operation=operation, code=code), self.assertRaises(contracts.Refusal):
+                contracts.error(operation, code)
+        self.assertEqual(contracts.error('unlisted', 'invalid_request')['operation'], 'unknown')
+
     def test_read_budget_and_exact_selector(self):
         request = {'schema': contracts.SCHEMA, 'operation': 'get', 'page_ids': ['opaque'], 'generation': 'g'}
         self.assertEqual(contracts.validate_request(request)['byte_budget'], 24000)
@@ -214,6 +224,35 @@ class WorkloadCases(unittest.TestCase):
         base['questions'][0]['query'] = 'changed after freeze'
         with self.assertRaises(contracts.Refusal):
             a.validate_manifest(base)
+
+    def test_review_control_labels_and_date_omissions_refuse(self):
+        import copy
+        import wiki_access_acceptance as a
+        base = a.fake_manifest('acceptance')
+        cases = [lambda m: m['controls'][3]['required'].clear(),
+                 lambda m: m['controls'][4]['support'].pop(),
+                 lambda m: m['controls'][3]['support'][0].update(event_date={'date': '2026-03-01'}),
+                 lambda m: m['controls'][2].update(query=None, expected='abstain', required=[], forbidden=[]),
+                 lambda m: m['questions'][3]['support'][0].update(event_date=None),
+                 lambda m: m['controls'][3]['support'][0].update(quote=23),
+                 lambda m: m['controls'].__setitem__(0, None),
+                 lambda m: m['questions'][0].update(id=''),
+                 lambda m: m['controls'][3]['support'].append(copy.deepcopy(m['controls'][3]['support'][0]))]
+        for mutate in cases:
+            manifest = copy.deepcopy(base); mutate(manifest); manifest.pop('fingerprint')
+            manifest = a.seal(manifest)
+            with self.subTest(mutate=mutate), self.assertRaises(contracts.Refusal):
+                a.validate_manifest(manifest)
+
+    def test_normalized_question_duplicates_and_development_overlap_refuse(self):
+        import copy
+        import wiki_access_acceptance as a
+        dev = a.fake_manifest('development'); base = a.fake_manifest('acceptance')
+        for query in ('  '+base['questions'][0]['query'].upper()+'  ', dev['questions'][0]['query']):
+            manifest = copy.deepcopy(base); manifest['questions'][1]['query'] = query
+            manifest.pop('fingerprint'); manifest = a.seal(manifest)
+            with self.subTest(query=query), self.assertRaises(contracts.Refusal):
+                a.validate_manifest(manifest, development=dev)
 
 
 class Stage1IntegrationCases(unittest.TestCase):
