@@ -38,3 +38,9 @@ from required/unsupported claim labels. CLI timing includes startup, scans and J
 warm p95 <=0.5 s, actual RSS <=256 MiB, total pilot state <=128 MiB and every serialized
 read <=24,000 bytes. None of these performance/client criteria has run yet. Acceptance
 execution paths currently refuse until implemented, preventing invented proof.
+
+Stage 1 gate PASS at 703748b; 18 cases and both pilot wrappers pass after the documented two-round fix-scope repairs. Stage 2 has not started.
+
+context-usage: verdict=handoff now=143928 window=258400 pct=55.7 projected_pct=100.8 disjoint=False reason: rule context: now=143928 of window=258400 (rollout model_context_window) is 55.7% > 50%
+
+Resume Task 2.1 from the canonical plan in a fresh session; branch feat/local-sqlite-wiki-pilot. All child agents and tool sessions completed; dispatch ledger NOT RUN (no log). Private path/frozen manifests in ignored plan-progress state. No active pilot/client route or model/source write was introduced.
