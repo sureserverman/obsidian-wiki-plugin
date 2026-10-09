@@ -538,6 +538,134 @@ class GenerationCases(unittest.TestCase):
             self.assertEqual(len(list((state/'generations').iterdir())),1)
 
 
+class LookupCases(unittest.TestCase):
+    def test_unique_path_title_alias_and_ambiguity_are_explicit(self):
+        import tempfile
+        from wiki_access.generation import Manager
+        from wiki_access.service import Service
+        from wiki_access.policy import Policy
+        with tempfile.TemporaryDirectory() as tmp:
+            root, state, _ = GenerationCases().fixture(tmp)
+            (root/'Runbooks/A.md').write_text('---\ntitle: Amber\ncreated: 2026-01-01\naliases: [Golden]\ntags: [ops]\n---\n## Steps\nUse amberctl --check Русский.\n')
+            manager = Manager(root,state,Policy(['Runbooks'])); manager.refresh(); service = Service(manager)
+            for kind, value in [('path','Runbooks/A.md'),('title','amber'),('alias','golden')]:
+                result = service.handle({'schema':contracts.SCHEMA,'operation':'resolve','selector':{'kind':kind,'value':value}})
+                self.assertEqual(result['state'], 'ok'); self.assertEqual(len(result['value']['pages']),1)
+            (root/'Runbooks/B.md').write_bytes((root/'Runbooks/A.md').read_bytes()); manager.refresh()
+            result = service.handle({'schema':contracts.SCHEMA,'operation':'resolve','selector':{'kind':'title','value':'Amber'}})
+            self.assertEqual(result['state'],'ambiguous'); self.assertEqual(len(result['value']['pages']),2)
+
+    def test_ranked_literal_unicode_filters_and_verified_empty(self):
+        import tempfile
+        from wiki_access.generation import Manager
+        from wiki_access.service import Service
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=GenerationCases().fixture(tmp)
+            note=root/'Runbooks/A.md'; note.write_text(note.read_text().replace('---\n# Steps','aliases: [Golden]\ntags: [ops]\nupdated: 2026-02-01\nevidence-status: observed\n---\n# Steps')+'Русский --check.\n')
+            manager=Manager(root,state,policy); manager.refresh(); service=Service(manager)
+            for query in ('amberctl --check', 'Русский', 'Golden'):
+                result=service.handle({'schema':contracts.SCHEMA,'operation':'search','query':query,'filters':{'tag':'ops','created_from':'2026-01-01'}})
+                self.assertEqual(result['state'],'ok'); self.assertEqual(len(result['value']['pages']),1)
+                self.assertNotIn('read_receipt',contracts.encode(result).decode())
+            result=service.handle({'schema':contracts.SCHEMA,'operation':'search','query':'unknownphrase'})
+            self.assertEqual(result['state'],'empty')
+            self.assertEqual(service.handle({'schema':contracts.SCHEMA,'operation':'search','query':'amberctl','filters':{'verification_status':'verified'}})['state'],'unsupported_filter')
+            self.assertLessEqual(len(contracts.encode(service.handle({'schema':contracts.SCHEMA,'operation':'status'}))),8000)
+
+    def test_post_search_drift_discards_all_buffered_metadata(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access.generation import Manager
+        from wiki_access.service import Service
+        from wiki_access.store import Store
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=GenerationCases().fixture(tmp); manager=Manager(root,state,policy); manager.refresh(); service=Service(manager)
+            original=Store.search
+            def mutate(db,*args):
+                result=original(db,*args); (root/'Runbooks/A.md').unlink(); return result
+            with patch.object(Store,'search',mutate):
+                result=service.handle({'schema':contracts.SCHEMA,'operation':'search','query':'amberctl'})
+            self.assertFalse(result['ok']); self.assertNotIn('Amber',contracts.encode(result).decode())
+            for op in ('search','resolve','status'):
+                req={'schema':contracts.SCHEMA,'operation':op}
+                if op=='search': req['query']='amberctl'
+                elif op=='resolve': req['selector']={'kind':'title','value':'Amber'}
+                self.assertFalse(service.handle(req)['ok'])
+            with self.assertRaises(contracts.Refusal): Service(None)
+
+
+class Stage2IntegrationCases(unittest.TestCase):
+    def test_complete_fake_inventory_and_content_operation_guard_matrix(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access.generation import Manager, Pinned
+        from wiki_access.service import Service
+        import wiki_access_acceptance as a
+        from wiki_access.policy import Policy
+        # Development fixtures only: the independent acceptance set stays unopened.
+        manifest=a.fake_manifest('development')
+        with tempfile.TemporaryDirectory() as tmp:
+            root=pathlib.Path(tmp)/'vault'; (root/'Runbooks').mkdir(parents=True)
+            for note in manifest['notes']:
+                (root/note['locator']).write_text(note['raw'])
+            denied=root/'Runbooks/Denied.md'; denied.write_text('---\ntitle: PRIVATE_CANARY\ncreated: 2026-01-01\nsensitivity: private\n---\nPRIVATE_CANARY\n')
+            manager=Manager(root,pathlib.Path(tmp)/'state',Policy(['Runbooks'])); manager.refresh(); service=Service(manager)
+            for op in ('resolve','search','status'):
+                request={'schema':contracts.SCHEMA,'operation':op}
+                if op=='resolve': request['selector']={'kind':'title','value':'PRIVATE_CANARY'}
+                if op=='search': request['query']='PRIVATE_CANARY'
+                response=service.handle(request)
+                self.assertTrue(response['ok']); self.assertNotIn('PRIVATE_CANARY',contracts.encode(response).decode())
+                with patch.object(Pinned,'check',side_effect=contracts.Refusal('generation_stale')):
+                    response=service.handle(request)
+                    self.assertFalse(response['ok']); self.assertNotIn('value',response)
+            for note in manifest['notes']:
+                response=service.handle({'schema':contracts.SCHEMA,'operation':'resolve','selector':{'kind':'path','value':note['locator']}})
+                self.assertEqual(response['state'],'ok')
+            denied.write_text(denied.read_text().replace('sensitivity: private\n',''))
+            self.assertEqual(service.handle({'schema':contracts.SCHEMA,'operation':'status'})['state'],'generation_stale')
+
+    def test_refresh_rename_and_reclassification_while_lookup_is_pinned(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access.generation import Manager
+        from wiki_access.service import Service
+        from wiki_access.store import Store
+        for mutation in ('rename','reclassify','refresh'):
+            with self.subTest(mutation=mutation),tempfile.TemporaryDirectory() as tmp:
+                root,state,policy=GenerationCases().fixture(tmp); manager=Manager(root,state,policy); manager.refresh()
+                original=Store.resolve
+                def mutate(db,*args):
+                    result=original(db,*args); note=root/'Runbooks/A.md'
+                    if mutation=='rename': note.rename(root/'Runbooks/B.md')
+                    elif mutation=='reclassify': note.write_text(note.read_text().replace('created:','sensitivity: private\ncreated:'))
+                    else: note.write_text(note.read_text()+'new')
+                    manager.refresh(); return result
+                with patch.object(Store,'resolve',mutate):
+                    result=Service(manager).handle({'schema':contracts.SCHEMA,'operation':'resolve','selector':{'kind':'title','value':'Amber'}})
+                self.assertFalse(result['ok']); self.assertNotIn('value',result)
+
+    def test_negative_control_detects_missing_guard_and_checks_disclosure_budget(self):
+        import tempfile,json
+        from unittest.mock import patch
+        from wiki_access.generation import Manager,Pinned
+        from wiki_access.service import Service
+        from wiki_access.store import Store
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=GenerationCases().fixture(tmp); manager=Manager(root,state,policy); manager.refresh()
+            original=Store.search
+            def mutate(db,*args):
+                result=original(db,*args); (root/'Runbooks/A.md').unlink(); return result
+            # Deliberately defective boundary: the gate assertion must detect it.
+            with patch.object(Store,'search',mutate),patch.object(Pinned,'check',return_value=None):
+                vulnerable=Service(manager).handle({'schema':contracts.SCHEMA,'operation':'search','query':'amberctl'})
+            with self.assertRaises(AssertionError): self.assertFalse(vulnerable['ok'])
+            raw='---\ntitle: Amber\ncreated: 2026-01-01\naliases: '+json.dumps(['alias'+str(i)+'a'*1600 for i in range(6)])+'\n---\nSafe amberctl.\n'
+            (root/'Runbooks/A.md').write_text(raw); manager.refresh()
+            result=Service(manager).handle({'schema':contracts.SCHEMA,'operation':'search','query':'amberctl'})
+            self.assertEqual(result['state'],'budget_exhausted'); self.assertLessEqual(len(contracts.encode(result)),8000)
+
+
 def main():
     names = sys.argv[1:]
     if not names:
