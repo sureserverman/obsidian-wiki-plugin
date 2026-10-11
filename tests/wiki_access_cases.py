@@ -968,6 +968,142 @@ class CitationCases(unittest.TestCase):
             self.assertEqual([c['valid'] for c in checks],[True,False,False]);self.assertEqual(checks[0]['target'],page['locator'])
 
 
+class CliCases(unittest.TestCase):
+    def test_configuration_change_after_buffering_discards_response(self):
+        import tempfile,io,json
+        from unittest.mock import patch
+        from wiki_access import cli
+        with tempfile.TemporaryDirectory() as tmp:
+            root,env,config=self.fixture(tmp);self.call(env,{'operation':'refresh'},True)
+            original=cli.configured_service
+            def changed(*args):
+                service=original(*args);handle=service.handle
+                def mutate(request):
+                    result=handle(request)
+                    value=json.loads(config.read_text());value['enabled']=False;config.write_text(json.dumps(value))
+                    return result
+                service.handle=mutate
+                return service
+            class Stream:
+                def __init__(self,raw=b''):self.buffer=io.BytesIO(raw)
+            output=Stream()
+            with patch.dict(__import__('os').environ,env,clear=True),patch.object(cli.sys,'argv',['wiki-access.py']),\
+                 patch.object(cli.sys,'stdin',Stream(contracts.encode({'schema':contracts.SCHEMA,'operation':'status'}))),\
+                 patch.object(cli.sys,'stdout',output),patch.object(cli,'configured_service',changed):
+                status=cli.main()
+            result=contracts.decode(output.buffer.getvalue())
+            self.assertEqual(status,4);self.assertFalse(result['ok']);self.assertNotIn('value',result)
+
+    def fixture(self,tmp):
+        import os,json
+        root,state,policy=GenerationCases().fixture(tmp)
+        config=pathlib.Path(tmp)/'config';(config/'obsidian-wiki').mkdir(parents=True)
+        path=config/'obsidian-wiki/wiki-access.json'
+        path.write_text(json.dumps({'schema':'wiki-access-config.v1','enabled':True,'categories':['Runbooks'],'portfolio':[]}));path.chmod(0o600)
+        env=os.environ.copy();env.update(OBSIDIAN_VAULT_PATH=str(root),XDG_CONFIG_HOME=str(config),XDG_STATE_HOME=str(pathlib.Path(tmp)/'local-state'))
+        return root,env,path
+
+    def call(self,env,request,admin=False,args=(),raw=None,script=None):
+        import subprocess
+        entry=script or ROOT/'plugins/obsidian-wiki/scripts'/('wiki-access-admin.py' if admin else 'wiki-access.py')
+        p=subprocess.run([str(entry),*args],input=raw if raw is not None else contracts.encode(dict(schema=contracts.SCHEMA,**request)),
+                         env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=15)
+        self.assertEqual(p.stderr,b'')
+        value=contracts.decode(p.stdout);self.assertEqual(value['schema'],contracts.SCHEMA)
+        self.assertEqual(p.returncode,0 if value['ok'] else __import__('wiki_access.cli',fromlist=['exit_code']).exit_code(value))
+        return p,value
+
+    def test_subprocess_json_refresh_resolve_get_and_separation(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root,env,config=self.fixture(tmp)
+            p,result=self.call(env,{'operation':'refresh'},admin=True);self.assertTrue(result['ok'],result)
+            p,found=self.call(env,{'operation':'resolve','selector':{'kind':'title','value':'Amber'}})
+            self.assertEqual(found['state'],'ok')
+            p,bundle=self.call(env,{'operation':'get','page_ids':[found['value']['pages'][0]['page_id']], 'generation':found['generation']})
+            self.assertTrue(bundle['ok']);self.assertEqual(len(p.stdout),len(contracts.encode(bundle)))
+            self.assertLessEqual(len(p.stdout),24000)
+            for request,admin in (({'operation':'refresh'},False),({'operation':'check'},False),({'operation':'search','query':'Amber'},True),
+                                  ({'operation':'status','config':'/PRIVATE_CANARY'},False),({'operation':'get','path':'/PRIVATE_CANARY'},False)):
+                p,result=self.call(env,request,admin)
+                self.assertFalse(result['ok']);self.assertNotIn('PRIVATE_CANARY',p.stdout.decode())
+            p,check=self.call(env,{'operation':'check'},admin=True);self.assertTrue(check['ok']);self.assertIn('pages',check['value'])
+            self.call(env,{'operation':'refresh'},admin=True,args=['--rotate-receipt-key'])
+
+    def test_malformed_size_bounds_shell_payload_and_sanitized_errors(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root,env,config=self.fixture(tmp);self.call(env,{'operation':'refresh'},True)
+            canary=pathlib.Path(tmp)/'PRIVATE_CANARY'
+            query='$(touch '+str(canary)+') `touch '+str(canary)+'`'
+            p,result=self.call(env,{'operation':'search','query':query})
+            self.assertFalse(canary.exists());self.assertNotIn(str(root),p.stdout.decode())
+            for raw in (b'{broken',b'[]',b'{"schema":"wiki-access.v1","schema":"bad"}',b'\xff',b'x'*65537,
+                        b'{"schema":"wiki-access.v1","operation":'+b'['*2000+b'0'+b']'*2000+b'}'):
+                p,result=self.call(env,{},raw=raw)
+                self.assertFalse(result['ok']);self.assertLess(len(p.stdout),256)
+            p,result=self.call(env,{'operation':'status'},args=['--source','/PRIVATE_CANARY'])
+            self.assertEqual(result['state'],'invalid_request');self.assertNotIn('PRIVATE_CANARY',p.stdout.decode())
+
+    def test_disabled_unavailable_corrupt_and_revoked_storage(self):
+        import tempfile,json
+        with tempfile.TemporaryDirectory() as tmp:
+            root,env,config=self.fixture(tmp)
+            p,result=self.call(env,{'operation':'status'});self.assertFalse(result['ok'])
+            self.call(env,{'operation':'refresh'},True)
+            db=next(pathlib.Path(env['XDG_STATE_HOME']).rglob('index.sqlite'));db.write_bytes(b'CORRUPT_PRIVATE_CANARY')
+            p,result=self.call(env,{'operation':'status'});self.assertFalse(result['ok']);self.assertNotIn('PRIVATE_CANARY',p.stdout.decode())
+            value=json.loads(config.read_text());value['enabled']=False;config.write_text(json.dumps(value))
+            p,result=self.call(env,{'operation':'status'});self.assertEqual(result['state'],'disabled')
+            config.unlink()
+            p,result=self.call(env,{'operation':'status'});self.assertEqual(result['state'],'disabled')
+
+    def test_config_paths_never_enter_requests_and_unsafe_config_refuses(self):
+        import tempfile,os
+        with tempfile.TemporaryDirectory() as tmp:
+            root,env,config=self.fixture(tmp)
+            before={p:p.read_bytes() for p in root.rglob('*.md')}
+            env['XDG_STATE_HOME']=str(root)
+            p,result=self.call(env,{'operation':'refresh'},True);self.assertEqual(result['state'],'permission_refused')
+            self.assertEqual(before,{p:p.read_bytes() for p in root.rglob('*.md')})
+            config.chmod(0o644)
+            p,result=self.call(env,{'operation':'status'});self.assertEqual(result['state'],'permission_refused')
+
+
+class Stage3IntegrationCases(unittest.TestCase):
+    def test_actual_subprocess_full_development_corpus_read_cite_and_lifecycle(self):
+        import tempfile
+        import wiki_access_acceptance as a
+        with tempfile.TemporaryDirectory() as tmp:
+            cli=CliCases();root,env,config=cli.fixture(tmp)
+            (root/'Runbooks/A.md').unlink()
+            manifest=a.fake_manifest('development')
+            for note in manifest['notes']:(root/note['locator']).write_text(note['raw'])
+            self.assertTrue(cli.call(env,{'operation':'refresh'},True)[1]['ok'])
+            for note in manifest['notes']:
+                found=cli.call(env,{'operation':'resolve','selector':{'kind':'path','value':note['locator']}})[1]
+                page_id=found['value']['pages'][0]['page_id']
+                bundle=cli.call(env,{'operation':'get','generation':found['generation'],'page_ids':[page_id]})[1]
+                self.assertTrue(bundle['ok']);page=bundle['value']['pages'][0]
+                citation=CitationCases().citation(page,page['body'])
+                checked=cli.call(env,{'operation':'verify_citations','read_receipt':bundle['value']['read_receipt'],'citations':[citation,citation]})[1]
+                self.assertTrue(all(c['valid'] for c in checked['value']['citations']))
+                self.assertEqual(len(checked['value']['citations']),2)
+                self.assertEqual(checked['value']['verification'],'structural_only')
+            old_request={'operation':'verify_citations','read_receipt':bundle['value']['read_receipt'],'citations':[citation]}
+            for mutation in ('edit','rename','delete','reclassify','add'):
+                source=root/note['locator'];original=source.read_bytes()
+                if mutation=='edit':source.write_bytes(original+b'Changed.')
+                elif mutation=='rename':source.rename(root/'Runbooks/Renamed.md')
+                elif mutation=='delete':source.unlink()
+                elif mutation=='reclassify':source.write_bytes(original.replace(b'created:',b'sensitivity: private\ncreated:'))
+                else:(root/'Runbooks/Added.md').write_bytes(original)
+                result=cli.call(env,old_request)[1];self.assertFalse(result['ok']);self.assertNotIn('value',result)
+                if mutation=='rename':(root/'Runbooks/Renamed.md').rename(source)
+                elif mutation=='add':(root/'Runbooks/Added.md').unlink()
+                else:source.write_bytes(original)
+
+
 def main():
     names = sys.argv[1:]
     if not names:
