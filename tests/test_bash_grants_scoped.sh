@@ -144,4 +144,12 @@ for c in plugins/obsidian-wiki/commands/lint.md plugins/obsidian-wiki/commands/i
 done
 ok "the three pipeline commands declare their own scoped grants"
 
+# The opt-in ask command grants only the read executable, never admin/interpreters.
+ask_grant="$(grep '^allowed-tools:' plugins/obsidian-wiki/commands/ask.md)"
+case "$ask_grant" in
+    'allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)') : ;;
+    *) fail "ask command changed its exact dedicated read-executable grant" ;;
+esac
+ok "ask opt-in shell grant names only the dedicated read executable"
+
 echo "ALL OK"

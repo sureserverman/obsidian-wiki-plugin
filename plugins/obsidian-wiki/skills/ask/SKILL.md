@@ -20,12 +20,24 @@ description: >
 Answer a question against the Obsidian vault at `<vault>`, citing every claim,
 and optionally filing the answer back as a new wiki page if it has lasting value.
 
+An explicit user-typed `ask --local-pilot` is executed by the command layer's
+separate guarded JSON read CLI workflow. This skill acquires no Bash grant and
+never invokes that route from natural-language triggers. Ordinary ask retains the
+legacy path below. The pilot bypasses the index and uses one bounded full-note get,
+authentic receipts and verification of every citation occurrence before display.
+Refusal never becomes a direct-source fallback. File-back remains separately
+confirmed under the existing maintenance/publication gates.
+
 The vault has an auto-generated retrieval index at `index.md`. Always use it as the
 search entry point before falling back to the legacy `Home.md` Map-of-Content or grep.
 
 ## Step 1 — Scan `index.md`
 
-Read `<vault>/index.md` first. It is the current generated inventory of published
+Read `<vault>/index.md` first, subject to the client's whole-file read limit
+(256 KiB on the measured host). An oversized index is unsupported for this legacy
+route: report that limit and offer the explicit opt-in local pilot or an
+owner-selected guarded bounded lookup. Do not bypass policy with arbitrary source
+reads or treat a partial index as complete. It is the current generated inventory of published
 pages, grouped by category with paths, summaries, tags, aliases, topics, and evidence
 metadata. It excludes protected records and raw/private paths.
 
@@ -89,28 +101,26 @@ If the answer has lasting value — a new Gotcha, a new Pattern, a cross-domain 
 that didn't exist on any single page — offer to save it as a new wiki page. **Ask
 first.** Do not file unprompted.
 
-When the user agrees:
+When the user agrees, prepare the proposed page content and destination for the
+owner's existing guarded writer workflow. Include category/schema, each source
+citation and the original question. Agreement to a lookup or a draft does not
+permit direct Write or a log mutation from ask.
 
-1. Pick the category (usually `Gotchas/` or `Patterns/` for synthesized answers).
-2. Write the page using the schema from `CLAUDE.md` (same frontmatter as `ingest`
-   would use).
-3. Cite every wiki page that fed into the synthesis.
-4. If the answer was derived from a concrete question, record the question in the
-   page's body so future-you has context for why it exists.
+The separate publication operation must follow WF-VAULT-WRITE-MAINTENANCE (and
+WF-CHAT-PUBLISH for a chat-derived batch): owner confirms exclusive maintenance,
+the writer checks current ownership/expiry immediately before **every mutation**,
+then rechecks affected target/base hashes. A foreign, malformed or expired window,
+missing capability or changed base hash blocks the write. Keep capability tokens
+out of drafts, answers and logs. Do not grant admin, interpreter or generic shell
+access to lookup to perform this handoff. The operator runs the existing guarded
+publication workflow; ask remains read-only even after draft confirmation.
 
-## Step 6 — Log the activity
+## Step 6 — Log only a completed publication
 
-If and only if a page was filed back, append a log entry:
-
-```
-## [YYYY-MM-DD] query | <topic>
-- Question: <one-line summary of the question>
-- Filed: [[New Page]]
-- Sources: [[Page A]], [[Page B]]
-```
-
-Queries that do not produce a new page do **not** get logged — the log would become
-noise.
+Only the separate guarded writer appends the query log entry, after the confirmed
+page was actually filed. It applies the same maintenance and base-hash checks to
+`log.md`. A lookup, accepted draft, failed or blocked publication creates no query
+log. The entry records the question, filed page and source citations.
 
 ## Common pitfalls
 
