@@ -155,6 +155,9 @@ subset supports ATX headings outside code/comments and existing alphanumeric/hyp
 inline block IDs on plain paragraphs and individual list items. Separate-line IDs
 on structured blocks, quoted/fenced/indented code, comments and uncertain HTML/math
 contexts refuse; use a page citation with the exact read span instead.
+HTML comment delimiters are processed in order. After a generic HTML tag is
+encountered outside a known code fence, all subsequent heading/block anchors are
+conservatively unavailable for that note; page citations remain available.
 Duplicate or unsupported headings downgrade to page citations or
 refuse; unknown anchors refuse. Read/source byte maps accompany valid spans.
 Each occurrence labels `target_verified` and `read_verified`; `verified_at` is a
