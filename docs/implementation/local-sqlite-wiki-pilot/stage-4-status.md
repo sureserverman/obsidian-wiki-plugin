@@ -149,3 +149,16 @@ model data, generic shell/interpreter grant or global configuration write is nee
 Representative private source qualification and owner usefulness stay separately
 pending. Task 4.4's selected project-local DEC and final close-out follow Task 4.3.
 Keep the existing DEC IDs in force and the pilot inactive.
+
+## Post-commit audit limits
+
+The plan-flip audit was run after the progress commit. Its full verdict is NOT RUN:
+the vault-resident plan has no pre-execution baseline/Git history, so checks 1/3/5
+cannot establish historical checkbox transitions. Available checks flag missing
+Stage 1 first-claim records, earlier Stage 3 proof fingerprints bound to prior
+test trees, and Stage 2 commit-title matching advisories. These are retained as
+final close-out proof/provenance debt; no fresh baseline is fabricated and no
+whole-plan audit PASS is claimed. Earlier stage receipts remain historical
+qualification evidence for their recorded revisions. The v4 lock and current
+local checks above remain the current synthetic receipts. The native review
+ledger reports zero agents started and never stopped. No owned tool is running.
