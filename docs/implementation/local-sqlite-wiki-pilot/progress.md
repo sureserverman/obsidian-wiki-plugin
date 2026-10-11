@@ -56,3 +56,5 @@ Stage 2 gate PASS: final regressions 40/40 wrappers (16.020 s), pilot unit 40 ca
 Stage 2 gate commit 7e85f62. context-usage: verdict=handoff now=157813 window=258400 pct=61.1 projected_pct=111.6 disjoint=False reason: rule context: now=157813 of window=258400 (rollout model_context_window) is 61.1% > 50%
 
 Resume Task 3.1 in a fresh session from the canonical plan, branch feat/local-sqlite-wiki-pilot. All agents/tool sessions completed; ledger NOT RUN (no log). No Stage 3 task started.
+
+Task 3.1 PASS (2026-10-11): ReadCases 4/4; complete one-to-five-note authoritative projections, exact UTF-8 response cap, CRLF/multibyte maps, explicit full-note omissions and whole-bundle stale/unknown-ID refusal. Host mutation proof recorded for the first claim. Resumption baseline 40/40 wrappers PASS. Legacy handoff migrated through the owned v2 writer with original Stage 2 completed-round evidence retained; private context backup remains in the original ignored pack. No acceptance/client/source activation.
