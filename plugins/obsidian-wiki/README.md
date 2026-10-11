@@ -353,3 +353,24 @@ obsidian-wiki-plugin/                # marketplace root
 - Dataview plugin queries over frontmatter.
 
 These can be added in a later iteration if useful.
+
+## Local SQLite pilot (opt-in, qualification pending)
+
+The canonical package contains stdlib-only `scripts/wiki-access.py` for guarded
+search/resolve/get/verify/status and separate `scripts/wiki-access-admin.py` for
+explicit refresh/check. Copy the **whole plugin**, including `scripts/wiki_access/`
+and executable modes; copying only the entry script is unsupported. No Python
+package install, scheduler, new hook, source migration or model selection is needed.
+Owner-local configuration defaults disabled; see [operator instructions](scripts/README.md).
+
+The user-typed `/obsidian-wiki:ask --local-pilot <question>` selects the command
+adapter. Ordinary ask retains its index path. Skills/agents have no shell grant;
+only the command names the dedicated read executable. Actual installed-Claude
+permission matching and fake-answer support remain pending Task 4.3; this is not
+normal adoption or real-vault quality proof. Source claims require complete guarded
+reads and every citation occurrence verified; structural provenance is separate
+from semantic support. Confirmed file-back hands off to the guarded writer.
+
+Cursor's existing manual `/wiki-ask` remains its original index route. The local
+pilot adapter/package is not ported or qualified there; [port limits](../../ports/cursor/README.md)
+remain explicit. No vault-context self-integration or project containment changes.

@@ -1186,6 +1186,74 @@ class AdapterCases(unittest.TestCase):
             self.assertFalse(refused['ok']);self.assertNotIn('value',refused);self.assertNotIn(b'PRIVATE_CANARY',process.stdout)
 
 
+class PackagingCases(unittest.TestCase):
+    def installed(self,tmp):
+        import shutil
+        dest=pathlib.Path(tmp)/'installed-plugin'
+        shutil.copytree(ROOT/'plugins/obsidian-wiki',dest,ignore=shutil.ignore_patterns('__pycache__'))
+        return dest
+
+    def test_installed_layout_stdlib_executables_and_all_modules(self):
+        import os,tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            dest=self.installed(tmp);cli=CliCases();root,env,config=cli.fixture(tmp)
+            env={k:env[k] for k in ('PATH','OBSIDIAN_VAULT_PATH','XDG_CONFIG_HOME','XDG_STATE_HOME')}
+            env['HOME']=tmp
+            for name in ('wiki-access.py','wiki-access-admin.py'):
+                self.assertTrue(os.access(dest/'scripts'/name,os.X_OK))
+            modules=list((dest/'scripts/wiki_access').glob('*.py'));self.assertGreaterEqual(len(modules),8)
+            for path in modules:compile(path.read_bytes(),str(path),'exec')
+            self.assertTrue(cli.call(env,{'operation':'refresh'},True,script=dest/'scripts/wiki-access-admin.py')[1]['ok'])
+            self.assertTrue(cli.call(env,{'operation':'check'},True,script=dest/'scripts/wiki-access-admin.py')[1]['ok'])
+            found=cli.call(env,{'operation':'resolve','selector':{'kind':'title','value':'Amber'}},script=dest/'scripts/wiki-access.py')[1]
+            self.assertEqual(found['state'],'ok',found)
+
+    def test_recursive_python_coverage_without_package_writes(self):
+        import subprocess
+        paths=sorted((ROOT/'plugins').rglob('*.py'))
+        self.assertTrue(any(p.parent.name=='wiki_access' for p in paths))
+        before={p:p.stat().st_mtime_ns for p in paths}
+        subprocess.run(['bash','tests/test_python_syntax.sh'],cwd=ROOT,check=True,capture_output=True)
+        self.assertEqual(before,{p:p.stat().st_mtime_ns for p in paths})
+        self.assertIn('bash tests/test_python_syntax.sh',(ROOT/'.github/workflows/tests.yml').read_text())
+
+    def test_documents_operator_and_distinct_cursor_boundary(self):
+        docs=(ROOT/'plugins/obsidian-wiki/scripts/README.md').read_text()
+        self.assertIn('Refresh explicitly',docs);self.assertIn('128 MiB',docs)
+        self.assertIn('Exit 0',docs);self.assertIn('5 invalid receipt',docs)
+        cursor=(ROOT/'ports/cursor/README.md').read_text()
+        self.assertIn('Neither that adapter nor its',cursor)
+        self.assertIn('no pilot permission, model, recall or lifecycle claim',cursor)
+
+
+class Stage4IntegrationCases(unittest.TestCase):
+    def test_installed_operator_adapter_read_verify_rotation_and_revocation(self):
+        import tempfile,json
+        with tempfile.TemporaryDirectory() as tmp:
+            dest=PackagingCases().installed(tmp);cli=CliCases();root,env,config=cli.fixture(tmp)
+            read=dest/'scripts/wiki-access.py';admin=dest/'scripts/wiki-access-admin.py'
+            def call(req,administrative=False):return cli.call(env,req,administrative,script=admin if administrative else read)
+            before={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*.md')}
+            self.assertIn(call({'operation':'status'})[1]['state'],('index_unavailable','source_unavailable'))
+            self.assertTrue(call({'operation':'refresh'},True)[1]['ok'])
+            found=call({'operation':'search','query':'Amber'})[1]
+            page_id=found['value']['pages'][0]['page_id']
+            process,bundle=call({'operation':'get','page_ids':[page_id],'generation':found['generation'],'byte_budget':24000})
+            self.assertLessEqual(len(process.stdout),24000);page=bundle['value']['pages'][0]
+            citation=CitationCases().citation(page,page['body'])
+            request={'operation':'verify_citations','read_receipt':bundle['value']['read_receipt'],'citations':[citation,citation]}
+            self.assertTrue(all(c['valid'] for c in call(request)[1]['value']['citations']))
+            self.assertFalse(call({'operation':'refresh'})[1]['ok'])
+            cli.call(env,{'operation':'refresh'},True,args=['--rotate-receipt-key'],script=admin)
+            self.assertEqual(call(request)[1]['state'],'invalid_receipt')
+            self.assertEqual(before,{str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*.md')})
+            (root/'Runbooks/A.md').write_text('---\ntitle: Amber\ncreated: 2026-01-01\nsensitivity: private\n---\nPRIVATE_CANARY')
+            process,refused=call({'operation':'get','page_ids':[page_id],'generation':found['generation']})
+            self.assertFalse(refused['ok']);self.assertNotIn('value',refused);self.assertNotIn(b'PRIVATE_CANARY',process.stdout)
+            value=json.loads(config.read_text());value['enabled']=False;config.write_text(json.dumps(value))
+            self.assertEqual(call({'operation':'status'})[1]['state'],'disabled')
+
+
 def main():
     names = sys.argv[1:]
     if not names:

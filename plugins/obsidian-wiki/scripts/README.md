@@ -179,3 +179,30 @@ unavailability/staleness/permission/disabled, 5 invalid receipt. Both request
 boundaries cap stdin at 65,536 bytes; discovery/verification responses cap at
 8,000 bytes. Normal ask adoption and packaged-client support are pending their
 separate Stage 4 qualification.
+
+### Manual pilot operation and recovery
+
+1. Copy the complete canonical plugin with executable modes and all
+   `wiki_access/*.py` modules. Use Python 3.12+ with linked SQLite FTS5; run the
+   separate admin `check` after an explicit first refresh. Only stdlib is required.
+2. Keep `wiki-access.json` owner-only 0600, single-link, and its config/state
+   directories private. Put derived state on a local supported mount, outside the
+   vault/NFS. The executable refuses unsafe directories, links and network state.
+3. Refresh explicitly after edits/renames/deletions/reclassification or changed
+   policy. Disabled/unavailable/stale/corrupt replies are operational refusal,
+   never empty evidence. Do not refresh automatically inside ask or reuse revoked
+   stores/receipts. Interrupted refresh preserves the old published generation
+   only while its source/policy checks remain current; otherwise reads refuse.
+4. Refresh reclaims only owned, validated derived generations within the 128 MiB
+   aggregate cap. Active/staging/pinned generations are retained as documented;
+   unsafe entries refuse instead of deleting unrelated files. Never manually
+   reclaim research artifacts or original notes through this pilot.
+5. Disable the owner-local pilot config or stop using `--local-pilot` to roll back
+   use. No source migration, automatic hook/scheduler or normal-route switch occurs.
+   The installed-Claude command grant and configured model traces need independent
+   qualification; Cursor uses its existing manual index path.
+
+Public stdout is one bounded JSON response and stderr is empty for protocol
+refusals. Exit 0 is success; 2 request/schema/filter, 3 budget, 4 operational or
+permission/disabled, 5 invalid receipt. Check `state`/`error.code`; do not infer
+success from an empty page list or paste private logs/config into a source page.
