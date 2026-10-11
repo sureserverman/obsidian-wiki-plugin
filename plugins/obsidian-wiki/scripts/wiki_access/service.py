@@ -35,6 +35,9 @@ class Service:
         if operation == 'get':
             from .evidence import bundle
             return bundle(self.manager, db, pin, request)
+        if operation == 'verify_citations':
+            from .citations import verify
+            return verify(self.manager,db,pin,request)
         if operation == 'status':
             count = db.db.execute('SELECT count(*) FROM pages').fetchone()[0]
             return response(operation, {'pages':count, 'recipe':RECIPE}, generation=pin.generation)
@@ -77,6 +80,9 @@ class Service:
                 if operation == 'get' and result['value']['read_receipt'] is not None:
                     from .evidence import verify_receipt
                     verify_receipt(self.manager,pin,result['value']['read_receipt'])
+                elif operation == 'verify_citations':
+                    from .evidence import verify_receipt
+                    verify_receipt(self.manager,pin,request['read_receipt'])
                 return result
         except Refusal as refusal:
             return error(operation,refusal.code)

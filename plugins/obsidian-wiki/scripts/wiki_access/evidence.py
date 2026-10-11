@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import hmac
+import re
 import time
 
 from .contracts import Refusal, READ_BYTES, decode, encode, response
@@ -10,6 +11,45 @@ from . import policy
 RECEIPT_VERSION = 'wiki-read-receipt.v1'
 RECEIPT_DOMAIN = b'obsidian-wiki/read-bundle/v1\x00'
 RECEIPT_SECONDS = 900
+
+
+def renderable_locator(locator):
+    return not any(c in locator for c in '#|^:%[]<>\r\n')
+
+
+def anchor_inventory(raw, body, locator):
+    """Count identities in authoritative content, expose only projected anchors."""
+    def scan(text):
+        heads=[]; blocks=[]; fence=None; offset=0; paragraph=0
+        for line in text.splitlines(keepends=True):
+            previous=fence; head,fence=policy.heading(line,fence)
+            end=offset+len(line.encode('utf-8'))
+            if head:
+                heads.append({'name':head[1], 'level':head[0], 'start':offset})
+                paragraph=end
+            if previous is None and fence is None:
+                block=re.search(r'(?:^|\s)\^([A-Za-z0-9-]{1,128})[ \t]*\r?\n?$',line)
+                if block: blocks.append({'name':block[1], 'start':paragraph, 'end':end})
+            if not line.strip() or previous is not None or fence is not None: paragraph=end
+            offset=end
+        for i, head in enumerate(heads):
+            head['end']=next((h['start'] for h in heads[i+1:] if h['level'] <= head['level']),offset)
+        return heads,blocks
+    source_heads,source_blocks=scan(raw.decode('utf-8'))
+    heads,blocks=scan(body)
+    safe=renderable_locator(locator)
+    targets=[locator] if safe else []
+    for head in heads:
+        unique=sum(h['name'].casefold()==head['name'].casefold() for h in source_heads)==1
+        renderable=bool(re.fullmatch(r"[\w .,'()–—-]+",head['name']))
+        head['unique']=unique and renderable and safe
+        head['target']=locator+'#'+head['name'] if head['unique'] else locator
+        if head['unique']: targets.append(head['target'])
+    for block in blocks:
+        block['unique']=safe and sum(b['name']==block['name'] for b in source_blocks)==1
+        block['target']=locator+'#^'+block['name']
+        if block['unique']:targets.append(block['target'])
+    return {'headings':heads,'blocks':blocks},list(dict.fromkeys(targets))
 
 
 def descriptor(page):
@@ -89,10 +129,11 @@ def read_page(manager, indexed, generation):
     for key, value in page.items():
         if indexed[key] != value:
             raise Refusal('generation_stale')
+    anchors,targets=anchor_inventory(raw,page['body'],page['locator'])
     return dict(page, page_id=indexed['page_id'], generation=generation,
                 complete=True, body_bytes=len(page['body'].encode('utf-8')),
                 read_spans=[{'start':0, 'end':len(page['body'].encode('utf-8'))}],
-                citation_targets=[page['locator']])
+                anchors=anchors, citation_targets=targets)
 
 
 def bundle(manager, db, pin, request):
