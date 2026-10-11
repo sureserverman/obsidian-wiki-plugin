@@ -1151,6 +1151,42 @@ class Stage3IntegrationCases(unittest.TestCase):
 
 
 class AdapterCases(unittest.TestCase):
+    def test_inline_read_contract_examples_execute_the_complete_installed_flow(self):
+        import json,re,tempfile,subprocess
+        command=(ROOT/'plugins/obsidian-wiki/commands/ask.md').read_text()
+        examples=[contracts.decode(s.encode()) for s in re.findall(r'```json\n(.*?)\n```',command,re.S)]
+        self.assertEqual({r['operation'] for r in examples},
+                         set(contracts.FIELDS)-{'refresh','check'})
+        self.assertEqual({r['selector']['kind'] for r in examples if r['operation']=='resolve'},
+                         {'path','title','alias'})
+        for request in examples:contracts.validate_request(request)
+        with tempfile.TemporaryDirectory() as tmp:
+            cli=CliCases();root,env,config=cli.fixture(tmp)
+            installed=PackagingCases().installed(tmp)
+            (root/'Runbooks/Example.md').write_text('---\ntitle: Example\ncreated: 2026-01-01\naliases: ["example alias"]\n---\nExample.')
+            self.assertTrue(cli.call(env,{'operation':'refresh'},True,script=installed/'scripts/wiki-access-admin.py')[1]['ok'])
+            generation=None;page_id=None;receipt=None
+            for template in examples:
+                request=json.loads(json.dumps(template).replace('GENERATION_FROM_RESPONSE',generation or 'unavailable')
+                                   .replace('PAGE_ID_FROM_RESPONSE',page_id or 'unavailable')
+                                   .replace('READ_RECEIPT_FROM_GET',receipt or 'unavailable'))
+                payload=contracts.encode(request).decode().replace("'",r'\u0027')
+                entry=str(installed/'scripts/wiki-access.py')
+                shell='"'+entry+'" <<<\''+payload+"'"
+                p=subprocess.run(['bash','--noprofile','--norc','-c',shell],env=env,capture_output=True,timeout=10)
+                self.assertEqual(p.returncode,0,p.stderr)
+                response=contracts.decode(p.stdout);self.assertTrue(response['ok'],response)
+                generation=response.get('generation',generation)
+                if request['operation'] in ('resolve','search'):
+                    self.assertEqual(response['state'],'ok');self.assertEqual(len(response['value']['pages']),1)
+                    page_id=response['value']['pages'][0]['page_id']
+                elif request['operation']=='get':
+                    self.assertEqual(response['value']['pages'][0]['body'],'Example.')
+                    receipt=response['value']['read_receipt']
+                elif request['operation']=='verify_citations':
+                    self.assertTrue(all(c['valid'] and c['target_verified'] and c['read_verified']
+                                        for c in response['value']['citations']))
+
     def test_command_is_only_scoped_entry_and_no_natural_language_shell(self):
         import subprocess
         command=(ROOT/'plugins/obsidian-wiki/commands/ask.md').read_text()
