@@ -13,7 +13,7 @@ import signal
 import subprocess
 import time
 
-from wiki_access.contracts import Refusal, encode, validate_request
+from wiki_access.contracts import Refusal, decode, encode, validate_request
 
 CASE_IDS = ('exact', 'alias', 'missing-protected', 'date', 'contradiction', 'oversized')
 
@@ -28,12 +28,12 @@ def write_private(path, data):
 
 
 def parse_command(command, entry):
-    """Only one direct executable and one literal JSON stdin heredoc."""
-    pattern = r'\s*(?:"' + re.escape(entry) + r'"|' + re.escape(entry) + r')\s*<<\s*\'([A-Za-z_][A-Za-z_0-9]*)\'\n(.*?)\n\1\s*'
-    match = re.fullmatch(pattern, command, re.S)
-    if not match or '\n'+match[1]+'\n' in match[2]:
+    """Only one direct executable and one single-quoted JSON here-string."""
+    pattern = r'[ \t]*(?:"' + re.escape(entry) + r'"|' + re.escape(entry) + r')[ \t]+<<<[ \t]*\'([^\'\r\n]*)\'[ \t]*\n?'
+    match = re.fullmatch(pattern, command)
+    if not match:
         raise Refusal()
-    return validate_request(json.loads(match[2]))
+    return validate_request(decode(match[1].encode('utf-8')))
 
 
 def content_text(content):
@@ -325,7 +325,8 @@ def client_suite(manifest, directory, lock, *, resume=False):
                         '--max-budget-usd',str(remaining),'--no-chrome',
                         '--append-system-prompt',
                         'This is fake-only wiki qualification. Use the explicitly invoked command. '
-                        'Make individual direct executable calls with literal JSON stdin heredocs. '
+                        'Make individual direct executable calls with single-quoted JSON stdin here-strings (<<<). '
+                        'JSON-escape apostrophes as \\u0027; never break the single quotes. '
                         'Do not use raw-file tools, extra commands, shell substitutions, agents, retries or refresh. '
                         'Be concise. Display exact relative .md wikilinks, one per submitted verified citation occurrence. '
                         'Use an exact sentence support quote and its UTF-8 offsets for each citation. '

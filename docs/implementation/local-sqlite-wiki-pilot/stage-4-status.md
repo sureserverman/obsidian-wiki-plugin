@@ -7,36 +7,35 @@ inactive. No real-wiki answer-model run or normal adoption was selected.
 
 Branch: `feat/local-sqlite-wiki-pilot`; core gate `b20cfaa`, adapter `37e9929`,
 packaging `78bb7b1`, initial acceptance runner `21ba7d4`. This progress change
-adds actual client traces and current-source qualification tooling, repairs
-qualification containment and exact-resolution scoring, and records the blocker.
+records two authorized permission diagnostics, repairs literal JSON input across
+the adapter and guard, and records fresh synthetic qualification and the blocker.
 It is a partial Task 4.3 commit, not a green task or gate.
 
 ## Current local evidence
 
 | Check | Actual result | Qualification scope |
 | --- | --- | --- |
-| Fresh independent v4 Recall@5 | 20/20; 5/5 each exact/conceptual/rationale/historical | Synthetic installed CLI; separate development topics |
+| Fresh independent v5 Recall@5 | 20/20; 5/5 each exact/conceptual/rationale/historical | Synthetic installed CLI; separate development topics |
 | Exact path/title/alias resolution | 60/60 | Synthetic installed CLI |
 | Read-bound citation occurrences | 50/50, including repeated citations | Structural provenance only |
 | Absent/protected/ambiguous/contradictory/date/partial controls | 1/1 each | Model-free evidence behavior; actual answer handling unqualified |
-| Warm search p95 | 0.061530 s | Host end-to-end CLI, including startup/scans/JSON |
-| Cold unavailable status / refresh | 0.047730 / 0.064539 s | Synthetic host measurements |
-| Peak child RSS | 21,832 KiB | Observed Linux RUSAGE_CHILDREN peak |
-| Total state / maximum read response | 194,886 / 4,389 bytes | Below 128 MiB / 24,000-byte limits |
+| Warm search p95 | 0.068928 s | Host end-to-end CLI, including startup/scans/JSON |
+| Cold unavailable status / refresh | 0.044103 / 0.073177 s | Synthetic host measurements |
+| Peak child RSS | 21,544 KiB | Observed Linux RUSAGE_CHILDREN peak |
+| Total state / maximum read response | 194,898 / 4,389 bytes | Below 128 MiB / 24,000-byte limits |
 | Installed live CLI | PASS | Fresh fake lookup/get/verify, then revocation and old/buffered evidence refusal |
-| Stage4IntegrationCases | 1/1 PASS, 0.523 s | Installed key rotation/revocation, source preservation, disabled/admin separation |
-| Full regression | 41/41 wrappers PASS; 76 pilot tests | Actual discovery runner; six integration cases; 53 Python sources syntax checked |
+| Stage4IntegrationCases | 1/1 PASS, 0.590 s | Installed key rotation/revocation, source preservation, disabled/admin separation |
+| Full regression | 41/41 wrappers PASS; 77 pilot tests | Actual discovery runner; six integration cases; 53 Python sources syntax checked |
 | Configured client traces | 0/6 qualified; $0.2832846 total | Actual Claude Code 2.1.296, configured `claude-opus-5-5[1m]` |
 | Real-vault lookup / owner usefulness | Pending / pending | Runner implemented; representative current private workload not supplied/run |
 
-Current lock SHA256: `c4cb3660afa94bfefffb946b22a3f0156fdd75aa0534179cdd912b6592c2c2a7`.
-Independent v4 manifest canonical hash:
-`4f3140e7adc7f51c605ef0ea8c57f6ed6b10a26aad593fab4989d2a7d8772e88`.
+Current lock SHA256: `3751aa9a672a46d5f65de915e7030e68a41c3c09ab575eae473ccffd53319b24`.
+Independent v5 manifest canonical hash:
+`694dc66c1eb7101b193831516336c10b34f2cc27c196874791d3a407a653e100`.
 The complete 36-file lock was validated before and after acceptance and final
-checks. The original acceptance set and v2/v3 sets were each opened once; code
+checks. The original acceptance set and v2/v3/v4 sets were each opened once; code
 changes retired their implementation-specific receipts. None was rerun as an
-independent quality claim. V4 was frozen after the final scoring/command-disclosure
-fixes. Historical research holdouts remain untouched.
+independent quality claim. V5 was frozen after the here-string boundary repair. Historical research holdouts remain untouched.
 
 Private manifests, consumption markers, locks, actual client stdout/stderr,
 launch/cost receipts and model-free traces remain in a local 0700 execution pack,
@@ -89,9 +88,9 @@ client initialization. The natural-language skill has a distinct name and no
 shell grant; manual `ask` has model invocation disabled and the scoped executable
 grant. Claude's local command validator passes. No managed-settings file or
 settings.d directory was found; user permissions contain only a default mode.
-These checks do not explain or fix the native grant denial. The executable's
-stdin interface works in installed subprocess tests. Actual permission matching
-remains unresolved; do not promote the trailing-wildcard candidate to qualified.
+Those initial checks did not explain the denial. The subsequent diagnostic and
+model-free native analysis below isolate a heredoc rejection; the replacement
+input form still awaits actual client qualification.
 
 ## Reviews and architecture
 
@@ -130,21 +129,65 @@ preliminary gate evidence, not a completed final-gate round. Stage 3's saved 2/2
 account is preserved. Required final-gate judgment remains failed; Task 4.4 and
 final close-out are not passed.
 
+## Authorized permission diagnostics and repair
+
+The owner authorized exactly two additional fake-only diagnostic traces under an
+estimated $0.25 total cap with possible overshoot. Both launches are consumed:
+
+| Diagnostic | Cost USD | Seconds | Actual outcome |
+|---|---:|---:|---|
+| Packaged grant | 0.0451702 | 7.738 | One status call, native dontAsk denial |
+| Session-only exact executable grant | 0.0182450 | 6.684 | One status call, native dontAsk denial |
+
+Total $0.0634152, zero overshoot, unchanged fake-source inventory. Cumulative
+recorded spend with the earlier six traces is $0.3466998. No successful status,
+read or citation occurred. The literal session grant also failed, ruling out a
+failure caused solely by expanding CLAUDE_PLUGIN_ROOT. No further paid launch is
+authorized by unused dollars. The configured model/auth route was retained;
+credentials were removed with the temporary configuration. No global edits,
+model override, automatic retries or real-wiki model content were used.
+
+Model-free analysis executes the installed Claude 2.1.296 embedded parser and
+semantic analyzer on the recorded command. Its early brace-plus-quote check
+classifies the quoted JSON heredoc as `too-complex`, reason `Contains brace with
+quote character (expansion obfuscation)`, differential=true. The same executable
+and JSON in a single-quoted here-string (`<<<`) classify as `simple`. All three
+controls (recorded heredoc, bare executable, here-string) produce the expected
+results with the environment-scrub predicate both false and true: six checks.
+Logging was inert; the scrub predicate was parameterized. This executes the
+native semantic path offline, not the entire client's permission pipeline.
+Private receipts retain the installed binary/module/inspection hashes and exact
+results; extracted client code stays outside Git and the vault.
+
+The repair updates command instructions, client harness instructions and the
+strict deny-only guard together. It permits one direct exact executable and one
+single-quoted JSON here-string. Apostrophes encode as JSON \u0027; shell quote
+breaks, extra arguments/operators, substitutions outside the literal payload,
+heredocs and non-read operations refuse. Payload decoding now shares the CLI's
+strict duplicate-key/size/constant checks. A real local Bash round-trip preserves
+apostrophe, dollar/backtick/substitution text and creates no injection sentinel.
+The guard still never approves permissions. No broad shell or interpreter grant
+was introduced. Native syntax success does not establish actual client access.
+
+Presence-shaped defect sweep: `rg -n 'heredoc|WIKI_REQUEST|<<.*REQUEST' plugins
+ tests docs -g '*.py' -g '*.md'`. Current operational examples, guard and harness
+are repaired; the remaining heredoc is an explicit rejection control and the
+historical diagnostic description. Earlier opened acceptance sets are retired
+on this implementation change; fresh independent qualification is required.
+
 ## Resume dependency
 
-Resume Task 4.3 by diagnosing the native client grant mismatch with a narrowly
-controlled fake-only comparison, then fixing and qualifying the packaged route.
-The six-case allowance has been consumed. Additional paid diagnostic or acceptance
-launches require explicit owner authorization; remaining dollars do not authorize
-a seventh trace. No automatic retry or permission bypass is selected.
-
-A proposed diagnostic comparison would retain the current deny-only shell guard,
-Bash-only tool surface, fake vault, isolated configured route and 150-second limit.
-One control would add a session-only literal grant for the exact fake read
-executable; another would isolate the packaged frontmatter grant. Neither control
-would establish packaged-client acceptance. Record costs and actual status events,
-then freeze fresh acceptance labels after any implementation change. No real-wiki
-model data, generic shell/interpreter grant or global configuration write is needed.
+Model-free verification and required boundary review are complete: 41/41
+regression wrappers, 77 pilot tests, six integration cases and 53 syntax sources;
+fresh v5 recall20/20, exact60/60, citations50/50 and six controls1/1. Installed
+live CLI and first-claim mutation proof PASS. Independent fix-scope boundary
+review APPROVE, zero Critical/Important/Suggestions, four focused tests and
+16 adversarial rejections. Current36-file lock validates after all checks.
+Seek fresh authorization for the six-case configured-client gate.
+Both diagnostic launches and all six earlier qualification launches are consumed.
+The repaired packaged route remains unqualified until actual permission matching,
+read/citation provenance and independent actual-answer judgment pass. No automatic
+retry, permission bypass or adoption is selected.
 
 Representative private source qualification and owner usefulness stay separately
 pending. Task 4.4's selected project-local DEC and final close-out follow Task 4.3.
@@ -159,6 +202,6 @@ Stage 1 first-claim records, earlier Stage 3 proof fingerprints bound to prior
 test trees, and Stage 2 commit-title matching advisories. These are retained as
 final close-out proof/provenance debt; no fresh baseline is fabricated and no
 whole-plan audit PASS is claimed. Earlier stage receipts remain historical
-qualification evidence for their recorded revisions. The v4 lock and current
-local checks above remain the current synthetic receipts. The native review
+qualification evidence for their recorded revisions. The v5 lock and current
+local checks above are the new synthetic receipts; v4 remains historical. The native review
 ledger reports zero agents started and never stopped. No owned tool is running.

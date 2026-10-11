@@ -1261,15 +1261,42 @@ class AcceptanceRunnerCases(unittest.TestCase):
     def test_client_trace_requires_actual_tools_cost_model_and_single_bundle(self):
         import wiki_client_acceptance as c
         entry='/tmp/installed-plugin/scripts/wiki-access.py'
-        command='"'+entry+'" <<\'REQUEST\'\n{"schema":"wiki-access.v1","operation":"status"}\nREQUEST'
+        command='"'+entry+'" <<<\'{"schema":"wiki-access.v1","operation":"status"}\''
         self.assertEqual(c.parse_command(command,entry)['operation'],'status')
-        for bad in (command+'\nwhoami',command.replace(entry,'python3 '+entry),command.replace("<<'REQUEST'",'<<REQUEST')):
+        for bad in (command+'\nwhoami', command+'; whoami', command+' | cat',
+                    command+' > /tmp/leak', command.replace(entry,'python3 '+entry),
+                    command.replace("<<<'",'<<<"'), command.replace("<<<'",'<<<$\''),
+                    '"'+entry+'" <<\'REQUEST\'\n{"schema":"wiki-access.v1","operation":"status"}\nREQUEST',
+                    command.replace('"status"','"refresh"'),
+                    command.replace('"status"','"status","operation":"status"'),
+                    command.replace('"status"','"sta\ntus"')):
             with self.assertRaises(contracts.Refusal):c.parse_command(bad,entry)
         with self.assertRaises(contracts.Refusal):c.validate_trace([],entry,{'id':'exact'},0,1)
         self.assertIsNone(c.recorded_cost([]))
         self.assertIsNone(c.recorded_cost([{'type':'result','total_cost_usd':.8},{'type':'result','total_cost_usd':0}]))
         self.assertIsNone(c.recorded_cost([{'type':'result','total_cost_usd':float('nan')}]))
         self.assertEqual(c.recorded_cost([{'type':'result','total_cost_usd':.8}]),.8)
+
+    def test_literal_here_string_preserves_json_without_shell_expansion(self):
+        import tempfile, json, subprocess
+        import wiki_access_acceptance as a
+        import wiki_client_acceptance as c
+        with tempfile.TemporaryDirectory() as tmp:
+            probe=a.Probe(tmp,a.fake_manifest('development'))
+            probe.call({'operation':'refresh'},True)
+            sentinel=pathlib.Path(tmp)/'expanded'
+            request={'schema':'wiki-access.v1','operation':'search',
+                     'query':"owner's $(touch "+str(sentinel)+") `touch "+str(sentinel)+"` $HOME",'limit':5,'filters':{}}
+            payload=json.dumps(request).replace("'",r'\u0027')
+            entry=str(probe.package/'scripts/wiki-access.py')
+            command='"'+entry+'" <<<\''+payload+"'"
+            self.assertEqual(c.parse_command(command,entry),contracts.validate_request(request))
+            p=subprocess.run(['bash','--noprofile','--norc','-c',command],env=probe.env,capture_output=True,timeout=10)
+            self.assertEqual(p.returncode,0,p.stderr)
+            self.assertTrue(json.loads(p.stdout)['ok'])
+            self.assertFalse(sentinel.exists())
+            with self.assertRaises(contracts.Refusal):
+                c.parse_command(command.replace(r'\u0027',"'"),entry)
 
     def test_client_config_cannot_override_fake_source_or_inject_shell_startup(self):
         import tempfile, json, os
@@ -1299,7 +1326,7 @@ class AcceptanceRunnerCases(unittest.TestCase):
             for command in ('cat /PRIVATE_REAL_VAULT/note.md','cat client-config/.credentials.json','echo "$ANTHROPIC_API_KEY"','env',entry+' --unsafe'):
                 p=subprocess.run([sys.executable,str(config/'read-command-guard.py')],input=json.dumps({'tool_name':'Bash','tool_input':{'command':command}}).encode(),capture_output=True,timeout=10)
                 self.assertEqual(json.loads(p.stdout)['hookSpecificOutput']['permissionDecision'],'deny')
-            command='"'+entry+'" <<\'REQUEST\'\n{"schema":"wiki-access.v1","operation":"status"}\nREQUEST'
+            command='"'+entry+'" <<<\'{"schema":"wiki-access.v1","operation":"status"}\''
             p=subprocess.run([sys.executable,str(config/'read-command-guard.py')],input=json.dumps({'tool_name':'Bash','tool_input':{'command':command}}).encode(),capture_output=True,timeout=10)
             self.assertEqual(json.loads(p.stdout),{'continue':True})
             guard=config/'read-command-guard.py'
@@ -1323,7 +1350,7 @@ class AcceptanceRunnerCases(unittest.TestCase):
             events=[{'type':'system','subtype':'init','model':'mock-parser-only'},
                     {'type':'system','subtype':'permission_denied','message':'Non-object client stream notice'}]
             for i,event in enumerate(probe.events):
-                command='"'+entry+'" <<\'REQUEST\'\n'+contracts.encode(event['request']).decode()+'\nREQUEST'
+                command='"'+entry+'" <<<\''+contracts.encode(event['request']).decode().replace("'",r"\u0027")+"'"
                 events.append({'type':'assistant','message':{'content':[{'type':'tool_use','name':'Bash','id':str(i),'input':{'command':command}}]}})
                 raw=contracts.encode(event['response']).decode()
                 events.append({'type':'user','tool_use_result':{'stdout':raw,'stderr':'','interrupted':False},'message':{'content':[{'type':'tool_result','tool_use_id':str(i),'content':raw}]}})
