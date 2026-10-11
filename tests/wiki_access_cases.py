@@ -914,6 +914,10 @@ class CitationCases(unittest.TestCase):
             self.assertNotIn('fact_verified',contracts.encode(result).decode())
             shifted=dict(good,start=good['start']+1)
             self.assertFalse(self.verify(service,bundle,[shifted])['value']['citations'][0]['valid'])
+            multiline=self.citation(page,page['body'])
+            self.assertTrue(self.verify(service,bundle,[multiline])['value']['citations'][0]['valid'])
+            for control in ('\x00','\x01'):
+                self.assertEqual(self.verify(service,bundle,[dict(good,quote=good['quote']+control)])['state'],'invalid_request')
 
     def test_real_headings_fences_duplicate_headings_and_safe_blocks(self):
         import tempfile
@@ -1087,6 +1091,7 @@ class Stage3IntegrationCases(unittest.TestCase):
                 self.assertTrue(bundle['ok']);page=bundle['value']['pages'][0]
                 citation=CitationCases().citation(page,page['body'])
                 checked=cli.call(env,{'operation':'verify_citations','read_receipt':bundle['value']['read_receipt'],'citations':[citation,citation]})[1]
+                self.assertTrue(checked['ok'],checked)
                 self.assertTrue(all(c['valid'] for c in checked['value']['citations']))
                 self.assertEqual(len(checked['value']['citations']),2)
                 self.assertEqual(checked['value']['verification'],'structural_only')

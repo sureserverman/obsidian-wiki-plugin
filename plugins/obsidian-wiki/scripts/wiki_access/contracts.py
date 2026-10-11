@@ -60,7 +60,7 @@ def decode(raw):
         raise Refusal() from None
 
 
-def text(value, ceiling=2048):
+def text(value, ceiling=2048, *, multiline=False):
     if not isinstance(value, str) or not value.strip():
         raise Refusal()
     try:
@@ -68,7 +68,7 @@ def text(value, ceiling=2048):
             raise Refusal()
     except UnicodeError:
         raise Refusal() from None
-    if any(ord(c) < 32 for c in value):
+    if any(ord(c) < 32 and not (multiline and c in '\t\r\n') for c in value):
         raise Refusal()
     return value
 
@@ -137,7 +137,7 @@ def validate_request(request, *, admin=False):
                 raise Refusal()
             text(citation['target'])
             text(citation['page_id'], 128)
-            text(citation['quote'], READ_BYTES)
+            text(citation['quote'], READ_BYTES, multiline=True)
             integer(citation['start'], 0, STORE_BYTES)
             integer(citation['end'], citation['start']+1, STORE_BYTES)
     return result
