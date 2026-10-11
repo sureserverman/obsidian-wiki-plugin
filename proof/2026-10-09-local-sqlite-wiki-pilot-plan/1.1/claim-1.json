@@ -1,0 +1,28 @@
+{
+ "baseline": {
+  "elapsed_s": 0.1,
+  "exit": 0,
+  "tail": "test_bounded_error_has_no_private_context (__main__.ContractCases.test_bounded_error_has_no_private_context) ... ok\ntest_public_envelopes_reject_unknown_and_nonscalar_context (__main__.ContractCases.test_public_envelopes_reject_unknown_and_nonscalar_context) ... ok\ntest_read_budget_and_exact_selector (__main__.ContractCases.test_read_budget_and_exact_selector) ... ok\ntest_strict_operation_shapes (__main__.ContractCases.test_strict_operation_shapes) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.000s\n\nOK"
+ },
+ "break_patch": "--- a/plugins/obsidian-wiki/scripts/wiki_access/contracts.py\n+++ b/plugins/obsidian-wiki/scripts/wiki_access/contracts.py\n@@ -82,7 +82,7 @@\n def validate_request(request, *, admin=False):\n     if type(request) is not dict:\n         raise Refusal()\n-    if request.get('schema') != SCHEMA:\n+    if False and request.get('schema') != SCHEMA:\n         raise Refusal('unsupported_schema')\n     operation = request.get('operation')\n     allowed = {'refresh', 'check'} if admin else set(FIELDS) - {'refresh', 'check'}\n",
+ "build": null,
+ "created": "2026-10-11T19:20:47+00:00",
+ "fingerprint": "af0f37d81beb87b3c3109cff2ce2fc86d4061274da5964b998a900511e1aa2cc",
+ "index": 1,
+ "kind": "claim",
+ "named_break": null,
+ "no_build_reason": "Stdlib Python executes directly; no build step; mutations preserve compilable executable source",
+ "plan": "/mnt/vault/Portfolio/ai-tools/obsidian-wiki-plugin/plans/2026-10-09-local-sqlite-wiki-pilot-plan.md",
+ "red": {
+  "elapsed_s": 0.1,
+  "exit": 1,
+  "tail": "test_bounded_error_has_no_private_context (__main__.ContractCases.test_bounded_error_has_no_private_context) ... ok\ntest_public_envelopes_reject_unknown_and_nonscalar_context (__main__.ContractCases.test_public_envelopes_reject_unknown_and_nonscalar_context) ... ok\ntest_read_budget_and_exact_selector (__main__.ContractCases.test_read_budget_and_exact_selector) ... ok\ntest_strict_operation_shapes (__main__.ContractCases.test_strict_operation_shapes) ... \n  test_strict_operation_shapes (__main__.ContractCases.test_strict_operation_shapes) (request={'schema': 'v2', 'operation': 'search', 'query': 'amber'}) ... FAIL\n\n======================================================================\nFAIL: test_strict_operation_shapes (__main__.ContractCases.test_strict_operation_shapes) (request={'schema': 'v2', 'operation': 'search', 'query': 'amber'})\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/user/dev/ai-tools/obsidian-wiki-plugin/tests/wiki_access_cases.py\", line 23, in test_strict_operation_shapes\n    with self.subTest(request=request), self.assertRaises(contracts.Refusal):\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 4 tests in 0.001s\n\nFAILED (failures=1)"
+ },
+ "schema": 2,
+ "task": "1.1",
+ "test": "python3 tests/wiki_access_cases.py ContractCases",
+ "text": "rejects unknown versions/keys/types/filters, accepts declared request/error/read-budget shapes, and fails on zero collected tests. The wrappers select tests correctly",
+ "touched": [
+  "plugins/obsidian-wiki/scripts/wiki_access/contracts.py"
+ ]
+}
