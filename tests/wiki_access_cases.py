@@ -791,6 +791,104 @@ class ReadCases(unittest.TestCase):
             self.assertFalse(result['ok']); self.assertNotIn('value',result)
 
 
+class ReceiptCases(unittest.TestCase):
+    def test_rotation_during_verification_or_after_signing_discards_provenance(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access import evidence
+        from wiki_access.generation import Pinned
+        with tempfile.TemporaryDirectory() as tmp:
+            root,manager,service,found=ReadCases().fixture(tmp)
+            token=ReadCases().get(service,found)['value']['read_receipt']
+            with manager.pin() as pin:
+                original=Pinned.check
+                def rotate(p):
+                    manager.rotate_receipt_key(); return original(p)
+                with patch.object(Pinned,'check',rotate),self.assertRaises(contracts.Refusal):
+                    evidence.verify_receipt(manager,pin,token)
+            original=evidence.seal
+            def rotate_after_seal(*args):
+                original(*args); manager.rotate_receipt_key()
+            with patch.object(evidence,'seal',rotate_after_seal):
+                result=ReadCases().get(service,found)
+            self.assertEqual(result['state'],'invalid_receipt'); self.assertNotIn('value',result)
+
+    def test_actual_bundle_binding_tampering_expiry_and_discovery_refusal(self):
+        import tempfile, copy
+        from unittest.mock import patch
+        from wiki_access import evidence
+        with tempfile.TemporaryDirectory() as tmp:
+            root, manager, service, found=ReadCases().fixture(tmp)
+            result=ReadCases().get(service,found)
+            token=result['value']['read_receipt']
+            self.assertIsInstance(token,str)
+            with manager.pin() as pin:
+                payload=evidence.verify_receipt(manager,pin,token)
+                self.assertEqual(payload['response_bytes'],len(contracts.encode(result)))
+                self.assertEqual(payload['body_bytes'],result['value']['body_bytes'])
+                self.assertEqual(payload['pages'],[evidence.descriptor(p) for p in result['value']['pages']])
+                for bad in (token[:-1]+('0' if token[-1]!='0' else '1'), contracts.encode(found).decode(), 'invalid'):
+                    with self.subTest(bad=bad[:20]),self.assertRaises(contracts.Refusal) as exc:
+                        evidence.verify_receipt(manager,pin,bad)
+                    self.assertEqual(exc.exception.code,'invalid_receipt')
+                for stamp in (payload['issued']-1,payload['expires'],payload['expires']+1):
+                    with patch.object(evidence.time,'time',return_value=stamp),self.assertRaises(contracts.Refusal):
+                        evidence.verify_receipt(manager,pin,token)
+                modified=copy.deepcopy(result['value']['pages'][0]); modified['body']+='fabricated'
+                self.assertNotEqual(evidence.descriptor(modified),payload['pages'][0])
+
+    def test_private_first_write_rotation_and_no_key_disclosure(self):
+        import tempfile,os
+        from wiki_access import evidence
+        with tempfile.TemporaryDirectory() as tmp:
+            root,manager,service,found=ReadCases().fixture(tmp)
+            key=manager.state/'receipt-key'
+            self.assertEqual(key.stat().st_mode & 0o777,0o600)
+            self.assertEqual(len(key.read_bytes()),32)
+            result=ReadCases().get(service,found); token=result['value']['read_receipt']; old=key.read_bytes()
+            manager.rotate_receipt_key()
+            self.assertNotEqual(old,key.read_bytes())
+            with manager.pin() as pin,self.assertRaises(contracts.Refusal):
+                evidence.verify_receipt(manager,pin,token)
+            self.assertNotIn(old.hex(),contracts.encode(result).decode())
+            os.chmod(key,0o644)
+            result=ReadCases().get(service,found)
+            self.assertFalse(result['ok']); self.assertNotIn('value',result)
+            key.unlink(); key.symlink_to(root/'Runbooks/A.md')
+            before=(root/'Runbooks/A.md').read_bytes()
+            with self.assertRaises(contracts.Refusal):manager.refresh()
+            self.assertEqual((root/'Runbooks/A.md').read_bytes(),before)
+
+    def test_omitted_notes_have_no_receipt_descriptors_and_full_wire_cap(self):
+        import tempfile
+        from wiki_access import evidence
+        with tempfile.TemporaryDirectory() as tmp:
+            root,manager,service,found=ReadCases().fixture(tmp,['😀'*7000,'Small complete.'])
+            result=ReadCases().get(service,found)
+            with manager.pin() as pin:
+                payload=evidence.verify_receipt(manager,pin,result['value']['read_receipt'])
+                self.assertEqual([p['page_id'] for p in payload['pages']],
+                                 [p['page_id'] for p in result['value']['pages']])
+                self.assertEqual(payload['response_bytes'],len(contracts.encode(result)))
+            omitted=result['value']['omitted'][0]['page_id']
+            alone=ReadCases().get(service,found,ids=[omitted])
+            self.assertIsNone(alone['value']['read_receipt'])
+            exact=ReadCases().get(service,found,budget=len(contracts.encode(result)))
+            self.assertEqual(len(exact['value']['pages']),1)
+            self.assertLessEqual(len(contracts.encode(exact)),len(contracts.encode(result)))
+
+    def test_revoked_and_mixed_generation_receipts_refuse(self):
+        import tempfile
+        from wiki_access import evidence
+        with tempfile.TemporaryDirectory() as tmp:
+            root,manager,service,found=ReadCases().fixture(tmp)
+            token=ReadCases().get(service,found)['value']['read_receipt']
+            (root/'Runbooks/A.md').write_text((root/'Runbooks/A.md').read_text()+'Changed.')
+            manager.refresh()
+            with manager.pin() as pin,self.assertRaises(contracts.Refusal):
+                evidence.verify_receipt(manager,pin,token)
+
+
 def main():
     names = sys.argv[1:]
     if not names:

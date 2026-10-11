@@ -74,6 +74,9 @@ class Service:
                     if len(encode(result)) > ceiling: raise Refusal('budget_exhausted')
                 # Even an empty result or operational count needs this final guard.
                 pin.check()
+                if operation == 'get' and result['value']['read_receipt'] is not None:
+                    from .evidence import verify_receipt
+                    verify_receipt(self.manager,pin,result['value']['read_receipt'])
                 return result
         except Refusal as refusal:
             return error(operation,refusal.code)
