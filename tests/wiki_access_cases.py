@@ -1254,6 +1254,85 @@ class Stage4IntegrationCases(unittest.TestCase):
             self.assertEqual(call({'operation':'status'})[1]['state'],'disabled')
 
 
+class AcceptanceRunnerCases(unittest.TestCase):
+    def test_fixture_runner_has_actual_denominators_and_installed_events(self):
+        import tempfile,json
+        import wiki_access_acceptance as a
+        with tempfile.TemporaryDirectory() as tmp:
+            trace=pathlib.Path(tmp)/'trace.json'
+            result=a.fixture_suite(a.fake_manifest('development'),trace=trace)
+            self.assertEqual(result['total'],4);self.assertEqual(result['hits'],4)
+            self.assertEqual(result['exact'],{'passed':12,'total':12})
+            self.assertEqual(set(result['controls']),set(a.CONTROL_CLASSES))
+            self.assertGreater(result['citation_occurrences'],0);self.assertFalse(result['independent'])
+            events=json.loads(trace.read_bytes())['events']
+            self.assertTrue(any(e['request']['operation']=='get' for e in events))
+            self.assertTrue(all('installed-plugin/scripts/wiki-access' in e['executable'] for e in events))
+            self.assertLessEqual(result['max_read_response_bytes'],24000)
+            self.assertLessEqual(result['peak_child_rss_kib'],256*1024)
+
+    def test_multiple_same_note_support_spans_and_private_trace_creation(self):
+        import tempfile,os,json
+        import wiki_access_acceptance as a
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest=a.fake_manifest('development')
+            manifest['questions'][0]['support'].append(manifest['questions'][0]['support'][0].copy())
+            manifest=a.seal({k:v for k,v in manifest.items() if k!='fingerprint'})
+            trace=pathlib.Path(tmp)/'trace.json'
+            old=os.umask(0)
+            try:result=a.fixture_suite(manifest,trace=trace)
+            finally:os.umask(old)
+            self.assertEqual(result['citation_occurrences'],20)
+            self.assertEqual(trace.stat().st_mode & 0o777,0o600)
+            events=json.loads(trace.read_bytes())['events']
+            gets=[e['request'] for e in events if e['request']['operation']=='get']
+            self.assertTrue(all(len(r['page_ids'])==len(set(r['page_ids'])) for r in gets))
+
+    def test_optional_aliases_and_multiple_ambiguous_aliases_are_scored(self):
+        import wiki_access_acceptance as a
+        manifest=a.fake_manifest('development')
+        note=manifest['notes'][0]
+        note['raw']=note['raw'].replace('aliases: ["amber exact"]\n','')
+        note['hash']=__import__('hashlib').sha256(note['raw'].encode()).hexdigest()
+        for note in manifest['notes'][1:3]:
+            note['raw']=note['raw'].replace('aliases: [','aliases: ["'+('Shared-Alias' if note is manifest['notes'][1] else 'shared-alias')+'", ')
+            note['hash']=__import__('hashlib').sha256(note['raw'].encode()).hexdigest()
+        manifest=a.seal({k:v for k,v in manifest.items() if k!='fingerprint'})
+        result=a.fixture_suite(manifest)
+        self.assertEqual(result['exact'],{'passed':13,'total':13})
+
+    def test_independent_run_consumption_and_private_inputs(self):
+        import tempfile,os
+        import wiki_access_acceptance as a
+        with tempfile.TemporaryDirectory() as tmp:
+            path=pathlib.Path(tmp)/'data.json';path.write_bytes(b'{}');path.chmod(0o600)
+            self.assertEqual(a.private_bytes(path),b'{}')
+            a.claim_independent_run(tmp,b'{}',{'code':'hash'})
+            with self.assertRaises(FileExistsError):a.claim_independent_run(tmp,b'{ }',{'new-code':'different-hash'})
+            path.chmod(0o644)
+            with self.assertRaises(contracts.Refusal):a.private_bytes(path)
+            link=pathlib.Path(tmp)/'link';link.symlink_to(path)
+            with self.assertRaises(OSError):a.private_bytes(link)
+            fifo=pathlib.Path(tmp)/'fifo';os.mkfifo(fifo,0o600)
+            with self.assertRaises(contracts.Refusal):a.private_bytes(fifo)
+
+    def test_incomplete_lock_and_scripted_client_claims_cannot_pass(self):
+        import tempfile,json,subprocess
+        import wiki_access_acceptance as a
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest=pathlib.Path(tmp)/'fake-client.json';manifest.write_text(json.dumps({'answer':'invented supported answer','passed':True}))
+            from unittest.mock import patch
+            from types import SimpleNamespace
+            # CI never invokes a real client/private suite, even its preflight.
+            with patch.object(subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=b'--max-budget-usd')):
+                result=a.client_preflight()
+            self.assertEqual(result['state'],'BLOCKED')
+            self.assertEqual(result['calls'],0);self.assertFalse(result['claim_support_verified'])
+            lock=pathlib.Path(tmp)/'lock.json';lock.write_text('{}')
+            p=subprocess.run([sys.executable,str(ROOT/'tests/wiki_access_acceptance.py'),'--suite','fixtures','--manifest',str(manifest),'--development',str(manifest),'--implementation-lock',str(lock)],capture_output=True,timeout=20)
+            self.assertNotEqual(p.returncode,0);self.assertEqual(json.loads(p.stdout)['state'],'failed')
+
+
 def main():
     names = sys.argv[1:]
     if not names:
