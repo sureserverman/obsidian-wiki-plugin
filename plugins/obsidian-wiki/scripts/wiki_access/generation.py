@@ -72,17 +72,7 @@ def read_private_at(parent, name, ceiling=STORE_BYTES):
     try:
         private_stat(os.fstat(fd)); before = os.fstat(fd)
         if before.st_size > ceiling: raise Refusal('budget_exhausted')
-        chunks = []; size = 0
-        while True:
-            chunk = os.read(fd, min(65536, ceiling+1-size))
-            if not chunk: break
-            chunks.append(chunk); size += len(chunk)
-            if size > ceiling: raise Refusal('budget_exhausted')
-        live = os.stat(name, dir_fd=parent, follow_symlinks=False); opened = os.fstat(fd)
-        signature = lambda s: (s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
-        if signature(before) != signature(opened) or signature(live) != signature(opened):
-            raise Refusal('generation_stale')
-        return b''.join(chunks)
+        return source_policy.read_bounded(fd, parent, name, before, ceiling)
     finally: os.close(fd)
 
 
@@ -121,7 +111,7 @@ def check_lock(parent, fd):
 
 def snapshot(root, policy):
     """Observe all potentially admitted names, including denied-record changes."""
-    pages = []; inventory = []; names = []; listings = {}
+    pages = []; inventory = []; names = []; listings = {}; absent = []
     with directory(root) as root_fd:
         identity = os.fstat(root_fd)
         for category in policy.categories:
@@ -137,7 +127,15 @@ def snapshot(root, policy):
         names.extend(policy.portfolio)
         for locator in sorted(set(names)):
             if not policy.permits(locator): continue
-            raw = source_policy.safe_read(root, locator)
+            try:
+                raw = source_policy.safe_read(root, locator)
+            except Refusal as refusal:
+                # A configured portfolio note that is genuinely absent is skipped, like
+                # an absent category; symlinks and unreadable entries still refuse.
+                if refusal.code != 'source_unavailable' or locator not in policy.portfolio or os.path.lexists(root/locator):
+                    raise
+                absent.append(locator)
+                continue
             record = {'locator': locator, 'source_hash': source_policy.digest(raw), 'eligible': False}
             try:
                 page = source_policy.project(locator, raw, policy)
@@ -155,6 +153,7 @@ def snapshot(root, policy):
                 with directory(root/category) as fd:
                     if sorted(name for name in os.listdir(fd) if name.endswith('.md')) != listing:
                         raise Refusal('generation_stale')
+        if any(os.path.lexists(root/locator) for locator in absent): raise Refusal('generation_stale')
     return {'version': VERSION, 'policy_version': source_policy.VERSION,
             'policy_hash': policy.fingerprint, 'source_root': str(root),
             'root_identity': [identity.st_dev, identity.st_ino], 'inventory': inventory}, pages

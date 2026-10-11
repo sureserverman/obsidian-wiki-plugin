@@ -77,6 +77,34 @@ class Policy:
         return (len(parts) == 2 and parts[0] in self.categories and parts[-1].endswith('.md')) or locator in self.portfolio
 
 
+def lines(text):
+    """Split on LF only. str.splitlines also breaks on \\v, \\f, \\x1c-\\x1e, U+0085,
+    U+2028 and U+2029, which would let a guarded token straddle two checks."""
+    parts = text.split('\n')
+    return [part + '\n' for part in parts[:-1]] + ([parts[-1]] if parts[-1] else [])
+
+
+def signature(st):
+    return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+
+
+def read_bounded(fd, parent, name, before, ceiling):
+    """Read an opened file; refuse if it grew past ceiling, changed or was replaced."""
+    chunks = []; size = 0
+    while True:
+        chunk = os.read(fd, min(65536, ceiling + 1 - size))
+        if not chunk:
+            break
+        chunks.append(chunk); size += len(chunk)
+        if size > ceiling:
+            raise Refusal('budget_exhausted')
+    after = os.fstat(fd)
+    live = os.stat(name, dir_fd=parent, follow_symlinks=False)
+    if signature(before) != signature(after) or signature(after) != signature(live):
+        raise Refusal('generation_stale')
+    return b''.join(chunks)
+
+
 def safe_read(root, locator):
     """Walk using directory FDs; O_NOFOLLOW closes the check/open symlink race."""
     parts = relative_parts(locator)
@@ -103,25 +131,13 @@ def safe_read(root, locator):
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode) or before.st_size > SOURCE_LIMIT:
             raise Refusal('permission_refused')
-        chunks = []; size = 0
-        while True:
-            chunk = os.read(fd, min(65536, SOURCE_LIMIT + 1 - size))
-            if not chunk:
-                break
-            chunks.append(chunk); size += len(chunk)
-            if size > SOURCE_LIMIT:
-                raise Refusal('budget_exhausted')
-        after = os.fstat(fd)
-        current = os.stat(parts[-1], dir_fd=parent, follow_symlinks=False)
-        signature = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
-        if signature(before) != signature(after) or signature(after) != signature(current):
-            raise Refusal('generation_stale')
+        raw = read_bounded(fd, parent, parts[-1], before, SOURCE_LIMIT)
         for parent, name, child in walked:
             current = os.stat(name, dir_fd=parent, follow_symlinks=False)
             opened = os.fstat(child)
             if not stat.S_ISDIR(current.st_mode) or (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino):
                 raise Refusal('generation_stale')
-        return b''.join(chunks)
+        return raw
     except OSError:
         raise Refusal('source_unavailable') from None
     finally:
@@ -181,13 +197,13 @@ def inline_list(value):
 
 def frontmatter(raw, *, integration=False):
     try:
-        lines = raw.decode('utf-8').splitlines(keepends=True)
+        rows = lines(raw.decode('utf-8'))
     except UnicodeError:
         raise Refusal('permission_refused') from None
-    if not lines or lines[0].strip() != '---':
+    if not rows or rows[0].strip() != '---':
         raise Refusal('permission_refused')
-    metadata = {}; list_key = None; offset = len(lines[0].encode())
-    for line in lines[1:]:
+    metadata = {}; list_key = None; offset = len(rows[0].encode())
+    for line in rows[1:]:
         offset += len(line.encode())
         if offset > 65536:
             raise Refusal('permission_refused')
@@ -286,7 +302,7 @@ def project(locator, raw, policy):
     metadata['date_basis'] = 'frontmatter; created/updated are page lifecycle dates'
     body = []; mapping = []; omissions = [{'kind': 'frontmatter', 'source_start': 0, 'source_end': offset}]
     fence = None; omitted_level = None; projection_offset = 0
-    for line in raw[offset:].decode('utf-8').splitlines(keepends=True):
+    for line in lines(raw[offset:].decode('utf-8')):
         data = line.encode(); head, fence = heading(line, fence)
         if head:
             if omitted_level is not None and head[0] <= omitted_level:

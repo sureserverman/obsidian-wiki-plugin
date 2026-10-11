@@ -9,6 +9,7 @@ import sqlite3
 import sys
 
 from .contracts import Refusal, QUERY_BYTES, STORE_BYTES, encode, text, integer
+from . import policy
 
 SCHEMA = 'wiki-store.v1'
 RECIPE = 'section-or-unicode61-5-3-2-1-1.v1'
@@ -50,18 +51,10 @@ def section_rows(page):
     """Split declared ATX headings outside fences; offsets are UTF-8 bytes."""
     body = page['body']; raw = body.encode('utf-8')
     starts = []; offset = 0; fence = None
-    for line in body.splitlines(keepends=True):
-        marker = re.match(r'^ {0,3}(`{3,}|~{3,})(.*)', line)
-        if marker:
-            mark = marker[1]
-            if fence is None:
-                fence = (mark[0], len(mark))
-            elif mark[0] == fence[0] and len(mark) >= fence[1] and not marker[2].strip():
-                fence = None
-        elif fence is None:
-            head = re.match(r'^ {0,3}#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*\r?\n?$', line)
-            if head:
-                starts.append((offset, head[1]))
+    for line in policy.lines(body):
+        head, fence = policy.heading(line, fence)
+        if head:
+            starts.append((offset, head[1]))
         offset += len(line.encode('utf-8'))
     if not starts or starts[0][0] != 0:
         starts.insert(0, (0, ''))
