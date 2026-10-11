@@ -1,17 +1,57 @@
 """Buffer, guard, operate, recheck, disclose. No model or source-write capability."""
 import json
+import os
+from pathlib import Path
 import sqlite3
 
-from .contracts import Refusal, SEARCH_BYTES, encode, error, response, validate_request
-from .generation import Manager
-from .policy import relative_parts
+from .contracts import Refusal, SEARCH_BYTES, encode, error, response, strict_object, validate_request
+from .generation import Manager, read_private
+from .policy import Policy, VERSION as POLICY_VERSION, digest, relative_parts
 from .store import Store, RECIPE
+
+
+def configuration(path):
+    try:os.lstat(path)
+    except FileNotFoundError:raise Refusal('disabled') from None
+    try: value=json.loads(read_private(Path(path),65536),object_pairs_hook=strict_object)
+    except (OSError,ValueError,UnicodeError,RecursionError): raise Refusal('permission_refused') from None
+    if (type(value) is not dict or set(value) != {'schema','enabled','categories','portfolio'}
+            or value['schema'] != 'wiki-access-config.v1' or type(value['enabled']) is not bool):
+        raise Refusal('permission_refused')
+    if not value['enabled']: raise Refusal('disabled')
+    Policy(value['categories'],value['portfolio'])
+    return value
+
+
+def configured_service(root, state_base, config):
+    source=Path(root)
+    identity=source.stat()
+    key=digest(encode({'root':str(source),'identity':[identity.st_dev,identity.st_ino],'policy_version':POLICY_VERSION}))
+    manager=Manager(source,Path(state_base)/'obsidian-wiki/state/wiki-access'/key,
+                    Policy(config['categories'],config['portfolio']))
+    return Service(manager)
 
 
 class Service:
     def __init__(self, manager):
         if not isinstance(manager, Manager): raise Refusal('index_unavailable')
         self.manager = manager
+
+    def administer(self, request, *, rotate=False):
+        operation=request['operation']
+        if operation=='refresh':
+            if rotate:self.manager.rotate_receipt_key()
+            value=self.manager.refresh()
+            return response(operation,value,generation=value['generation'])
+        if rotate:raise Refusal('invalid_request')
+        result=self.handle({'schema':request['schema'],'operation':'status'})
+        if not result['ok']:return error(operation,result['state'])
+        with self.manager.pin() as pin:
+            if pin.generation!=result['generation']:raise Refusal('generation_stale')
+            value=dict(result['value'],sqlite_version=sqlite3.sqlite_version,
+                       store_bytes=self.manager.storage_size())
+            pin.check()
+            return response(operation,value,generation=result['generation'])
 
     @staticmethod
     def hint(page, generation, kind):

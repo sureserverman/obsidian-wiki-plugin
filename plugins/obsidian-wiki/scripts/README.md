@@ -79,3 +79,96 @@ and consume its JSON instead of re-deriving the rules.
 > Validating obsidian-wiki's *plugin structure* (manifest, frontmatter, layout) is
 > a plugin validator's job — run one, such as `validate-plugin.sh` against this repo.
 > The validators here check obsidian-wiki's own domain.
+
+## Local wiki-access pilot (manual, opt-in)
+
+Python 3.12+ with linked SQLite FTS5 and a supported local Linux filesystem is
+required. `wiki-access.py` accepts one JSON object on stdin and returns one JSON
+object on stdout, without a framing newline. It exposes only `search`, `resolve`,
+`get`, `verify_citations` and `status`. `wiki-access-admin.py` accepts only
+`refresh` and `check`. Neither entry point accepts source/config/state path
+arguments or executes query text as shell code. Public failures contain codes,
+never paths, queries, excluded filenames or tracebacks. No query/answer log exists.
+
+The operator creates a 0600 owner-controlled private file at
+`${XDG_CONFIG_HOME:-$HOME/.config}/obsidian-wiki/wiki-access.json`:
+
+```json
+{"schema":"wiki-access-config.v1","enabled":true,"categories":["Runbooks"],"portfolio":[]}
+```
+
+Choose the explicit published-category allowlist for the intended vault.
+`portfolio` lists individually approved `Portfolio/<area>/<project>/integration.md`
+locators. Missing config or `enabled:false` returns `disabled`; unsafe files or
+unsupported configuration refuse. CLI opt-in does not authorize model egress.
+The existing `resolve-vault.sh` supplies source selection: `OBSIDIAN_VAULT_PATH`,
+the existing `~/.config/obsidian-wiki/config.json` default, then `~/dev/knowledge`.
+The published vault-path sidecar remains the existing skills' route; the CLI
+resolves current configuration and does not trust a stale sidecar.
+
+Derived state lives under
+`${XDG_STATE_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}}/obsidian-wiki/state/wiki-access/<vault-key>/`.
+The key binds canonical source-root identity and policy version. State must be
+local, outside the source, with 0700 directories and 0600 single-link regular
+files. The index, manifest and private receipt-key never enter stdout. Refresh
+creates signing state; retrieval cannot create or rotate it. Explicit refresh
+publishes an immutable source-checked generation atomically. Interrupted work
+never becomes active. Total state is capped at 128 MiB, retaining the active
+generation, staging work and transient reader pins; only validated unpinned
+derived generations are reclaimed. Source notes and old research archives are
+never reclaimed by this tool.
+
+Filesystem locality is enforced for derived state. Configuration files are
+checked for ownership, private mode, regular-file identity and absence of links;
+their filesystem type is not separately restricted. Successful responses also
+recheck configuration and source selection before disclosure.
+
+Examples from the installed plugin's `scripts/` directory:
+
+```bash
+./wiki-access-admin.py <<'JSON'
+{"schema":"wiki-access.v1","operation":"refresh"}
+JSON
+./wiki-access.py <<'JSON'
+{"schema":"wiki-access.v1","operation":"resolve","selector":{"kind":"path","value":"Runbooks/Amber.md"}}
+JSON
+./wiki-access.py <<'JSON'
+{"schema":"wiki-access.v1","operation":"search","query":"amberctl --check","limit":5}
+JSON
+./wiki-access-admin.py <<'JSON'
+{"schema":"wiki-access.v1","operation":"check"}
+JSON
+```
+
+Use returned generation/page IDs in a `get` request. One to five notes are read
+as complete safe projections. Its `byte_budget` defaults to 24,000 and includes
+all serialized metadata, maps and the signed receipt. Oversized notes are omitted
+with `over_budget`; an all-omitted bundle has no receipt. Clients must track a
+cumulative 24,000-byte evidence-response budget per answer across repeated calls.
+Discovery excerpts cannot serve as full-note evidence.
+
+`verify_citations` takes the returned `read_receipt` and a list of every citation
+occurrence, each with `target`, `page_id`, UTF-8 byte `start`/`end`, and exact
+`quote`. Targets are exact root-relative published locators including `.md`,
+optionally followed by an existing `#Heading` or `#^block-id`. The declared
+subset supports ATX headings outside fences and existing alphanumeric/hyphen
+block IDs. Duplicate or unsupported headings downgrade to page citations or
+refuse; unknown anchors refuse. Read/source byte maps accompany valid spans.
+Results explicitly say `structural_only`; claim support, dates, modality and
+contradictions still require separate judgment. Receipts expire after 900 seconds
+and always require current-source/generation checks.
+
+For stale generations run an explicit admin refresh, then resolve/read again.
+Unavailable/corrupt/unsafe stores refuse; there is no stale or direct-source
+fallback. To invalidate all receipts, after a first successful refresh run
+`wiki-access-admin.py --rotate-receipt-key` with a `refresh` request. This admin
+flag never appears on the read entry point. Refresh after source changes also
+revokes old-generation receipts. NFS checks describe this host's observed bytes,
+not an instantaneous distributed snapshot or revocation of bytes already sent.
+
+Exit codes: 0 successful protocol response (inspect each citation's `valid`),
+2 invalid request/schema/filter, 3 exhausted byte/storage budget, 4 operational
+unavailability/staleness/permission/disabled, 5 invalid receipt. Both request
+boundaries cap stdin at 65,536 bytes; discovery/verification responses cap at
+8,000 bytes. Normal ask adoption and packaged-client support are pending their
+separate Stage 4 qualification.
