@@ -54,18 +54,20 @@ Keep this adapter unqualified until a fresh authorized trace proves the grant.
    maintenance ownership and target/base hashes must be checked by the writer
    immediately before every mutation. Queries alone write no log entry.
 
-Run the executable directly, with a quoted JSON heredoc on stdin. Replace the
-example object with the strict operation request, JSON-escaping user text. No
+Run the executable directly, with a single-quoted JSON here-string on stdin.
+Replace the example object with the strict operation request, JSON-escaping user text. No
 question, locator or returned source text enters shell arguments or substitutions:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py" <<'WIKI_REQUEST'
-{"schema":"wiki-access.v1","operation":"status"}
-WIKI_REQUEST
+"${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py" <<<'{"schema":"wiki-access.v1","operation":"status"}'
 ```
 
-Use a heredoc delimiter absent from the JSON request; never interpolate variables,
-backticks or command substitutions into its payload. Per-request outcomes and
+Encode apostrophes in JSON strings as `\u0027`, and encode line breaks as `\n`;
+keep the entire JSON object inside one pair of single quotes. Never break those
+quotes, interpolate variables, or add shell substitutions or extra commands.
+The installed client's analyzer rejects quoted JSON heredocs; this here-string
+passes its local syntax analysis but still requires configured-client qualification.
+Per-request outcomes and
 operator configuration are documented in `${CLAUDE_PLUGIN_ROOT}/scripts/README.md`.
 The pilot uses the existing configured model route and selects no provider/model.
 It authorizes no general source egress, normal adoption, other-host support or
