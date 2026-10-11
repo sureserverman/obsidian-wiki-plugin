@@ -206,3 +206,19 @@ Public stdout is one bounded JSON response and stderr is empty for protocol
 refusals. Exit 0 is success; 2 request/schema/filter, 3 budget, 4 operational or
 permission/disabled, 5 invalid receipt. Check `state`/`error.code`; do not infer
 success from an empty page list or paste private logs/config into a source page.
+
+### Explicit acceptance runners
+
+`tests/wiki_access_acceptance.py --suite fixtures` uses development data only.
+Independent fixture, `--suite client` and `--suite private` runs require a frozen
+private manifest and complete implementation lock; opened runs are single-use.
+Client calls require the recorded fake-only expense authorization, retain the
+configured auth/model in temporary isolated settings, and keep actual payload
+traces outside Git/vault. Transport checks alone never establish claim support;
+a separate reader grades the actual answers against the frozen labels.
+The private suite also requires `--development` and `--trace`, binds the current
+configured source and frozen policy/hashes, writes only temporary local state,
+and performs no model call. Missing current representative questions leaves
+real-vault qualification pending. None of these suites runs automatically in CI.
+The legacy natural-language skill is `legacy-ask`; it has no shell grant.
+The distinct manual `ask` command requires explicit `--local-pilot` selection.

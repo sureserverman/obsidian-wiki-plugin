@@ -298,7 +298,7 @@ obsidian-wiki-plugin/                # marketplace root
 ├── README.md
 ├── skills/
 │   ├── ingest/SKILL.md
-│   ├── ask/SKILL.md
+│   ├── legacy-ask/SKILL.md
 │   ├── lint/SKILL.md
 │   ├── vault-schema-maintain/SKILL.md
 │   ├── related/SKILL.md

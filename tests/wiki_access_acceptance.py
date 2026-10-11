@@ -28,7 +28,7 @@ def seal(manifest):
     return result
 
 
-def validate_manifest(manifest, *, development=None):
+def validate_manifest(manifest, *, development=None, policy=None, control_checks=True):
     if not isinstance(manifest, dict) or set(manifest) != {'schema', 'kind', 'notes', 'questions', 'controls', 'fingerprint'}:
         raise Refusal()
     unsigned = {k: v for k, v in manifest.items() if k != 'fingerprint'}
@@ -39,7 +39,7 @@ def validate_manifest(manifest, *, development=None):
     notes = manifest['notes']; questions = manifest['questions']; controls = manifest['controls']
     if not isinstance(notes, list) or not notes or not isinstance(questions, list) or not questions:
         raise Refusal()
-    note_map = {}; policy = Policy(['Runbooks'])
+    note_map = {}; policy = policy or Policy(['Runbooks'])
     for note in notes:
         if not isinstance(note, dict) or set(note) != {'locator', 'raw', 'hash', 'topic'}:
             raise Refusal()
@@ -89,7 +89,7 @@ def validate_manifest(manifest, *, development=None):
     minimum = 5 if manifest['kind'] == 'acceptance' else 1
     if any(count < minimum for count in counts.values()):
         raise Refusal()
-    if not isinstance(controls, list) or len(controls) != len(CONTROL_CLASSES):
+    if not isinstance(controls, list) or (len(controls) != len(CONTROL_CLASSES) and (control_checks or controls)):
         raise Refusal()
     control_classes = set()
     for control in controls:
@@ -172,10 +172,11 @@ def validate_implementation_lock(lock):
         raise Refusal()
 
 
-def fake_manifest(kind):
+def fake_manifest(kind, *, topics=None, namespace=None):
     """New synthetic task labels; no opened research question or note is reused."""
-    topics = (('Cobalt', 'Orchid', 'Juniper', 'Harbor', 'Copper') if kind == 'acceptance'
+    topics = topics or (('Cobalt', 'Orchid', 'Juniper', 'Harbor', 'Copper') if kind == 'acceptance'
               else ('Amber',))
+    namespace = namespace or kind
     notes = []; questions = []
     for topic in topics:
         facts = {
@@ -197,12 +198,12 @@ def fake_manifest(kind):
             start = page['body'].encode().index(fact.encode())
             notes.append({'locator': locator, 'raw': raw, 'hash': hashlib.sha256(raw.encode()).hexdigest(),
                           'topic': f'{topic}/{cls}'})
-            questions.append({'id': f'{kind}/{topic}/{cls}', 'class': cls, 'query': query,
+            questions.append({'id': f'{namespace}/{topic}/{cls}', 'class': cls, 'query': query,
                               'note': locator, 'answerable': True,
                               'support': [{'start': start, 'end': start+len(fact.encode()), 'quote': fact,
                                            'modality': modality, 'event_date': date, 'required': True}]})
     controls = [
-        {'id': f'{kind}/control/{cls}', 'class': cls, 'query': query, 'expected': outcome,
+        {'id': f'{namespace}/control/{cls}', 'class': cls, 'query': query, 'expected': outcome,
          'required': required, 'forbidden': forbidden, 'support': []}
         for cls, query, outcome, required, forbidden in (
             ('absent', 'What is the violet access code?', 'abstain', [], ['invented access code']),
@@ -215,18 +216,18 @@ def fake_manifest(kind):
     # Separate control evidence has exact source spans, rather than keyword verdicts.
     support = []
     for suffix, title, fact, date in (
-        ('Offline', f'{kind} Relay Offline', f'On 2026-03-01 {kind} relay was observed offline.', '2026-03-01'),
-        ('Online', f'{kind} Relay Online', f'On 2026-03-07 {kind} relay was observed online. No interval observations are recorded.', '2026-03-07'),
-        ('Crash', f'{kind} Linen Crash', f'{kind} linen crashed on 2026-03-09. The cause is not recorded.', '2026-03-09'),
-        ('Ambiguous A', 'Shared', f'{kind} first shared note describes queue isolation.', None),
-        ('Ambiguous B', 'Shared', f'{kind} second shared note describes checkpoint recovery.', None),
+        ('Offline', f'{namespace} Relay Offline', f'On 2026-03-01 {kind} relay was observed offline.', '2026-03-01'),
+        ('Online', f'{namespace} Relay Online', f'On 2026-03-07 {kind} relay was observed online. No interval observations are recorded.', '2026-03-07'),
+        ('Crash', f'{namespace} Linen Crash', f'{namespace} linen crashed on 2026-03-09. The cause is not recorded.', '2026-03-09'),
+        ('Ambiguous A', 'Shared', f'{namespace} first shared note describes queue isolation.', None),
+        ('Ambiguous B', 'Shared', f'{namespace} second shared note describes checkpoint recovery.', None),
     ):
         locator = f'Runbooks/{kind} {suffix}.md'
         raw = f'---\ntitle: "{title}"\ncreated: 2026-01-01\n---\n# {title}\n\n## Evidence\n{fact}\n'
         body = project(locator, raw.encode(), Policy(['Runbooks']))['body'].encode()
         start = body.index(fact.encode())
         notes.append({'locator': locator, 'raw': raw, 'hash': hashlib.sha256(raw.encode()).hexdigest(),
-                      'topic': f'{kind}/control/{suffix}'})
+                      'topic': f'{namespace}/control/{suffix}'})
         support.append({'note': locator, 'start': start, 'end': start+len(fact.encode()),
                         'quote': fact, 'modality': 'observation' if suffix != 'Crash' else 'limitation',
                         'event_date': date})
@@ -243,30 +244,38 @@ def implementation_paths():
     root = Path(__file__).resolve().parents[1]
     paths = sorted((root/'plugins/obsidian-wiki/scripts').rglob('*.py'))
     paths += [root/p for p in ('plugins/obsidian-wiki/scripts/resolve-vault.sh',
-              'plugins/obsidian-wiki/commands/ask.md','plugins/obsidian-wiki/skills/ask/SKILL.md',
-              'tests/wiki_access_acceptance.py','tests/wiki_access_cases.py')]
+              'plugins/obsidian-wiki/commands/ask.md','plugins/obsidian-wiki/skills/legacy-ask/SKILL.md',
+              'tests/wiki_access_acceptance.py','tests/wiki_client_acceptance.py','tests/wiki_private_acceptance.py','tests/wiki_access_cases.py')]
     return paths
 
 
 class Probe:
     """Run the copied installed artifact; retain payloads only in caller-private traces."""
-    def __init__(self, base, manifest):
+    def __init__(self, base, manifest, *, source=None, policy=None):
         import os, shutil
-        self.base=Path(base); self.root=self.base/'vault';self.root.mkdir()
+        self.base=Path(base); self.root=Path(source) if source is not None else self.base/'vault'
+        if source is None:self.root.mkdir()
+        self.source_policy=policy
         self.package=self.base/'installed-plugin'
         shutil.copytree(Path(__file__).resolve().parents[1]/'plugins/obsidian-wiki',self.package,
                         ignore=shutil.ignore_patterns('__pycache__'))
         self.config=self.base/'config/obsidian-wiki';self.config.mkdir(parents=True)
         path=self.config/'wiki-access.json'
-        path.write_bytes(encode({'schema':'wiki-access-config.v1','enabled':True,'categories':['Runbooks'],'portfolio':[]}));path.chmod(0o600)
-        for note in manifest['notes']:
-            dest=self.root/note['locator'];dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text(note['raw'])
-        (self.root/'Runbooks/Protected.md').write_text('---\ntitle: Protected\ncreated: 2026-01-01\nsensitivity: private\n---\nPRIVATE_CANARY')
-        (self.root/'Runbooks/Oversize.md').write_text('---\ntitle: Oversize\ncreated: 2026-01-01\n---\n'+'x'*25000)
+        selected=policy or {'categories':['Runbooks'],'portfolio':[]}
+        Policy(selected['categories'],selected['portfolio'])
+        path.write_bytes(encode(dict(schema='wiki-access-config.v1',enabled=True,**selected)));path.chmod(0o600)
+        if source is None:
+            for note in manifest['notes']:
+                dest=self.root/note['locator'];dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text(note['raw'])
+            (self.root/'Runbooks/Protected.md').write_text('---\ntitle: Protected\ncreated: 2026-01-01\nsensitivity: private\n---\nPRIVATE_CANARY')
+            (self.root/'Runbooks/Oversize.md').write_text('---\ntitle: Oversize\ncreated: 2026-01-01\n---\n'+'x'*25000)
         self.env=os.environ.copy();self.env.update(OBSIDIAN_VAULT_PATH=str(self.root),XDG_CONFIG_HOME=str(self.base/'config'),XDG_STATE_HOME=str(self.base/'state'))
         self.events=[];self.timings=[];self.max_read_bytes=0
 
     def inventory(self):
+        if self.source_policy is not None:
+            from wiki_access.generation import snapshot
+            return snapshot(self.root,Policy(self.source_policy['categories'],self.source_policy['portfolio']))[0]
         return {str(p.relative_to(self.root)):hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in self.root.rglob('*') if p.is_file()}
 
@@ -401,7 +410,7 @@ def client_preflight():
     # the cap. No hard provider-side account bound is established by this runner.
     return {'schema':'wiki-client-preflight.v1','state':'BLOCKED','client_available':available,
             'client_version':version.stdout.decode().strip() if version and version.returncode==0 else None,
-            'reason':'No verified hard total $1.00 spend bound; --max-budget-usd is an estimated cap that can be exceeded.',
+            'reason':'Explicit frozen fake-client manifest and implementation lock required; cost cap is estimated and requires accepted overshoot.',
             'calls':0,'traces':0,'permissions_verified':False,'claim_support_verified':False,
             'source':'https://code.claude.com/docs/en/cli-reference#flags'}
 
@@ -443,13 +452,32 @@ def main():
     parser.add_argument('--implementation-lock',type=Path)
     parser.add_argument('--trace',type=Path)
     parser.add_argument('--source',choices=['fixture'])
+    parser.add_argument('--continue-client',action='store_true',help='Explicitly launch only unconsumed fixed client cases; never retry a prior launch')
     args=parser.parse_args()
     try:
         if args.suite=='client':
-            # Scripted/fabricated answers cannot become an actual-client receipt.
-            print(json.dumps(client_preflight(),sort_keys=True));return 4
+            if not args.manifest or not args.implementation_lock:
+                print(json.dumps(client_preflight(),sort_keys=True));return 4
+            from wiki_client_acceptance import client_suite
+            lock=json.loads(private_bytes(args.implementation_lock))
+            if set(lock)!=set(str(p) for p in implementation_paths()):raise Refusal()
+            validate_implementation_lock(lock)
+            manifest=json.loads(private_bytes(args.manifest))
+            result=client_suite(manifest,args.manifest.parent,lock,resume=args.continue_client)
+            print(json.dumps(result,sort_keys=True));return 0 if result['state']=='transport_passed' else 4
         if args.suite=='private':
-            print(json.dumps({'state':'BLOCKED','reason':'Private-source execution and representative frozen current questions remain unqualified; synthetic manifests cannot qualify real-vault lookup.'}));return 4
+            if not args.manifest or not args.implementation_lock or not args.development or not args.trace:
+                print(json.dumps({'state':'BLOCKED','reason':'A fresh representative current-source manifest, development set, implementation lock and private trace destination are required.'}));return 4
+            from wiki_private_acceptance import private_suite
+            lock=json.loads(private_bytes(args.implementation_lock))
+            if set(lock)!=set(str(p) for p in implementation_paths()):raise Refusal()
+            validate_implementation_lock(lock)
+            raw=private_bytes(args.manifest)
+            run_hash=claim_independent_run(args.implementation_lock.parent,raw,lock)
+            manifest=json.loads(raw);development=json.loads(private_bytes(args.development))
+            result=private_suite(manifest,development,trace=args.trace)
+            validate_implementation_lock(lock);result['opened_manifest_hash']=run_hash
+            print(json.dumps(result,sort_keys=True));return 0 if result['state']=='passed' else 1
         independent=args.manifest is not None
         if independent:
             if not args.implementation_lock or not args.development:raise Refusal()

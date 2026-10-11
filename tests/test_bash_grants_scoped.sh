@@ -101,7 +101,7 @@ ok "index-sessions hook + indexer present and wired"
 # vault must now declare no Bash at all, and must tell the agent to Read the
 # path the SessionStart hook publishes. If a future edit reintroduces the
 # resolve-vault shell-out, the grant comes back with it — this catches that.
-NO_SHELL_SKILLS="ask gaps import-session ingest merge rebuild-home related review-captures vault-schema-maintain"
+NO_SHELL_SKILLS="legacy-ask gaps import-session ingest merge rebuild-home related review-captures vault-schema-maintain"
 for name in $NO_SHELL_SKILLS; do
     f="$(find plugins -path "*/skills/$name/SKILL.md" | head -1)"
     [ -n "$f" ] || fail "skill $name not found — update this test if it moved"
@@ -147,7 +147,7 @@ ok "the three pipeline commands declare their own scoped grants"
 # The opt-in ask command grants only the read executable, never admin/interpreters.
 ask_grant="$(grep '^allowed-tools:' plugins/obsidian-wiki/commands/ask.md)"
 case "$ask_grant" in
-    'allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)') : ;;
+    'allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py *)') : ;;
     *) fail "ask command changed its exact dedicated read-executable grant" ;;
 esac
 ok "ask opt-in shell grant names only the dedicated read executable"

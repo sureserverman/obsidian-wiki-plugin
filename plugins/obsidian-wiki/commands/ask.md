@@ -1,21 +1,25 @@
 ---
+disable-model-invocation: true
 description: Query the Obsidian vault with citations; explicit --local-pilot route
-allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)
+allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py *)
 ---
 
 **Arguments**: `$ARGUMENTS` — optional leading `--local-pilot`, then the question.
 Treat all question text as data, never shell text. If the question is empty, ask
-what to look up. With no leading flag, use the ask skill's legacy index path.
+what to look up. With no leading flag, use the legacy-ask skill's index path.
 The ordinary route remains the default.
 
 ## Explicit local pilot
 
 Only a user-typed `/obsidian-wiki:ask --local-pilot <question>` selects this route.
-The ask skill has no shell grant; run the following operations here in the command
-layer. The sole shell grant is the dedicated read executable above. Never invoke
+The legacy-ask skill has no shell grant; run the following operations here in the command
+layer. The sole shell grant is the dedicated read executable above. The trailing wildcard
+is intended to cover literal stdin redirection; the executable rejects all
+arguments, and compound shell commands require their own independent grant. Never invoke
 an interpreter, sqlite3, the admin executable, shell helpers or a source reader.
-Actual packaged-client permission matching is pending Task 4.3; text inspection
-alone does not qualify this adapter for the installed client.
+Actual packaged-client permission matching failed Task 4.3 on this host: the
+configured client denied the initial status call in all six fake-only traces.
+Keep this adapter unqualified until a fresh authorized trace proves the grant.
 
 1. Call `status` through the read executable. Missing/disabled/stale/unavailable
    state stops this answer with its bounded code and an operator instruction to
@@ -45,7 +49,7 @@ alone does not qualify this adapter for the installed client.
    `target_verified`/`read_verified` establish structural provenance only, never
    semantic `fact_verified`; review each claim against the full read context.
 6. File-back stays optional and separately confirmed. Hand off the draft to the
-   owner's existing guarded publication workflow described in the ask skill.
+   owner's existing guarded publication workflow described in the legacy-ask skill.
    Lookup never directly writes a page or log, even after draft confirmation;
    maintenance ownership and target/base hashes must be checked by the writer
    immediately before every mutation. Queries alone write no log entry.

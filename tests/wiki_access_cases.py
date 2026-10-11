@@ -1154,9 +1154,9 @@ class AdapterCases(unittest.TestCase):
     def test_command_is_only_scoped_entry_and_no_natural_language_shell(self):
         import subprocess
         command=(ROOT/'plugins/obsidian-wiki/commands/ask.md').read_text()
-        skill=(ROOT/'plugins/obsidian-wiki/skills/ask/SKILL.md').read_text()
+        skill=(ROOT/'plugins/obsidian-wiki/skills/legacy-ask/SKILL.md').read_text()
         grant=next(x for x in command.splitlines() if x.startswith('allowed-tools:'))
-        self.assertEqual(grant,'allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)')
+        self.assertEqual(grant,'allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py *)')
         self.assertNotIn('Bash',next(x for x in skill.splitlines() if x.startswith('allowed-tools:')))
         self.assertIn('once per',command);self.assertIn('every citation occurrence',command)
         self.assertIn('ordinary route remains the default',command)
@@ -1165,6 +1165,9 @@ class AdapterCases(unittest.TestCase):
         self.assertIn('ask remains read-only even after draft confirmation',skill)
         self.assertIn('immediately before **every mutation**',skill)
         self.assertIn('changed base hash blocks the write',skill)
+        self.assertIn('disable-model-invocation: true',command)
+        self.assertIn('name: legacy-ask',skill)
+        self.assertFalse((ROOT/'plugins/obsidian-wiki/skills/ask').exists())
         subprocess.run(['bash','tests/test_bash_grants_scoped.sh'],cwd=ROOT,check=True,capture_output=True)
 
     def test_single_bundle_budget_refuses_admin_and_has_no_source_fallback(self):
@@ -1255,6 +1258,117 @@ class Stage4IntegrationCases(unittest.TestCase):
 
 
 class AcceptanceRunnerCases(unittest.TestCase):
+    def test_client_trace_requires_actual_tools_cost_model_and_single_bundle(self):
+        import wiki_client_acceptance as c
+        entry='/tmp/installed-plugin/scripts/wiki-access.py'
+        command='"'+entry+'" <<\'REQUEST\'\n{"schema":"wiki-access.v1","operation":"status"}\nREQUEST'
+        self.assertEqual(c.parse_command(command,entry)['operation'],'status')
+        for bad in (command+'\nwhoami',command.replace(entry,'python3 '+entry),command.replace("<<'REQUEST'",'<<REQUEST')):
+            with self.assertRaises(contracts.Refusal):c.parse_command(bad,entry)
+        with self.assertRaises(contracts.Refusal):c.validate_trace([],entry,{'id':'exact'},0,1)
+        self.assertIsNone(c.recorded_cost([]))
+        self.assertIsNone(c.recorded_cost([{'type':'result','total_cost_usd':.8},{'type':'result','total_cost_usd':0}]))
+        self.assertIsNone(c.recorded_cost([{'type':'result','total_cost_usd':float('nan')}]))
+        self.assertEqual(c.recorded_cost([{'type':'result','total_cost_usd':.8}]),.8)
+
+    def test_client_config_cannot_override_fake_source_or_inject_shell_startup(self):
+        import tempfile, json, os
+        from unittest.mock import patch
+        import wiki_client_acceptance as c
+        with tempfile.TemporaryDirectory() as tmp:
+            source=pathlib.Path(tmp)/'source'; source.mkdir()
+            for key in ('OBSIDIAN_VAULT_PATH','XDG_CONFIG_HOME','XDG_STATE_HOME','BASH_ENV','PYTHONPATH','CLAUDE_CONFIG_DIR'):
+                (source/'settings.json').write_text(json.dumps({'model':'opus','env':{key:'/PRIVATE_REAL_VAULT'}}))
+                dest=pathlib.Path(tmp)/key; dest.mkdir()
+                with patch.dict(os.environ,{'CLAUDE_CONFIG_DIR':str(source)}):
+                    with self.assertRaises(contracts.Refusal):c.isolated_config(dest,{'OBSIDIAN_VAULT_PATH':'/tmp/fake'})
+            (source/'settings.json').write_text(json.dumps({'model':'opus'}))
+            dest=pathlib.Path(tmp)/'ambient';dest.mkdir()
+            with patch.dict(os.environ,{'CLAUDE_CONFIG_DIR':str(source)}):
+                with self.assertRaises(contracts.Refusal):c.isolated_config(dest,{'BASH_ENV':'/PRIVATE_REAL_VAULT'})
+
+    def test_client_guard_denies_raw_reads_and_secrets_without_approving_grant(self):
+        import tempfile,os,json,subprocess
+        from unittest.mock import patch
+        import wiki_client_acceptance as c
+        with tempfile.TemporaryDirectory() as tmp:
+            source=pathlib.Path(tmp)/'source';source.mkdir();(source/'settings.json').write_text('{"model":"opus"}')
+            dest=pathlib.Path(tmp)/'dest';dest.mkdir()
+            entry='/tmp/installed-plugin/scripts/wiki-access.py'
+            with patch.dict(os.environ,{'CLAUDE_CONFIG_DIR':str(source)}):config=c.isolated_config(dest,{},entry=entry)
+            for command in ('cat /PRIVATE_REAL_VAULT/note.md','cat client-config/.credentials.json','echo "$ANTHROPIC_API_KEY"','env',entry+' --unsafe'):
+                p=subprocess.run([sys.executable,str(config/'read-command-guard.py')],input=json.dumps({'tool_name':'Bash','tool_input':{'command':command}}).encode(),capture_output=True,timeout=10)
+                self.assertEqual(json.loads(p.stdout)['hookSpecificOutput']['permissionDecision'],'deny')
+            command='"'+entry+'" <<\'REQUEST\'\n{"schema":"wiki-access.v1","operation":"status"}\nREQUEST'
+            p=subprocess.run([sys.executable,str(config/'read-command-guard.py')],input=json.dumps({'tool_name':'Bash','tool_input':{'command':command}}).encode(),capture_output=True,timeout=10)
+            self.assertEqual(json.loads(p.stdout),{'continue':True})
+            guard=config/'read-command-guard.py'
+            guard.write_text(guard.read_text().replace('from wiki_client_acceptance import','from missing_guard_module import'))
+            p=subprocess.run([sys.executable,str(guard)],input=b'{"tool_name":"Bash","tool_input":{"command":"cat private.md"}}',capture_output=True,timeout=10)
+            self.assertEqual(json.loads(p.stdout)['hookSpecificOutput']['permissionDecision'],'deny')
+            hook=json.loads((config/'settings.json').read_bytes())['hooks']['PreToolUse'][0]['hooks'][0]
+            self.assertEqual(hook['onFailure'],'block')
+            self.assertTrue(hook['command'].endswith(' || exit 2'))
+
+    def test_client_parser_binds_actual_cli_responses_and_rejects_extra_reads(self):
+        import tempfile,copy
+        import wiki_access_acceptance as a
+        import wiki_client_acceptance as c
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest=c.fake_client_manifest();probe=a.Probe(tmp,manifest['fixture'])
+            probe.call({'operation':'refresh'},True);probe.events=[]
+            probe.call({'operation':'status'})
+            case=manifest['cases'][0];probe.evidence(case['support'])
+            entry=str(probe.package/'scripts/wiki-access.py')
+            events=[{'type':'system','subtype':'init','model':'mock-parser-only'},
+                    {'type':'system','subtype':'permission_denied','message':'Non-object client stream notice'}]
+            for i,event in enumerate(probe.events):
+                command='"'+entry+'" <<\'REQUEST\'\n'+contracts.encode(event['request']).decode()+'\nREQUEST'
+                events.append({'type':'assistant','message':{'content':[{'type':'tool_use','name':'Bash','id':str(i),'input':{'command':command}}]}})
+                raw=contracts.encode(event['response']).decode()
+                events.append({'type':'user','tool_use_result':{'stdout':raw,'stderr':'','interrupted':False},'message':{'content':[{'type':'tool_result','tool_use_id':str(i),'content':raw}]}})
+            events.append({'type':'result','subtype':'success','is_error':False,'result':'[[Runbooks/Amber Snapshot.md]] [[Runbooks/Amber Snapshot.md]]','total_cost_usd':0.1})
+            self.assertEqual(c.validate_trace(events,entry,case,0,1)['citation_occurrences'],2)
+            get_index=next(i for i,e in enumerate(events) if e.get('type')=='assistant' and '"get"' in e['message']['content'][0]['input']['command'])
+            duplicate=copy.deepcopy(events[get_index:get_index+2]);duplicate[0]['message']['content'][0]['id']='extra';duplicate[1]['message']['content'][0]['tool_use_id']='extra'
+            with self.assertRaises(contracts.Refusal):c.validate_trace(events[:-1]+duplicate+events[-1:],entry,case,0,1)
+            corrupt=copy.deepcopy(events);corrupt[-1]['result']='[[Runbooks/Amber Snapshot.md]]'
+            with self.assertRaises(contracts.Refusal):c.validate_trace(corrupt,entry,case,0,1)
+
+    def test_private_source_runner_never_mutates_source_and_refuses_frozen_hash_drift(self):
+        import tempfile,os
+        from unittest.mock import patch
+        import wiki_access_acceptance as a
+        import wiki_private_acceptance as p
+        with tempfile.TemporaryDirectory() as tmp:
+            source=pathlib.Path(tmp)/'source';source.mkdir()
+            fixture=a.fake_manifest('acceptance')
+            for note in fixture['notes']:
+                dest=source/note['locator'];dest.parent.mkdir(exist_ok=True);dest.write_text(note['raw'])
+            # This page is eligible but outside the frozen question set. Its
+            # shared title/alias must be included in the exact-match oracle.
+            (source/'Runbooks/Additional Match.md').write_text(fixture['notes'][0]['raw'])
+            before={str(f.relative_to(source)):f.read_bytes() for f in source.rglob('*.md')}
+            manifest=a.seal({'schema':'wiki-private-acceptance.v1','source':str(source),'policy':{'categories':['Runbooks'],'portfolio':[]},'workload':fixture})
+            with patch.dict(os.environ,{'OBSIDIAN_VAULT_PATH':str(source)}):
+                result=p.private_suite(manifest,a.fake_manifest('development'),trace=pathlib.Path(tmp)/'private-trace.json')
+                self.assertEqual(result['state'],'passed');self.assertEqual(sum(v['total'] for v in result['recall_at_5'].values()),20)
+                self.assertEqual(before,{str(f.relative_to(source)):f.read_bytes() for f in source.rglob('*.md')})
+                original=a.Probe.call
+                def corrupt_resolution(probe,request,*args,**kwargs):
+                    response=original(probe,request,*args,**kwargs)
+                    if request['operation']=='resolve' and request['selector']['kind']!='path':
+                        response['value']['pages'].append({'locator':'Runbooks/Unrelated.md'})
+                        response['state']='ambiguous'
+                    return response
+                with patch.object(a.Probe,'call',corrupt_resolution):
+                    corrupted=p.private_suite(manifest,a.fake_manifest('development'),trace=pathlib.Path(tmp)/'corrupt-trace.json')
+                self.assertEqual(corrupted['state'],'failed')
+                self.assertIn('exact_resolution',corrupted['failed_criteria'])
+                self.assertEqual(corrupted['exact'],{'passed':20,'total':60})
+                (source/fixture['notes'][0]['locator']).write_text('Changed frozen source.')
+                with self.assertRaises(contracts.Refusal):p.private_suite(manifest,a.fake_manifest('development'),trace=pathlib.Path(tmp)/'unused.json')
+
     def test_fixture_runner_has_actual_denominators_and_installed_events(self):
         import tempfile,json
         import wiki_access_acceptance as a
