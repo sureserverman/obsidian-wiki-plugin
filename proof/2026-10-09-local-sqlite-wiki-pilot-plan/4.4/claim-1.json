@@ -1,0 +1,11 @@
+{
+ "created": "2026-10-11T19:22:18+00:00",
+ "fingerprint": "ac8e0a8f003a687472a883a887850e87aa29c2ac94c21eb0520467d298521bc4",
+ "index": 1,
+ "kind": "claim-deviation",
+ "plan": "/mnt/vault/Portfolio/ai-tools/obsidian-wiki-plugin/plans/2026-10-09-local-sqlite-wiki-pilot-plan.md",
+ "schema": 2,
+ "task": "4.4",
+ "text": "Checkable close-out criterion: every technical claim links its actual passing receipt; the DEC cites selected ARCH sections and the rejected MCP-now alternative without inventing outbound/host approval; core, adapter, real-vault lookup and owner usefulness have separate statuses. No pending/blocked check is marked passed and no private payload/security-report body appears in canonical documents. No whole-plan completion before its final gate passes.",
+ "why": "The close-out criterion concerns canonical architecture, plan, results and decision documents outside this Git repository. Manual link/status/privacy/conformance checks and required independent document review are recorded separately. The proof tool only permits reversible mutations of tracked non-test repository files; such a mutation cannot certify canonical vault ownership, history or document claims. No passing mutation proof is asserted for this external-document criterion."
+}

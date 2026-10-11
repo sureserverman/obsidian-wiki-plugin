@@ -1,22 +1,22 @@
 {
  "baseline": {
-  "elapsed_s": 0.6,
+  "elapsed_s": 1.1,
   "exit": 0,
-  "tail": "test_command_is_only_scoped_entry_and_no_natural_language_shell (__main__.AdapterCases.test_command_is_only_scoped_entry_and_no_natural_language_shell) ... ok\ntest_single_bundle_budget_refuses_admin_and_has_no_source_fallback (__main__.AdapterCases.test_single_bundle_budget_refuses_admin_and_has_no_source_fallback) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.518s\n\nOK"
+  "tail": "test_command_is_only_scoped_entry_and_no_natural_language_shell (__main__.AdapterCases.test_command_is_only_scoped_entry_and_no_natural_language_shell) ... ok\ntest_inline_read_contract_examples_execute_the_complete_installed_flow (__main__.AdapterCases.test_inline_read_contract_examples_execute_the_complete_installed_flow) ... ok\ntest_single_bundle_budget_refuses_admin_and_has_no_source_fallback (__main__.AdapterCases.test_single_bundle_budget_refuses_admin_and_has_no_source_fallback) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 1.093s\n\nOK"
  },
- "break_patch": "--- a/plugins/obsidian-wiki/commands/ask.md\n+++ b/plugins/obsidian-wiki/commands/ask.md\n@@ -1,6 +1,6 @@\n ---\n description: Query the Obsidian vault with citations; explicit --local-pilot route\n-allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)\n+allowed-tools: Read, Glob, Grep, Write, Bash(python3:*)\n ---\n \n **Arguments**: `$ARGUMENTS` \u2014 optional leading `--local-pilot`, then the question.\n",
+ "break_patch": "--- a/plugins/obsidian-wiki/commands/ask.md\n+++ b/plugins/obsidian-wiki/commands/ask.md\n@@ -1,7 +1,7 @@\n ---\n disable-model-invocation: true\n description: Query the Obsidian vault with citations; explicit --local-pilot route\n-allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py *)\n+allowed-tools: Read, Glob, Grep, Write, Bash(python3:*)\n ---\n \n **Arguments**: `$ARGUMENTS` \u2014 optional leading `--local-pilot`, then the question.\n",
  "build": null,
- "created": "2026-10-11T10:08:34+00:00",
- "fingerprint": "ee217b0045da187abc616c5841a7eb65738bb7b1f4e890e63bd3b2a768b58fd5",
+ "created": "2026-10-11T19:21:48+00:00",
+ "fingerprint": "ac8e0a8f003a687472a883a887850e87aa29c2ac94c21eb0520467d298521bc4",
  "index": 1,
  "kind": "claim",
  "named_break": null,
- "no_build_reason": "Markdown command adapter uses the stable packaged executable; no compiled build step",
+ "no_build_reason": "Stdlib Python executes directly; the mutation preserves compilable executable source",
  "plan": "/mnt/vault/Portfolio/ai-tools/obsidian-wiki-plugin/plans/2026-10-09-local-sqlite-wiki-pilot-plan.md",
  "red": {
-  "elapsed_s": 0.3,
+  "elapsed_s": 0.9,
   "exit": 1,
-  "tail": "test_command_is_only_scoped_entry_and_no_natural_language_shell (__main__.AdapterCases.test_command_is_only_scoped_entry_and_no_natural_language_shell) ... FAIL\ntest_single_bundle_budget_refuses_admin_and_has_no_source_fallback (__main__.AdapterCases.test_single_bundle_budget_refuses_admin_and_has_no_source_fallback) ... ok\n\n======================================================================\nFAIL: test_command_is_only_scoped_entry_and_no_natural_language_shell (__main__.AdapterCases.test_command_is_only_scoped_entry_and_no_natural_language_shell)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/user/dev/ai-tools/obsidian-wiki-plugin/tests/wiki_access_cases.py\", line 1159, in test_command_is_only_scoped_entry_and_no_natural_language_shell\n    self.assertEqual(grant,'allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)')\nAssertionError: 'allo[24 chars]rep, Write, Bash(python3:*)' != 'allo[24 chars]rep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)'\n- allowed-tools: Read, Glob, Grep, Write, Bash(python3:*)\n+ allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)\n\n\n----------------------------------------------------------------------\nRan 2 tests in 0.269s\n\nFAILED (failures=1)"
+  "tail": "test_command_is_only_scoped_entry_and_no_natural_language_shell (__main__.AdapterCases.test_command_is_only_scoped_entry_and_no_natural_language_shell) ... FAIL\ntest_inline_read_contract_examples_execute_the_complete_installed_flow (__main__.AdapterCases.test_inline_read_contract_examples_execute_the_complete_installed_flow) ... ok\ntest_single_bundle_budget_refuses_admin_and_has_no_source_fallback (__main__.AdapterCases.test_single_bundle_budget_refuses_admin_and_has_no_source_fallback) ... ok\n\n======================================================================\nFAIL: test_command_is_only_scoped_entry_and_no_natural_language_shell (__main__.AdapterCases.test_command_is_only_scoped_entry_and_no_natural_language_shell)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/user/dev/ai-tools/obsidian-wiki-plugin/tests/wiki_access_cases.py\", line 1195, in test_command_is_only_scoped_entry_and_no_natural_language_shell\n    self.assertEqual(grant,'allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py *)')\nAssertionError: 'allo[26 chars]p, Write, Bash(python3:*)' != 'allo[26 chars]p, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py *)'\n- allowed-tools: Read, Glob, Grep, Write, Bash(python3:*)\n+ allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py *)\n\n\n----------------------------------------------------------------------\nRan 3 tests in 0.826s\n\nFAILED (failures=1)"
  },
  "schema": 2,
  "task": "4.1",

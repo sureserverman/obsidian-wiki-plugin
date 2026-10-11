@@ -1,6 +1,6 @@
 # WF-WIKI-LOOKUP — Local published-note lookup
 
-Status: core implemented; command adapter opt-in, actual client qualification pending; pilot inactive.
+Status: core and opt-in command adapter technically qualified on synthetic fixtures and six bounded configured-Claude fake traces. Later scorer/cap-guidance fixes have separate model-free evidence; revised prose has no later provider execution. Real-vault lookup/owner usefulness pending; normal adoption inactive.
 
 An operator refreshes a private local derived generation explicitly. Retrieval
 reads the configured vault and never writes source notes. The read executable
@@ -53,3 +53,5 @@ refresh/retry and unrestricted source fallback are forbidden. The ordinary ask
 route retains its index entry and reports an oversized whole-index read as
 unsupported. Configured-client permission matching requires an actual trace;
 static grant checks do not prove it. Cursor remains on its existing manual path.
+
+Qualification receipts: [sanitized Stage4 results](../implementation/local-sqlite-wiki-pilot/stage-4-status.md). The fixed cap cannot be raised by admin refresh/check. Omitted evidence still requires abstention; source shortening/splitting is separate owner-selected maintenance through the existing guarded writer, followed by an explicit refresh and a new answer.
