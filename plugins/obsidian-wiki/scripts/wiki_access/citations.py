@@ -1,4 +1,5 @@
 """Read-bound UTF-8 provenance only. A structural verdict certifies no facts."""
+import time
 from .contracts import Refusal, response
 from .evidence import descriptor, read_page, renderable_locator, verify_receipt
 
@@ -17,7 +18,8 @@ def source_spans(page, start, end):
 
 
 def occurrence(page, citation, index):
-    denied={'occurrence':index,'valid':False,'code':'citation_unresolved'}
+    denied={'occurrence':index,'valid':False,'target_verified':False,
+            'read_verified':False,'code':'citation_unresolved'}
     if page is None:
         return dict(denied,code='citation_not_read')
     target=citation['target']; locator,mark,fragment=target.partition('#')
@@ -46,7 +48,8 @@ def occurrence(page, citation, index):
                 anchor=matches[0]
                 if not anchor['start'] <= start < end <= anchor['end']:return dict(denied,code='citation_not_read')
                 normalized=anchor['target'];anchor_state='heading'
-    return {'occurrence':index,'valid':True,'code':'ok','target':normalized,
+    return {'occurrence':index,'valid':True,'target_verified':True,'read_verified':True,
+            'code':'ok','target':normalized,
             'page_id':page['page_id'],'start':start,'end':end,
             'source_spans':spans,'anchor_state':anchor_state}
 
@@ -61,4 +64,5 @@ def verify(manager, db, pin, request):
         if descriptor(page)!=signed:raise Refusal('invalid_receipt')
         pages[page['page_id']]=page
     checks=[occurrence(pages.get(c['page_id']),c,i) for i,c in enumerate(request['citations'])]
-    return response('verify_citations',{'verification':'structural_only','citations':checks},generation=pin.generation)
+    return response('verify_citations',{'verification':'structural_only','verified_at':int(time.time()),
+                    'citations':checks},generation=pin.generation)

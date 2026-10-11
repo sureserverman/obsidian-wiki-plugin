@@ -151,10 +151,14 @@ Discovery excerpts cannot serve as full-note evidence.
 occurrence, each with `target`, `page_id`, UTF-8 byte `start`/`end`, and exact
 `quote`. Targets are exact root-relative published locators including `.md`,
 optionally followed by an existing `#Heading` or `#^block-id`. The declared
-subset supports ATX headings outside fences and existing alphanumeric/hyphen
-block IDs. Duplicate or unsupported headings downgrade to page citations or
+subset supports ATX headings outside code/comments and existing alphanumeric/hyphen
+inline block IDs on plain paragraphs and individual list items. Separate-line IDs
+on structured blocks, quoted/fenced/indented code, comments and uncertain HTML/math
+contexts refuse; use a page citation with the exact read span instead.
+Duplicate or unsupported headings downgrade to page citations or
 refuse; unknown anchors refuse. Read/source byte maps accompany valid spans.
-Results explicitly say `structural_only`; claim support, dates, modality and
+Each occurrence labels `target_verified` and `read_verified`; `verified_at` is a
+UTC Unix timestamp in seconds. Results explicitly say `structural_only`; claim support, dates, modality and
 contradictions still require separate judgment. Receipts expire after 900 seconds
 and always require current-source/generation checks.
 
