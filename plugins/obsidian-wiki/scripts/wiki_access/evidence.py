@@ -22,7 +22,7 @@ def anchor_inventory(raw, body, locator):
     def scan(text):
         heads=[]; blocks=[]; fence=None; offset=0; paragraph=0
         html_comment=False; percent_comment=False; uncertain_html=False; math=False; list_context=False
-        for line in text.splitlines(keepends=True):
+        for line in policy.lines(text):
             end=offset+len(line.encode('utf-8'))
             # This deliberately supports a small rendered-anchor subset. Code,
             # comments and uncertain structured blocks cannot manufacture anchors.

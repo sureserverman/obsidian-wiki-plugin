@@ -109,8 +109,8 @@ class Service:
         if not isinstance(operation,str): operation='unknown'
         try:
             request=validate_request(request)
+            # Manager.pin() has already run the full check before yielding.
             with self.manager.pin() as pin:
-                pin.check()
                 with Store(pin.database_path,pin.generation) as db:
                     result=self.lookup(db,pin,request)
                     ceiling = request['byte_budget'] if operation == 'get' else SEARCH_BYTES

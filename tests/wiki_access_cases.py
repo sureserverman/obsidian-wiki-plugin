@@ -109,6 +109,18 @@ class PolicyCases(unittest.TestCase):
             with self.subTest(body=body), self.assertRaises(contracts.Refusal):
                 self.project(body=body)
 
+    def test_unicode_line_separators_cannot_split_guarded_tokens(self):
+        # str.splitlines breaks on all of these; the bytes still reach the body.
+        for sep in ('\x0b', '\x0c', '\x1c', '\x1d', '\x1e', '\x85', ' ', ' ', '\r'):
+            for body in ('raw'+sep+'/CANARY.md\n', '<!--'+sep+'private CANARY -->\n'):
+                with self.subTest(sep=repr(sep), body=repr(body)), self.assertRaises(contracts.Refusal):
+                    self.project(body=body)
+        raw, page = self.project(body='Intro\x0cmore text\n## Next\nSafe.\n')
+        self.assertIn('\x0cmore text', page['body'])
+        for span in page['mapping']:
+            self.assertEqual(raw[span['source_start']:span['source_end']],
+                             page['body'].encode()[span['start']:span['end']])
+
     def test_deny_path_classes_and_allow_explicit_portfolio(self):
         from wiki_access.policy import Policy
         policy = Policy(['Runbooks'], ['Portfolio/ai-tools/amber/integration.md'])
@@ -297,6 +309,15 @@ class StoreCases(unittest.TestCase):
                 self.assertEqual(db.metadata()['recipe'], store.RECIPE)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
+    def test_sections_use_policy_line_and_heading_rules(self):
+        from wiki_access import store
+        from wiki_access.policy import Policy, project
+        body = 'Intro\x0c# Not a heading\n```\n# Fenced\n```\n## Real\nText.\n'
+        page = project('Runbooks/A.md', ('---\ntitle: A\ncreated: 2026-01-01\n---\n'+body).encode(), Policy(['Runbooks']))
+        rows = list(store.section_rows(page))
+        self.assertEqual([row['heading'] for row in rows], ['', 'Real'])
+        self.assertEqual(''.join(row['body'] for row in rows), page['body'])
+
     def test_literal_query_refuses_operators_and_binds_sql(self):
         from wiki_access import store
         for query in ('AND OR NOT NEAR', '"*"', '   ', 'the is a', 'x '*65):
@@ -471,6 +492,46 @@ class GenerationCases(unittest.TestCase):
                 with self.assertRaises(contracts.Refusal):
                     with manager.pin() as pin: pin.check()
 
+    def test_absent_configured_portfolio_note_does_not_block_reads(self):
+        import tempfile
+        from wiki_access.generation import Manager
+        from wiki_access.policy import Policy
+        locator = 'Portfolio/ai-tools/amber/integration.md'
+        with tempfile.TemporaryDirectory() as tmp:
+            root, state, _ = self.fixture(tmp)
+            manager = Manager(root, state, Policy(['Runbooks'], [locator]))
+            self.assertEqual(manager.refresh()['pages'], 1)
+            with manager.pin() as pin:
+                pin.check()
+                # The note appearing later is a change the old generation must not hide.
+                note = root/locator; note.parent.mkdir(parents=True)
+                note.write_text('---\nproject: amber\ndepends_on: []\nimpacts: []\n---\nSafe body.\n')
+                with self.assertRaises(contracts.Refusal): pin.check()
+            self.assertEqual(manager.refresh()['pages'], 2)
+            note.unlink()
+            self.assertEqual(manager.refresh()['pages'], 1)
+            # A present-but-unreadable entry still refuses instead of being skipped.
+            note.symlink_to(root/'Runbooks/A.md')
+            with self.assertRaises(contracts.Refusal): manager.refresh()
+
+    def test_absent_portfolio_note_appearing_mid_scan_is_stale(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access import generation
+        from wiki_access.policy import Policy, safe_read
+        locator = 'Portfolio/ai-tools/amber/integration.md'
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _, _ = self.fixture(tmp)
+            def read(base, name):
+                result = safe_read(base, name)
+                note = root/locator
+                if not note.exists():
+                    note.parent.mkdir(parents=True); note.write_text('---\nproject: amber\n---\n')
+                return result
+            # Sorted order reads Portfolio/ first, so it is absent; Runbooks/A.md adds it.
+            with patch.object(generation.source_policy, 'safe_read', read), self.assertRaises(contracts.Refusal) as exc:
+                generation.snapshot(root, Policy(['Runbooks'], [locator]))
+            self.assertEqual(exc.exception.code, 'generation_stale')
 
     def test_large_inventory_and_mid_scan_addition(self):
         import tempfile
@@ -629,6 +690,22 @@ class LookupCases(unittest.TestCase):
                 elif op=='resolve': req['selector']={'kind':'title','value':'Amber'}
                 self.assertFalse(service.handle(req)['ok'])
             with self.assertRaises(contracts.Refusal): Service(None)
+
+    def test_lookup_runs_pin_check_and_one_final_guard(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access.generation import Manager, Pinned
+        from wiki_access.service import Service
+        with tempfile.TemporaryDirectory() as tmp:
+            root,state,policy=GenerationCases().fixture(tmp); manager=Manager(root,state,policy); manager.refresh(); service=Service(manager)
+            original=Pinned.check; calls=[]
+            def counted(pin):
+                calls.append(pin.generation); return original(pin)
+            with patch.object(Pinned,'check',counted):
+                result=service.handle({'schema':contracts.SCHEMA,'operation':'search','query':'amberctl'})
+            self.assertTrue(result['ok'])
+            # One full check inside Manager.pin() plus the post-lookup disclosure guard.
+            self.assertEqual(len(calls),2)
 
 
 class Stage2IntegrationCases(unittest.TestCase):
