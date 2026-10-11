@@ -81,3 +81,13 @@ and re-port. Scripts must stay byte-identical to upstream (this project's DEC-00
 engineering-skills' Cursor drift gate is pinned to the coder-plugins marketplace as its
 only upstream. Teaching it a second source was a bigger job than this port, so this port
 is self-contained here and is not covered by that gate.
+
+## Local SQLite pilot support boundary
+
+The canonical Claude package has separate guarded read/admin executables and an
+explicit command-layer `ask --local-pilot` adapter. Neither that adapter nor its
+Python package is included in this manual Cursor port. `/wiki-ask` retains its
+existing index-first path; no pilot permission, model, recall or lifecycle claim
+is made for Cursor. Do not copy the command grant into a skill or assume prose
+provides a Cursor tool allowlist. Any future port needs its own packaged/runtime
+qualification. Existing vault-context containment and manual installation remain.

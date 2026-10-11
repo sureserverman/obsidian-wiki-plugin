@@ -32,7 +32,7 @@ jobs:
         run: find plugins -name '*.sh' -exec bash -n {} \;
 
       - name: Python syntax
-        run: python3 -m py_compile plugins/obsidian-wiki/scripts/*.py
+        run: bash tests/test_python_syntax.sh
 
       - name: Manifests parse
         run: |

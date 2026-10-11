@@ -1,0 +1,28 @@
+{
+ "baseline": {
+  "elapsed_s": 0.3,
+  "exit": 0,
+  "tail": "test_documents_operator_and_distinct_cursor_boundary (__main__.PackagingCases.test_documents_operator_and_distinct_cursor_boundary) ... ok\ntest_installed_layout_stdlib_executables_and_all_modules (__main__.PackagingCases.test_installed_layout_stdlib_executables_and_all_modules) ... ok\ntest_recursive_python_coverage_without_package_writes (__main__.PackagingCases.test_recursive_python_coverage_without_package_writes) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.281s\n\nOK"
+ },
+ "break_patch": "--- a/plugins/obsidian-wiki/scripts/wiki-access.py\n+++ b/plugins/obsidian-wiki/scripts/wiki-access.py\n@@ -2,7 +2,7 @@\n \"\"\"Read-only local pilot entry point; one JSON request on stdin.\"\"\"\n import sys\n sys.dont_write_bytecode = True\n-from wiki_access.cli import main\n+from missing_wiki_access.cli import main\n \n if __name__ == '__main__':\n     sys.exit(main())\n",
+ "build": null,
+ "created": "2026-10-11T10:10:46+00:00",
+ "fingerprint": "8df750320f79c1b91342703f38c2236f93f46035029c61e28929319f0810f99f",
+ "index": 1,
+ "kind": "claim",
+ "named_break": null,
+ "no_build_reason": "Copied stdlib Python/Markdown plugin layout has no compiled build step",
+ "plan": "/mnt/vault/Portfolio/ai-tools/obsidian-wiki-plugin/plans/2026-10-09-local-sqlite-wiki-pilot-plan.md",
+ "red": {
+  "elapsed_s": 0.3,
+  "exit": 1,
+  "tail": "test_documents_operator_and_distinct_cursor_boundary (__main__.PackagingCases.test_documents_operator_and_distinct_cursor_boundary) ... ok\ntest_installed_layout_stdlib_executables_and_all_modules (__main__.PackagingCases.test_installed_layout_stdlib_executables_and_all_modules) ... FAIL\ntest_recursive_python_coverage_without_package_writes (__main__.PackagingCases.test_recursive_python_coverage_without_package_writes) ... ok\n\n======================================================================\nFAIL: test_installed_layout_stdlib_executables_and_all_modules (__main__.PackagingCases.test_installed_layout_stdlib_executables_and_all_modules)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/user/dev/ai-tools/obsidian-wiki-plugin/tests/wiki_access_cases.py\", line 1208, in test_installed_layout_stdlib_executables_and_all_modules\n    found=cli.call(env,{'operation':'resolve','selector':{'kind':'title','value':'Amber'}},script=dest/'scripts/wiki-access.py')[1]\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/user/dev/ai-tools/obsidian-wiki-plugin/tests/wiki_access_cases.py\", line 1048, in call\n    self.assertEqual(p.stderr,b'')\nAssertionError: b'Traceback (most recent call last):\\n  Fil[187 chars]\\'\\n' != b''\n\n----------------------------------------------------------------------\nRan 3 tests in 0.296s\n\nFAILED (failures=1)"
+ },
+ "schema": 2,
+ "task": "4.2",
+ "test": "python3 tests/wiki_access_cases.py PackagingCases",
+ "text": "installed-layout execution works with only stdlib",
+ "touched": [
+  "plugins/obsidian-wiki/scripts/wiki-access.py"
+ ]
+}
