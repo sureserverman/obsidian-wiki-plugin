@@ -703,6 +703,94 @@ class Stage2IntegrationCases(unittest.TestCase):
             self.assertEqual(result['state'],'budget_exhausted'); self.assertLessEqual(len(contracts.encode(result)),8000)
 
 
+class ReadCases(unittest.TestCase):
+    def fixture(self, tmp, bodies=None):
+        from wiki_access.generation import Manager
+        from wiki_access.service import Service
+        root, state, policy = GenerationCases().fixture(tmp)
+        if bodies:
+            for i, body in enumerate(bodies):
+                (root/'Runbooks'/f'{i}.md').write_bytes(
+                    ('---\r\ntitle: Note '+str(i)+'\r\ncreated: 2026-01-01\r\n'
+                     'updated: 2026-02-01\r\n---\r\n'+body).encode())
+            (root/'Runbooks/A.md').unlink()
+        manager = Manager(root, state, policy); manager.refresh()
+        service = Service(manager)
+        found = service.handle({'schema':contracts.SCHEMA, 'operation':'search', 'query':'Note Amber', 'limit':10})
+        return root, manager, service, found
+
+    def get(self, service, found, budget=24000, ids=None):
+        return service.handle({'schema':contracts.SCHEMA, 'operation':'get',
+            'generation':found['generation'], 'page_ids':ids or [p['page_id'] for p in found['value']['pages']],
+            'byte_budget':budget})
+
+    def test_one_to_five_complete_mapped_multibyte_crlf_projections(self):
+        import tempfile
+        bodies = ['## Steps\r\nРусский 😀 '+str(i)+'\r\n```md\r\n# Fake\r\n```\r\n'
+                  '## Source provenance\r\nraw/PRIVATE_CANARY\r\n## End\r\nDone.\r\n' for i in range(5)]
+        with tempfile.TemporaryDirectory() as tmp:
+            root, manager, service, found = self.fixture(tmp, bodies)
+            for count in range(1,6):
+                result = self.get(service, found, ids=[p['page_id'] for p in found['value']['pages'][:count]])
+                self.assertTrue(result['ok'], result)
+                self.assertEqual(len(result['value']['pages']), count)
+                self.assertLessEqual(len(contracts.encode(result)),24000)
+                self.assertNotIn('PRIVATE_CANARY',contracts.encode(result).decode())
+                for page in result['value']['pages']:
+                    self.assertTrue(page['complete'])
+                    raw = (root/page['locator']).read_bytes(); body = page['body'].encode()
+                    self.assertIn('Русский 😀',page['body']); self.assertIn('# Fake',page['body'])
+                    self.assertEqual(page['body_bytes'],len(body))
+                    self.assertEqual(page['metadata']['updated'],'2026-02-01')
+                    for span in page['mapping']:
+                        self.assertEqual(body[span['start']:span['end']],raw[span['source_start']:span['source_end']])
+
+    def test_exact_serialized_budget_and_oversize_omission(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root, manager, service, found = self.fixture(tmp,['😀'*7000,'Small complete.'])
+            result = self.get(service,found)
+            self.assertTrue(result['ok'],result)
+            self.assertEqual(len(result['value']['pages']),1)
+            self.assertEqual(result['value']['pages'][0]['body'],'Small complete.')
+            self.assertEqual(result['value']['omitted'][0]['reason'],'over_budget')
+            self.assertLessEqual(len(contracts.encode(result)),24000)
+            omitted_id=result['value']['omitted'][0]['page_id']
+            self.assertNotIn(omitted_id,[p['page_id'] for p in result['value']['pages']])
+            # Small response budgets may refuse even the omission envelope.
+            result=self.get(service,found,256)
+            self.assertLessEqual(len(contracts.encode(result)),256)
+            self.assertNotIn('body',contracts.encode(result).decode())
+
+    def test_unknown_mixed_and_stale_ids_refuse_entire_bundle(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root, manager, service, found=self.fixture(tmp)
+            good=found['value']['pages'][0]['page_id']
+            self.assertTrue(self.get(service,found)['ok'])
+            result=self.get(service,found,ids=[good,'unknown'])
+            self.assertEqual(result['state'],'invalid_request'); self.assertNotIn('value',result)
+            (root/'Runbooks/A.md').write_text((root/'Runbooks/A.md').read_text()+'changed')
+            self.assertEqual(self.get(service,found)['state'],'generation_stale')
+            manager.refresh()
+            self.assertFalse(self.get(service,found)['ok'])
+
+    def test_source_change_after_get_discards_buffered_evidence(self):
+        import tempfile
+        from unittest.mock import patch
+        from wiki_access import evidence
+        with tempfile.TemporaryDirectory() as tmp:
+            root, manager, service, found=self.fixture(tmp)
+            original=evidence.read_page
+            def mutate(*args):
+                value=original(*args)
+                (root/'Runbooks/A.md').unlink()
+                return value
+            with patch.object(evidence,'read_page',mutate):
+                result=self.get(service,found)
+            self.assertFalse(result['ok']); self.assertNotIn('value',result)
+
+
 def main():
     names = sys.argv[1:]
     if not names:

@@ -32,6 +32,9 @@ class Service:
 
     def lookup(self, db, pin, request):
         operation = request['operation']
+        if operation == 'get':
+            from .evidence import bundle
+            return bundle(self.manager, db, pin, request)
         if operation == 'status':
             count = db.db.execute('SELECT count(*) FROM pages').fetchone()[0]
             return response(operation, {'pages':count, 'recipe':RECIPE}, generation=pin.generation)
@@ -67,7 +70,8 @@ class Service:
                 pin.check()
                 with Store(pin.database_path,pin.generation) as db:
                     result=self.lookup(db,pin,request)
-                    if len(encode(result)) > SEARCH_BYTES: raise Refusal('budget_exhausted')
+                    ceiling = request['byte_budget'] if operation == 'get' else SEARCH_BYTES
+                    if len(encode(result)) > ceiling: raise Refusal('budget_exhausted')
                 # Even an empty result or operational count needs this final guard.
                 pin.check()
                 return result
