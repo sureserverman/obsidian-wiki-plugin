@@ -21,28 +21,29 @@ def anchor_inventory(raw, body, locator):
     """Count identities in authoritative content, expose only projected anchors."""
     def scan(text):
         heads=[]; blocks=[]; fence=None; offset=0; paragraph=0
-        html_comment=False; percent_comment=False; html_tag=None; math=False; list_context=False
+        html_comment=False; percent_comment=False; uncertain_html=False; math=False; list_context=False
         for line in text.splitlines(keepends=True):
             end=offset+len(line.encode('utf-8'))
             # This deliberately supports a small rendered-anchor subset. Code,
             # comments and uncertain structured blocks cannot manufacture anchors.
             if fence is not None:
                 _,fence=policy.heading(line,fence); paragraph=end; offset=end; continue
-            if re.match(r'^(?: {4}|\t| {0,3}>)',line):
-                paragraph=end; offset=end; continue
             comment_line=html_comment or '<!--' in line or percent_comment or '%%' in line
-            if '<!--' in line:html_comment=True
-            if '-->' in line:html_comment=False
+            # Delimiter order matters: one line can close a comment and open
+            # another. HTML comments do not nest; an opener inside one is inert.
+            for delimiter in re.finditer(r'<!--|-->',line):
+                if delimiter[0]=='<!--' and not html_comment:html_comment=True
+                elif delimiter[0]=='-->' and html_comment:html_comment=False
             if line.count('%%') % 2:percent_comment=not percent_comment
+            # Also catch a tag following a closed comment on this same line.
+            # Seeing a tag even within a comment is conservatively uncertain.
+            if re.search(r'<(?:/?[A-Za-z]|\?|!(?!--))',line):uncertain_html=True
             if comment_line:
                 paragraph=end; offset=end; continue
-            if html_tag is not None:
-                if re.search(r'</'+re.escape(html_tag)+r'\s*>',line,re.I):html_tag=None
-                paragraph=end; offset=end; continue
-            tag=re.match(r'^ {0,3}<([A-Za-z][A-Za-z0-9-]*)(?:\s|/?>)',line)
-            if tag:
-                if not re.search(r'</'+re.escape(tag[1])+r'\s*>',line,re.I) and not line.strip().endswith('/>'):
-                    html_tag=tag[1]
+            # Generic HTML rendering is outside the declared subset. Once tags
+            # occur, refuse later anchors rather than guessing nesting, attributes,
+            # same-line transitions or Markdown inside HTML. Page evidence remains.
+            if uncertain_html or re.match(r'^(?: {4}|\t| {0,3}>)',line):
                 paragraph=end; offset=end; continue
             if line.strip()=='$$':math=not math;paragraph=end;offset=end;continue
             if math:paragraph=end;offset=end;continue
