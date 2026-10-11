@@ -172,6 +172,31 @@ class Manager:
         self.state = Path(os.path.abspath(state_root))
         self.policy = policy
 
+    def receipt_key(self):
+        """Reads never create signing state; only an explicit admin refresh does."""
+        self.placement()
+        with directory(self.state) as parent:
+            key = read_private_at(parent, 'receipt-key', 32)
+        if len(key) != 32: raise Refusal('permission_refused')
+        return key
+
+    def ensure_receipt_key(self, parent):
+        if 'receipt-key' not in os.listdir(parent):
+            write_private_at(parent, 'receipt-key', secrets.token_bytes(32))
+            os.fsync(parent)
+        if len(read_private_at(parent, 'receipt-key', 32)) != 32:
+            raise Refusal('permission_refused')
+
+    def rotate_receipt_key(self):
+        """Explicit admin operation; invalidates every outstanding read receipt."""
+        with self.lock(exclusive=True) as (parent, lock_fd):
+            self.ensure_receipt_key(parent)
+            temp = 'receipt-key-'+secrets.token_hex(8)+'.tmp'
+            write_private_at(parent, temp, secrets.token_bytes(32))
+            check_lock(parent, lock_fd)
+            os.replace(temp, 'receipt-key', src_dir_fd=parent, dst_dir_fd=parent)
+            os.fsync(parent)
+
     def placement(self, *, create=False):
         if self.state == self.root or self.state.is_relative_to(self.root):
             raise Refusal('permission_refused')
@@ -284,6 +309,7 @@ class Manager:
         from .store import build
         try:
             with self.lock(exclusive=True, create=True) as (parent, lock_fd), private_directory_at(parent, 'generations') as generations:
+                self.ensure_receipt_key(parent)
                 before, pages = snapshot(self.root, self.policy)
                 generation = identity(before)
                 current = self.pointer_at(parent) if 'current.json' in os.listdir(parent) else None
