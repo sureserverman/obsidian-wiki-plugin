@@ -889,6 +889,85 @@ class ReceiptCases(unittest.TestCase):
                 evidence.verify_receipt(manager,pin,token)
 
 
+class CitationCases(unittest.TestCase):
+    def citation(self,page,quote,target=None):
+        raw=page['body'].encode(); start=raw.index(quote.encode())
+        return {'target':target or page['locator'], 'page_id':page['page_id'],
+                'start':start, 'end':start+len(quote.encode()), 'quote':quote}
+
+    def verify(self,service,bundle,citations):
+        return service.handle({'schema':contracts.SCHEMA,'operation':'verify_citations',
+            'read_receipt':bundle['value']['read_receipt'],'citations':citations})
+
+    def test_every_occurrence_is_mapped_utf8_and_structural_only(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root,manager,service,found=ReadCases().fixture(tmp,['## Steps\nРусский 😀 observed on 2026-01-01.\n## Later\nUnknown interval.\n'])
+            bundle=ReadCases().get(service,found); page=bundle['value']['pages'][0]
+            good=self.citation(page,'Русский 😀',page['locator']+'#Steps')
+            bad=dict(good,end=good['end']-1)
+            result=self.verify(service,bundle,[good,good,bad])
+            self.assertTrue(result['ok'],result)
+            checks=result['value']['citations'];self.assertEqual(len(checks),3)
+            self.assertEqual([c['valid'] for c in checks],[True,True,False])
+            self.assertEqual(result['value']['verification'],'structural_only')
+            self.assertNotIn('fact_verified',contracts.encode(result).decode())
+            shifted=dict(good,start=good['start']+1)
+            self.assertFalse(self.verify(service,bundle,[shifted])['value']['citations'][0]['valid'])
+
+    def test_real_headings_fences_duplicate_headings_and_safe_blocks(self):
+        import tempfile
+        body=('## Same\nFirst.\n## Same\nSecond.\n## Unique\nSupported claim. ^ev-a123\n\n'
+              '```md\n## Fake\nHidden. ^fake-block\n```\n')
+        with tempfile.TemporaryDirectory() as tmp:
+            root,manager,service,found=ReadCases().fixture(tmp,[body]);bundle=ReadCases().get(service,found);page=bundle['value']['pages'][0]
+            targets=page['citation_targets']
+            self.assertIn(page['locator']+'#Unique',targets)
+            self.assertIn(page['locator']+'#^ev-a123',targets)
+            self.assertNotIn(page['locator']+'#Fake',targets)
+            citations=[self.citation(page,'First.',page['locator']+'#Same'),
+                       self.citation(page,'Supported claim.',page['locator']+'#^ev-a123'),
+                       self.citation(page,'Hidden.',page['locator']+'#Fake'),
+                       self.citation(page,'Hidden.',page['locator']+'#^fake-block'),
+                       self.citation(page,'First.',page['locator']+'#Unique'),
+                       self.citation(page,'First.',page['locator']+'#^ev-a123')]
+            checks=self.verify(service,bundle,citations)['value']['citations']
+            self.assertEqual([c['valid'] for c in checks],[True,True,False,False,False,False])
+            self.assertEqual(checks[0]['target'],page['locator'])
+            self.assertEqual(checks[0]['anchor_state'],'downgraded_to_page')
+
+    def test_unread_invented_escaped_raw_targets_and_source_drift_refuse(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root,manager,service,found=ReadCases().fixture(tmp,['Read evidence.','Unread evidence.'])
+            bundle=ReadCases().get(service,found,ids=[found['value']['pages'][0]['page_id']]);page=bundle['value']['pages'][0]
+            quote=page['body'];good=self.citation(page,quote)
+            bads=[dict(good,target=t) for t in ('A.md','../Runbooks/A.md','/Runbooks/A.md','raw/PRIVATE_CANARY.md',
+                'Runbooks/Unknown.md',page['locator']+'#Invented',page['locator']+'#^unknown',page['locator']+'|Alias')]
+            bads.append(dict(good,page_id=found['value']['pages'][1]['page_id']))
+            result=self.verify(service,bundle,bads)
+            self.assertTrue(result['ok']);self.assertTrue(all(not c['valid'] for c in result['value']['citations']))
+            self.assertNotIn('PRIVATE_CANARY',contracts.encode(result).decode())
+            (root/page['locator']).write_text((root/page['locator']).read_text()+'Changed.')
+            result=self.verify(service,bundle,[good]);self.assertFalse(result['ok']);self.assertNotIn('value',result)
+
+    def test_duplicate_basename_and_hidden_source_heading_cannot_misbind(self):
+        import tempfile
+        from wiki_access.generation import Manager
+        from wiki_access.policy import Policy
+        from wiki_access.service import Service
+        with tempfile.TemporaryDirectory() as tmp:
+            root=pathlib.Path(tmp)/'vault';(root/'Runbooks').mkdir(parents=True);(root/'Patterns').mkdir()
+            raw='---\ntitle: Amber\ncreated: 2026-01-01\n---\n## Steps\nVisible.\n## Source provenance\n### Steps\nraw/CANARY\n'
+            for category in ('Runbooks','Patterns'):(root/category/'A.md').write_text(raw)
+            manager=Manager(root,pathlib.Path(tmp)/'state',Policy(['Runbooks','Patterns']));manager.refresh();service=Service(manager)
+            found=service.handle({'schema':contracts.SCHEMA,'operation':'resolve','selector':{'kind':'path','value':'Runbooks/A.md'}})
+            bundle=ReadCases().get(service,found);page=bundle['value']['pages'][0]
+            checks=self.verify(service,bundle,[self.citation(page,'Visible.',page['locator']+'#Steps'),
+                self.citation(page,'Visible.','Patterns/A.md'),self.citation(page,'Visible.','A.md')])['value']['citations']
+            self.assertEqual([c['valid'] for c in checks],[True,False,False]);self.assertEqual(checks[0]['target'],page['locator'])
+
+
 def main():
     names = sys.argv[1:]
     if not names:

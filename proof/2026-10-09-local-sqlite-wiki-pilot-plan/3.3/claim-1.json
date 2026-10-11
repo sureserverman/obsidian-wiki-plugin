@@ -1,0 +1,28 @@
+{
+ "baseline": {
+  "elapsed_s": 0.2,
+  "exit": 0,
+  "tail": "test_duplicate_basename_and_hidden_source_heading_cannot_misbind (__main__.CitationCases.test_duplicate_basename_and_hidden_source_heading_cannot_misbind) ... ok\ntest_every_occurrence_is_mapped_utf8_and_structural_only (__main__.CitationCases.test_every_occurrence_is_mapped_utf8_and_structural_only) ... ok\ntest_real_headings_fences_duplicate_headings_and_safe_blocks (__main__.CitationCases.test_real_headings_fences_duplicate_headings_and_safe_blocks) ... ok\ntest_unread_invented_escaped_raw_targets_and_source_drift_refuse (__main__.CitationCases.test_unread_invented_escaped_raw_targets_and_source_drift_refuse) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.128s\n\nOK"
+ },
+ "break_patch": "--- a/plugins/obsidian-wiki/scripts/wiki_access/citations.py\n+++ b/plugins/obsidian-wiki/scripts/wiki_access/citations.py\n@@ -17,6 +17,7 @@\n \n \n def occurrence(page, citation, index):\n+    return {'occurrence':index,'valid':False,'code':'citation_unresolved'}\n     denied={'occurrence':index,'valid':False,'code':'citation_unresolved'}\n     if page is None:\n         return dict(denied,code='citation_not_read')\n",
+ "build": null,
+ "created": "2026-10-11T09:40:39+00:00",
+ "fingerprint": "18c220c58a2ab92792a68a5bb4178d7755df344bb429edcd402922ce388bdb50",
+ "index": 1,
+ "kind": "claim",
+ "named_break": null,
+ "no_build_reason": "Python stdlib source; no build step",
+ "plan": "/mnt/vault/Portfolio/ai-tools/obsidian-wiki-plugin/plans/2026-10-09-local-sqlite-wiki-pilot-plan.md",
+ "red": {
+  "elapsed_s": 0.2,
+  "exit": 1,
+  "tail": "False\nTrue\n\n- [False, False, False]\n+ [True, False, False]\n\n======================================================================\nFAIL: test_every_occurrence_is_mapped_utf8_and_structural_only (__main__.CitationCases.test_every_occurrence_is_mapped_utf8_and_structural_only)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/user/dev/ai-tools/obsidian-wiki-plugin/tests/wiki_access_cases.py\", line 912, in test_every_occurrence_is_mapped_utf8_and_structural_only\n    self.assertEqual([c['valid'] for c in checks],[True,True,False])\nAssertionError: Lists differ: [False, False, False] != [True, True, False]\n\nFirst differing element 0:\nFalse\nTrue\n\n- [False, False, False]\n+ [True, True, False]\n\n======================================================================\nFAIL: test_real_headings_fences_duplicate_headings_and_safe_blocks (__main__.CitationCases.test_real_headings_fences_duplicate_headings_and_safe_blocks)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/user/dev/ai-tools/obsidian-wiki-plugin/tests/wiki_access_cases.py\", line 935, in test_real_headings_fences_duplicate_headings_and_safe_blocks\n    self.assertEqual([c['valid'] for c in checks],[True,True,False,False,False,False])\nAssertionError: Lists differ: [False, False, False, False, False, False] != [True, True, False, False, False, False]\n\nFirst differing element 0:\nFalse\nTrue\n\n- [False, False, False, False, False, False]\n+ [True, True, False, False, False, False]\n\n----------------------------------------------------------------------\nRan 4 tests in 0.114s\n\nFAILED (failures=3)"
+ },
+ "schema": 2,
+ "task": "3.3",
+ "test": "python3 tests/wiki_access_cases.py CitationCases",
+ "text": "every emitted occurrence resolves to a read page and exact evidence span",
+ "touched": [
+  "plugins/obsidian-wiki/scripts/wiki_access/citations.py"
+ ]
+}
