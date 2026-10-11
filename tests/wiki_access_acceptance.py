@@ -239,15 +239,238 @@ def fake_manifest(kind):
                  'questions': questions, 'controls': controls})
 
 
+def implementation_paths():
+    root = Path(__file__).resolve().parents[1]
+    paths = sorted((root/'plugins/obsidian-wiki/scripts').rglob('*.py'))
+    paths += [root/p for p in ('plugins/obsidian-wiki/scripts/resolve-vault.sh',
+              'plugins/obsidian-wiki/commands/ask.md','plugins/obsidian-wiki/skills/ask/SKILL.md',
+              'tests/wiki_access_acceptance.py','tests/wiki_access_cases.py')]
+    return paths
+
+
+class Probe:
+    """Run the copied installed artifact; retain payloads only in caller-private traces."""
+    def __init__(self, base, manifest):
+        import os, shutil
+        self.base=Path(base); self.root=self.base/'vault';self.root.mkdir()
+        self.package=self.base/'installed-plugin'
+        shutil.copytree(Path(__file__).resolve().parents[1]/'plugins/obsidian-wiki',self.package,
+                        ignore=shutil.ignore_patterns('__pycache__'))
+        self.config=self.base/'config/obsidian-wiki';self.config.mkdir(parents=True)
+        path=self.config/'wiki-access.json'
+        path.write_bytes(encode({'schema':'wiki-access-config.v1','enabled':True,'categories':['Runbooks'],'portfolio':[]}));path.chmod(0o600)
+        for note in manifest['notes']:
+            dest=self.root/note['locator'];dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text(note['raw'])
+        (self.root/'Runbooks/Protected.md').write_text('---\ntitle: Protected\ncreated: 2026-01-01\nsensitivity: private\n---\nPRIVATE_CANARY')
+        (self.root/'Runbooks/Oversize.md').write_text('---\ntitle: Oversize\ncreated: 2026-01-01\n---\n'+'x'*25000)
+        self.env=os.environ.copy();self.env.update(OBSIDIAN_VAULT_PATH=str(self.root),XDG_CONFIG_HOME=str(self.base/'config'),XDG_STATE_HOME=str(self.base/'state'))
+        self.events=[];self.timings=[];self.max_read_bytes=0
+
+    def inventory(self):
+        return {str(p.relative_to(self.root)):hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in self.root.rglob('*') if p.is_file()}
+
+    def call(self, request, admin=False):
+        import subprocess,time
+        from wiki_access.contracts import decode
+        entry=self.package/'scripts'/('wiki-access-admin.py' if admin else 'wiki-access.py')
+        request=dict(schema='wiki-access.v1',**request)
+        started=time.monotonic()
+        try:
+            result=subprocess.run([str(entry)],input=encode(request),env=self.env,
+                                  capture_output=True,timeout=30)
+        except subprocess.TimeoutExpired:raise Refusal() from None
+        elapsed=time.monotonic()-started
+        value=decode(result.stdout)
+        if result.stderr or b'PRIVATE_CANARY' in result.stdout or len(result.stdout)>24000:
+            raise Refusal()
+        from wiki_access.cli import exit_code
+        if result.returncode!=exit_code(value):raise Refusal()
+        self.events.append({'executable':str(entry),'request':request,'response':value,
+                            'response_bytes':len(result.stdout),'seconds':elapsed,'exit_code':result.returncode})
+        self.timings.append((request['operation'],elapsed))
+        if request['operation']=='get':self.max_read_bytes=max(self.max_read_bytes,len(result.stdout))
+        return value
+
+    def resolve(self, locator):
+        found=self.call({'operation':'resolve','selector':{'kind':'path','value':locator}})
+        if found['state']!='ok' or len(found['value']['pages'])!=1:raise Refusal()
+        return found
+
+    def evidence(self, labels):
+        found=[self.resolve(note) for note in dict.fromkeys(label['note'] for label in labels)]
+        bundle=self.call({'operation':'get','generation':found[0]['generation'],
+                         'page_ids':[f['value']['pages'][0]['page_id'] for f in found],'byte_budget':24000})
+        if not bundle['ok'] or bundle['value']['omitted']:raise Refusal()
+        pages={p['locator']:p for p in bundle['value']['pages']};citations=[]
+        for label in labels:
+            p=pages[label['note']]
+            citation={'target':p['locator'],'page_id':p['page_id'],'start':label['start'],
+                      'end':label['end'],'quote':label['quote']}
+            citations.extend([citation,citation.copy()])
+        request={'operation':'verify_citations','read_receipt':bundle['value']['read_receipt'],'citations':citations}
+        verified=self.call(request)
+        if not verified['ok'] or not all(c['valid'] and c['target_verified'] and c['read_verified'] for c in verified['value']['citations']):
+            raise Refusal()
+        return len(citations),bundle,request
+
+
+def fixture_suite(manifest, *, independent=False, live=False, trace=None):
+    import math,resource,tempfile
+    validate_manifest(manifest)
+    with tempfile.TemporaryDirectory(prefix='wiki-acceptance-') as tmp:
+        probe=Probe(tmp,manifest);before=probe.inventory()
+        cold=probe.call({'operation':'status'})
+        if cold['ok']:raise Refusal()
+        refresh=probe.call({'operation':'refresh'},True)
+        if not refresh['ok']:raise Refusal()
+        recall={cls:{'hits':0,'total':0} for cls in CLASSES};exact=0;exact_total=0;occurrences=0;latencies=[]
+        notes={n['locator']:project(n['locator'],n['raw'].encode(),Policy(['Runbooks'])) for n in manifest['notes']}
+        questions=manifest['questions'][:1] if live else manifest['questions']
+        for question in questions:
+            search=probe.call({'operation':'search','query':question['query'],'limit':5})
+            if not search['ok']:raise Refusal()
+            latencies.append(probe.timings[-1][1]);counts=recall[question['class']];counts['total']+=1
+            counts['hits']+=int(question['note'] in [p['locator'] for p in search['value']['pages']])
+            page=notes[question['note']]
+            selectors=[('path',page['locator']),('title',page['metadata']['title'])]
+            selectors += [('alias',alias) for alias in dict.fromkeys(page['metadata']['aliases'])]
+            for kind,value in selectors:
+                expected={loc for loc,p in notes.items() if
+                          value.casefold() in [c.casefold() for c in
+                           ([loc] if kind=='path' else [p['metadata']['title']] if kind=='title' else p['metadata']['aliases'])]}
+                found=probe.call({'operation':'resolve','selector':{'kind':kind,'value':value}})
+                state='ok' if len(expected)==1 else 'ambiguous'
+                if found['state']!=state or {p['locator'] for p in found['value']['pages']}!=expected:raise Refusal()
+                exact+=1;exact_total+=1
+            labels=[dict(label,note=question['note']) for label in question['support']]
+            count,bundle,old=probe.evidence(labels);occurrences+=count
+        controls={}
+        if not live:
+            for control in manifest['controls']:
+                cls=control['class']
+                if cls=='ambiguous':
+                    found=probe.call({'operation':'resolve','selector':{'kind':'title','value':'Shared'}})
+                    if found['state']!='ambiguous' or len(found['value']['pages'])!=2:raise Refusal()
+                elif cls in ('absent','protected'):
+                    locator='Runbooks/Absent.md' if cls=='absent' else 'Runbooks/Protected.md'
+                    if probe.call({'operation':'resolve','selector':{'kind':'path','value':locator}})['state']!='not_found':raise Refusal()
+                else:
+                    count,_,_=probe.evidence(control['support']);occurrences+=count
+                controls[cls]={'passed':1,'total':1,'scope':'structural evidence; semantic answer judgment pending client'}
+            found=probe.resolve('Runbooks/Oversize.md')
+            large=probe.call({'operation':'get','generation':found['generation'],'page_ids':[found['value']['pages'][0]['page_id']]})
+            if not large['ok'] or large['value']['pages'] or large['value']['read_receipt'] is not None or len(large['value']['omitted'])!=1:raise Refusal()
+        if before!=probe.inventory():raise Refusal()
+        state_bytes=sum(p.stat().st_size for p in (probe.base/'state').rglob('*') if p.is_file())
+        child_rss_kib=resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+        p95=sorted(latencies)[max(0,math.ceil(len(latencies)*.95)-1)]
+        hits=sum(v['hits'] for v in recall.values());total=sum(v['total'] for v in recall.values())
+        failed=[name for name,bad in [('recall_at_5',hits/total<.85),('warm_search_p95',p95>.5),
+                ('state_bytes',state_bytes>128*1024*1024),('peak_child_rss',child_rss_kib>256*1024)] if bad]
+        if live:
+            note=probe.root/questions[0]['note'];note.write_text('---\ntitle: Revoked\ncreated: 2026-01-01\nsensitivity: private\n---\nPRIVATE_CANARY')
+            for request in [old,{'operation':'get','generation':bundle['generation'],'page_ids':[bundle['value']['pages'][0]['page_id']]},
+                            {'operation':'search','query':questions[0]['query']}]:
+                value=probe.call(request)
+                if value['ok'] or 'value' in value:raise Refusal()
+        if trace:
+            import os
+            path=Path(trace)
+            fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+            with os.fdopen(fd,'wb') as out:
+                out.write(encode({'schema':'wiki-cli-trace.v1','events':probe.events,'source_before':before,'source_after':probe.inventory()}))
+        return {'schema':'wiki-acceptance-result.v1','state':'failed' if failed else 'passed','failed_criteria':failed,'source':'synthetic fixture',
+                'independent':independent,'live_cli':live,'recall_at_5':recall,'hits':hits,'total':total,
+                'exact':{'passed':exact,'total':exact_total},'citation_occurrences':occurrences,
+                'controls':controls,'warm_search_p95_seconds':p95,'peak_child_rss_kib':child_rss_kib,
+                'state_bytes':state_bytes,'max_read_response_bytes':probe.max_read_bytes,
+                'cold_status_seconds':probe.timings[0][1],'refresh_seconds':probe.timings[1][1],
+                'semantic_answer_support':'BLOCKED: actual configured-client evidence required'}
+
+
+def client_preflight():
+    """No outbound call until the approved hard total spend bound is enforceable."""
+    import subprocess
+    try:
+        child=subprocess.run(['claude','--help'],capture_output=True,timeout=15)
+        version=subprocess.run(['claude','--version'],capture_output=True,timeout=15)
+        available=child.returncode==0 and b'--max-budget-usd' in child.stdout
+    except (OSError,subprocess.TimeoutExpired):available=False;version=None
+    # Claude documents its flag as an estimate checked after calls: it may exceed
+    # the cap. No hard provider-side account bound is established by this runner.
+    return {'schema':'wiki-client-preflight.v1','state':'BLOCKED','client_available':available,
+            'client_version':version.stdout.decode().strip() if version and version.returncode==0 else None,
+            'reason':'No verified hard total $1.00 spend bound; --max-budget-usd is an estimated cap that can be exceeded.',
+            'calls':0,'traces':0,'permissions_verified':False,'claim_support_verified':False,
+            'source':'https://code.claude.com/docs/en/cli-reference#flags'}
+
+
+def private_bytes(path):
+    import os,stat
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    try:
+        info=os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1 or info.st_uid!=os.getuid() or stat.S_IMODE(info.st_mode)!=0o600:
+            raise Refusal()
+        if stat.S_IMODE(Path(path).parent.stat().st_mode)!=0o700:raise Refusal()
+        with os.fdopen(fd,'rb',closefd=False) as source:data=source.read(1024*1024+1)
+        if len(data)>1024*1024:raise Refusal()
+        return data
+    finally:os.close(fd)
+
+
+def claim_independent_run(directory, raw, lock):
+    """A failed/opened acceptance set is consumed too; it cannot earn a retry."""
+    import os
+    digest=fingerprint(json.loads(raw))
+    path=Path(directory)/('acceptance-'+digest+'.opened.json')
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    try:
+        with os.fdopen(fd,'wb',closefd=False) as out:
+            out.write(encode({'schema':'wiki-acceptance-open.v1','manifest_hash':digest,
+                              'implementation_hash':fingerprint(lock),'state':'opened'}))
+            out.flush();os.fsync(fd)
+    finally:os.close(fd)
+    return digest
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--suite', required=True, choices=['fixtures', 'private', 'client', 'live-cli'])
-    parser.add_argument('--manifest', type=Path)
-    parser.add_argument('--source', choices=['fixture'])
-    args = parser.parse_args()
-    # Later stages implement these actual execution paths. Missing proof refuses.
-    raise SystemExit('acceptance execution unavailable: core implementation pending')
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--suite',required=True,choices=['fixtures','private','client','live-cli'])
+    parser.add_argument('--manifest',type=Path)
+    parser.add_argument('--development',type=Path)
+    parser.add_argument('--implementation-lock',type=Path)
+    parser.add_argument('--trace',type=Path)
+    parser.add_argument('--source',choices=['fixture'])
+    args=parser.parse_args()
+    try:
+        if args.suite=='client':
+            # Scripted/fabricated answers cannot become an actual-client receipt.
+            print(json.dumps(client_preflight(),sort_keys=True));return 4
+        if args.suite=='private':
+            print(json.dumps({'state':'BLOCKED','reason':'Private-source execution and representative frozen current questions remain unqualified; synthetic manifests cannot qualify real-vault lookup.'}));return 4
+        independent=args.manifest is not None
+        if independent:
+            if not args.implementation_lock or not args.development:raise Refusal()
+            lock=json.loads(private_bytes(args.implementation_lock))
+            if set(lock)!=set(str(p) for p in implementation_paths()):raise Refusal()
+            validate_implementation_lock(lock)
+            raw=private_bytes(args.manifest)
+            run_hash=claim_independent_run(args.implementation_lock.parent,raw,lock)
+            manifest=json.loads(raw);development=json.loads(private_bytes(args.development))
+            validate_manifest(manifest,development=development)
+            if manifest['kind']!='acceptance':raise Refusal()
+        else:manifest=fake_manifest('development')
+        if args.suite=='live-cli' and (args.source!='fixture' or independent):raise Refusal()
+        result=fixture_suite(manifest,independent=independent,live=args.suite=='live-cli',trace=args.trace)
+        if independent:
+            validate_implementation_lock(lock)
+            result['opened_manifest_hash']=run_hash
+        print(json.dumps(result,sort_keys=True));return 0 if result['state']=='passed' else 1
+    except (Refusal,OSError,ValueError,KeyError,TypeError):
+        print(json.dumps({'schema':'wiki-acceptance-result.v1','state':'failed','code':'acceptance_refused'}));return 1
 
 
-if __name__ == '__main__':
-    main()
+if __name__=='__main__':
+    raise SystemExit(main())
