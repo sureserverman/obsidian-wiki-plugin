@@ -1150,6 +1150,42 @@ class Stage3IntegrationCases(unittest.TestCase):
                 else:source.write_bytes(original)
 
 
+class AdapterCases(unittest.TestCase):
+    def test_command_is_only_scoped_entry_and_no_natural_language_shell(self):
+        import subprocess
+        command=(ROOT/'plugins/obsidian-wiki/commands/ask.md').read_text()
+        skill=(ROOT/'plugins/obsidian-wiki/skills/ask/SKILL.md').read_text()
+        grant=next(x for x in command.splitlines() if x.startswith('allowed-tools:'))
+        self.assertEqual(grant,'allowed-tools: Read, Glob, Grep, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py)')
+        self.assertNotIn('Bash',next(x for x in skill.splitlines() if x.startswith('allowed-tools:')))
+        self.assertIn('once per',command);self.assertIn('every citation occurrence',command)
+        self.assertIn('ordinary route remains the default',command)
+        self.assertIn('oversized index is unsupported',skill)
+        self.assertIn('File-back stays optional and separately confirmed',command)
+        self.assertIn('ask remains read-only even after draft confirmation',skill)
+        self.assertIn('immediately before **every mutation**',skill)
+        self.assertIn('changed base hash blocks the write',skill)
+        subprocess.run(['bash','tests/test_bash_grants_scoped.sh'],cwd=ROOT,check=True,capture_output=True)
+
+    def test_single_bundle_budget_refuses_admin_and_has_no_source_fallback(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            cli=CliCases();root,env,config=cli.fixture(tmp)
+            (root/'Runbooks/Large.md').write_text('---\ntitle: Large\ncreated: 2026-01-01\n---\n'+'x'*25000)
+            self.assertTrue(cli.call(env,{'operation':'refresh'},True)[1]['ok'])
+            ids=[];generation=None
+            for locator in ('Runbooks/A.md','Runbooks/Large.md'):
+                found=cli.call(env,{'operation':'resolve','selector':{'kind':'path','value':locator}})[1]
+                ids.append(found['value']['pages'][0]['page_id']);generation=found['generation']
+            process,bundle=cli.call(env,{'operation':'get','page_ids':ids,'generation':generation,'byte_budget':24000})
+            self.assertTrue(bundle['ok'],bundle);self.assertLessEqual(len(process.stdout),24000)
+            self.assertEqual(len(bundle['value']['pages']),1);self.assertEqual(bundle['value']['omitted'][0]['reason'],'over_budget')
+            self.assertFalse(cli.call(env,{'operation':'refresh'})[1]['ok'])
+            (root/'Runbooks/A.md').write_text('---\ntitle: A\ncreated: 2026-01-01\nsensitivity: private\n---\nPRIVATE_CANARY')
+            process,refused=cli.call(env,{'operation':'get','page_ids':ids,'generation':generation})
+            self.assertFalse(refused['ok']);self.assertNotIn('value',refused);self.assertNotIn(b'PRIVATE_CANARY',process.stdout)
+
+
 def main():
     names = sys.argv[1:]
     if not names:

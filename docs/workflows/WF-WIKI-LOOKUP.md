@@ -1,6 +1,6 @@
 # WF-WIKI-LOOKUP — Local published-note lookup
 
-Status: implementation in progress; pilot inactive.
+Status: core implemented; command adapter opt-in, actual client qualification pending; pilot inactive.
 
 An operator refreshes a private local derived generation explicitly. Retrieval
 reads the configured vault and never writes source notes. The read executable
@@ -44,3 +44,12 @@ They do not need ordinary-note title/created fields. Edge metadata is omitted
 from output. Reserved protected/identity marker names outside removed provenance
 refuse independently of Markdown/JSON/key-value presentation. Supported ordinary
 record types/statuses are explicit allowlists, rather than a short denylist.
+
+The user-typed Claude command `ask --local-pilot` is the only adapter entry.
+Its grant names `${CLAUDE_PLUGIN_ROOT}/scripts/wiki-access.py` exactly; skills
+and agents hold no Bash grant. Questions enter JSON stdin, never shell arguments.
+One get per answer enforces cumulative evidence bytes; repeated gets, automatic
+refresh/retry and unrestricted source fallback are forbidden. The ordinary ask
+route retains its index entry and reports an oversized whole-index read as
+unsupported. Configured-client permission matching requires an actual trace;
+static grant checks do not prove it. Cursor remains on its existing manual path.
