@@ -17,9 +17,9 @@ layer. The sole shell grant is the dedicated read executable above. The trailing
 is intended to cover literal stdin redirection; the executable rejects all
 arguments, and compound shell commands require their own independent grant. Never invoke
 an interpreter, sqlite3, the admin executable, shell helpers or a source reader.
-Actual packaged-client permission matching failed Task 4.3 on this host: the
-configured client denied the initial status call in all six fake-only traces.
-Keep this adapter unqualified until a fresh authorized trace proves the grant.
+Here-string status calls passed the packaged grant in all six latest fake-only
+traces. Lookup/citation requests failed their strict schemas, so keep the adapter
+unqualified until a fresh authorized run completes lookup, read and verification.
 
 1. Call `status` through the read executable. Missing/disabled/stale/unavailable
    state stops this answer with its bounded code and an operator instruction to
@@ -53,6 +53,75 @@ Keep this adapter unqualified until a fresh authorized trace proves the grant.
    Lookup never directly writes a page or log, even after draft confirmation;
    maintenance ownership and target/base hashes must be checked by the writer
    immediately before every mutation. Queries alone write no log entry.
+
+### Read request contract
+
+Construct requests from these schemas directly; no documentation/source reader
+or shell helper is needed. Send exactly one JSON object per executable call.
+Every request includes `schema` and `operation`; unlisted fields refuse. In
+particular, `resolve` takes a nested `selector`, never top-level `locator`,
+`query`, `generation` or `limit`. Only `get` takes `generation`.
+
+```json
+{"schema":"wiki-access.v1","operation":"status"}
+```
+
+Exact locator, title and alias use separate selectors. Replace each example
+value with the user's exact locator/title/alias; do not send all three for one
+lookup. Root-relative locators include `.md`.
+
+```json
+{"schema":"wiki-access.v1","operation":"resolve","selector":{"kind":"path","value":"Runbooks/Example.md"}}
+```
+
+```json
+{"schema":"wiki-access.v1","operation":"resolve","selector":{"kind":"title","value":"Example"}}
+```
+
+```json
+{"schema":"wiki-access.v1","operation":"resolve","selector":{"kind":"alias","value":"example alias"}}
+```
+
+```json
+{"schema":"wiki-access.v1","operation":"search","query":"Example","limit":5,"filters":{}}
+```
+
+`search` accepts a nonempty query, optional limit 1–10 (use 5), and optional
+filters: `category`, `tag`, `evidence_status`, `verification_status`,
+`created_from`, `created_to`, `updated_from`, `updated_to`. Date values use
+YYYY-MM-DD; unsupported filter availability refuses. Do not add a generation.
+
+For discovery, inspect `ok`, `state`, top-level `generation` and `value.pages`.
+Each candidate supplies `page_id` and `locator`. `not_found`/`empty` supplies no
+evidence; `ambiguous` needs the user's selection. Copy one to five unique IDs
+and their single response generation into the one allowed `get` call:
+
+```json
+{"schema":"wiki-access.v1","operation":"get","page_ids":["PAGE_ID_FROM_RESPONSE"],"generation":"GENERATION_FROM_RESPONSE","byte_budget":24000}
+```
+
+Inspect `value.pages`, `value.omitted` and `value.read_receipt`. Only returned
+complete `pages` are evidence; each has `page_id`, `locator`, `body`, `body_bytes`,
+maps and advertised anchors. An all-omitted read has no receipt. Copy the
+authentic receipt and each read page's exact ID into citation verification.
+Offsets are zero-based UTF-8 bytes within that page's returned `body`, with an
+exclusive `end`; `body[start:end]` in UTF-8 must equal the exact quote. They are
+not source-file, JSON-serialization or character offsets. Each citation requires
+all five fields below, including `page_id`; no `generation` field belongs here.
+The example assumes the complete body is `Example.` (eight UTF-8 bytes):
+
+```json
+{"schema":"wiki-access.v1","operation":"verify_citations","read_receipt":"READ_RECEIPT_FROM_GET","citations":[{"target":"Runbooks/Example.md","page_id":"PAGE_ID_FROM_RESPONSE","start":0,"end":8,"quote":"Example."}]}
+```
+
+Replace all illustrative values with actual returned data, including quote and
+offsets; never send placeholder IDs/receipts. Prefer an exact page locator for
+`target`; only use an advertised supported anchor when the quote falls inside
+it. Repeat a citation record for each displayed occurrence. Before displaying
+any answer, require verification `ok:true` and every `value.citations` occurrence
+to have `valid`, `target_verified` and `read_verified` all true. Display the
+returned verified target. Any request/permission/verification refusal stops;
+do not guess another schema or retry in the same answer.
 
 Run the executable directly, with a single-quoted JSON here-string on stdin.
 Replace the example object with the strict operation request, JSON-escaping user text. No

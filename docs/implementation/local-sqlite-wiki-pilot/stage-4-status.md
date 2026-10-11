@@ -2,40 +2,40 @@
 
 Stage 3's model-free core is technically complete on synthetic evidence. Tasks
 4.1–4.2 are implemented. Task 4.3, Task 4.4 and the final Stage 4 gate remain
-incomplete. The configured Claude adapter failed qualification; the pilot remains
+incomplete. The configured Claude adapter remains unqualified after strict-request failures; the pilot remains
 inactive. No real-wiki answer-model run or normal adoption was selected.
 
 Branch: `feat/local-sqlite-wiki-pilot`; core gate `b20cfaa`, adapter `37e9929`,
 packaging `78bb7b1`, initial acceptance runner `21ba7d4`. This progress change
-records two authorized permission diagnostics, repairs literal JSON input across
-the adapter and guard, and records fresh synthetic qualification and the blocker.
+records six further authorized client traces, provides the complete read-request
+contract inline, and records fresh synthetic qualification and the blocker.
 It is a partial Task 4.3 commit, not a green task or gate.
 
 ## Current local evidence
 
 | Check | Actual result | Qualification scope |
 | --- | --- | --- |
-| Fresh independent v5 Recall@5 | 20/20; 5/5 each exact/conceptual/rationale/historical | Synthetic installed CLI; separate development topics |
+| Fresh independent v6 Recall@5 | 20/20; 5/5 each exact/conceptual/rationale/historical | Synthetic installed CLI; separate development topics |
 | Exact path/title/alias resolution | 60/60 | Synthetic installed CLI |
 | Read-bound citation occurrences | 50/50, including repeated citations | Structural provenance only |
 | Absent/protected/ambiguous/contradictory/date/partial controls | 1/1 each | Model-free evidence behavior; actual answer handling unqualified |
-| Warm search p95 | 0.068928 s | Host end-to-end CLI, including startup/scans/JSON |
-| Cold unavailable status / refresh | 0.044103 / 0.073177 s | Synthetic host measurements |
-| Peak child RSS | 21,544 KiB | Observed Linux RUSAGE_CHILDREN peak |
-| Total state / maximum read response | 194,898 / 4,389 bytes | Below 128 MiB / 24,000-byte limits |
+| Warm search p95 | 0.068044 s | Host end-to-end CLI, including startup/scans/JSON |
+| Cold unavailable status / refresh | 0.046781 / 0.067807 s | Synthetic host measurements |
+| Peak child RSS | 21,676 KiB | Observed Linux RUSAGE_CHILDREN peak |
+| Total state / maximum read response | 194,902 / 4,389 bytes | Below 128 MiB / 24,000-byte limits |
 | Installed live CLI | PASS | Fresh fake lookup/get/verify, then revocation and old/buffered evidence refusal |
-| Stage4IntegrationCases | 1/1 PASS, 0.590 s | Installed key rotation/revocation, source preservation, disabled/admin separation |
-| Full regression | 41/41 wrappers PASS; 77 pilot tests | Actual discovery runner; six integration cases; 53 Python sources syntax checked |
-| Configured client traces | 0/6 qualified; $0.2832846 total | Actual Claude Code 2.1.296, configured `claude-opus-5-5[1m]` |
+| Stage4IntegrationCases | 1/1 PASS; part of four fix-scope checks in 1.606 s | Installed key rotation/revocation, source preservation, disabled/admin separation |
+| Full regression | 41/41 wrappers PASS; 78 pilot tests | Actual discovery runner; six integration cases; 53 Python sources syntax checked |
+| Latest configured client traces | Status6/6, search/read1; 0/6 qualified; $0.4116868 | Actual configured Claude2.1.296 route; schema refusals, no native mode denial |
 | Real-vault lookup / owner usefulness | Pending / pending | Runner implemented; representative current private workload not supplied/run |
 
-Current lock SHA256: `3751aa9a672a46d5f65de915e7030e68a41c3c09ab575eae473ccffd53319b24`.
-Independent v5 manifest canonical hash:
-`694dc66c1eb7101b193831516336c10b34f2cc27c196874791d3a407a653e100`.
+Current lock SHA256: `ccd0388f816b5667fccf7dd7018ea3572c25688c2f53402a8f91c2a18ac7b6fd`.
+Independent v6 manifest canonical hash:
+`a35733a027b6c36d3b779ecd126f7e29c8445098d560e4a16cec5a368996ef91`.
 The complete 36-file lock was validated before and after acceptance and final
-checks. The original acceptance set and v2/v3/v4 sets were each opened once; code
+checks. The original acceptance set and v2/v3/v4/v5 sets were each opened once; code
 changes retired their implementation-specific receipts. None was rerun as an
-independent quality claim. V5 was frozen after the here-string boundary repair. Historical research holdouts remain untouched.
+independent quality claim. V6 was frozen after the inline contract and copied installed-flow test repair. Historical research holdouts remain untouched.
 
 Private manifests, consumption markers, locks, actual client stdout/stderr,
 launch/cost receipts and model-free traces remain in a local 0700 execution pack,
@@ -175,19 +175,78 @@ are repaired; the remaining heredoc is an explicit rejection control and the
 historical diagnostic description. Earlier opened acceptance sets are retired
 on this implementation change; fresh independent qualification is required.
 
+## Latest six-case qualification and inline contract repair
+
+The owner authorized six fresh fake-only traces on6c12c66 under estimated$1
+with possible overshoot,150seconds each,no automatic retries. All six launches
+are consumed once, total$0.4116868, overshoot0, source inventory unchanged.
+Observed duration11.444–29.277seconds. Packaged status succeeds6/6 with no native
+mode denial. Contradiction also completes search and one authenticated read;
+all remaining denials are the containment guard rejecting invalid request schemas.
+
+| Case | Cost USD | Actual events and answer judgment |
+|---|---:|---|
+| exact | 0.0563204 | Status succeeds; resolve uses unsupported locator field; required instruction absent |
+| alias | 0.0492352 | Status succeeds; resolve uses query/generation/limit instead of selector; required instruction absent |
+| missing-protected | 0.0545156 | Status succeeds; both invalid resolves refused; no access code/canary, admission unexercised |
+| date | 0.0551738 | Status succeeds; both invalid resolves refused; required dated observations absent |
+| contradiction | 0.1484530 | Status/search/get succeed; verify citations omit page_id and refuse; required observations withheld |
+| oversized | 0.0479888 | Status succeeds; invalid resolve refuses; over-budget omission unexercised, no cause invented |
+
+Fresh independent default evaluator `/root/client_answer_judgment_v2`, briefed
+only on goals/pass criteria/artifact locations, reads the actual six answers and
+events against frozen labels: FAIL, two Blocking (answerable lookup and citation
+completion), one Material (oversized omission unqualified). No displayed
+citations or invented instruction/access-code/cause/canary occurred. Safe
+withholding remains safety evidence, not useful answer qualification. All
+processes exit0 while all six transport receipts fail. Receipt/manifest/launch
+lock identities agree. This judgment covers6c12c66, not the repaired moving tree.
+
+The shipped command supplied only a status request example and prose naming
+other operations; the full strict schemas lived in operator documentation that
+the Bash-only qualification surface did not expose. The repair makes every read
+operation's actual schema directly available in the invoked command. It includes
+all resolve selector kinds, the single generation-bound get, authentic receipt,
+per-citation page_id, body UTF-8/exclusive offsets, response fields and strict
+verification/refusal behavior. No request API, guard, grant, source authority or
+model route is broadened. Do not attribute strict field validation to a remaining
+native permission failure.
+
+Absence-shaped defect invariant: every read operation in contracts.FIELDS has
+an inline strict-schema-valid request example, and all path/title/alias modes
+are covered. The new test first failed because all JSON request examples were
+absent. It now executes each documented request through copied installed admin
+and read artifacts in a complete build/status/resolve/search/get/verify flow.
+Required boundary review found one Important evidence mismatch (initially the
+test invoked repository binaries); copied installed execution fixes it. Final
+review APPROVE0Critical/Important/Suggestions; AdapterCases3/3 PASS. Artifact
+scope sweep: `rg -n 'ROOT.*wiki-access.py|def test.*installed|installed.*flow'
+ tests/wiki_access_cases.py`; genuine installed receipts use copied packages.
+
+Full regression at entry41/41 wrappers,78 pilot cases,53syntax sources and six
+integration cases passes. Test-only installed-artifact correction then passes
+four AdapterCases/Stage4Integration checks in1.606seconds; no overlapping mutation
+or unreported full rerun is credited. Fresh independent-v6 recall20/20, exact60/60,
+citations50/50 and six structural controls1/1; current36-file lock validates after
+checks. Installed liveCLI PASS. First-claim mutation proof refreshed for the final
+tree. Earlier opened sets retired without reuse. Current-model semantic support
+and real-source/usefulness qualification stay separately pending.
+
+Cumulative14 authorized launches cost$0.7583866: earlier six$0.2832846, two
+diagnostics$0.0634152 and latest six$0.4116868. No launch is retried, no expense is
+unknown and no unused dollars authorize another call. No real-wiki model content,
+global edit, model override or adoption is selected.
+
 ## Resume dependency
 
-Model-free verification and required boundary review are complete: 41/41
-regression wrappers, 77 pilot tests, six integration cases and 53 syntax sources;
-fresh v5 recall20/20, exact60/60, citations50/50 and six controls1/1. Installed
-live CLI and first-claim mutation proof PASS. Independent fix-scope boundary
-review APPROVE, zero Critical/Important/Suggestions, four focused tests and
-16 adversarial rejections. Current36-file lock validates after all checks.
-Seek fresh authorization for the six-case configured-client gate.
-Both diagnostic launches and all six earlier qualification launches are consumed.
-The repaired packaged route remains unqualified until actual permission matching,
-read/citation provenance and independent actual-answer judgment pass. No automatic
-retry, permission bypass or adoption is selected.
+The inline-contract repair and required boundary review are complete on fresh
+synthetic evidence. Seek fresh authorization for six fake-only configured-client
+traces on the reviewed repair (estimated$1 total, accepted possible overshoot,
+150seconds each,no automatic retries,existing configured route). All14 earlier
+launches remain consumed; leftover dollars grant no new launch. Packaged status
+access is proved, while useful read/verified-answer completion remains unqualified
+until actual current-client events and independent answer judgment pass. No
+permission bypass or adoption is selected.
 
 Representative private source qualification and owner usefulness stay separately
 pending. Task 4.4's selected project-local DEC and final close-out follow Task 4.3.
@@ -202,6 +261,6 @@ Stage 1 first-claim records, earlier Stage 3 proof fingerprints bound to prior
 test trees, and Stage 2 commit-title matching advisories. These are retained as
 final close-out proof/provenance debt; no fresh baseline is fabricated and no
 whole-plan audit PASS is claimed. Earlier stage receipts remain historical
-qualification evidence for their recorded revisions. The v5 lock and current
-local checks above are the new synthetic receipts; v4 remains historical. The native review
+qualification evidence for their recorded revisions. The v6 lock and current
+local checks above are the new synthetic receipts; earlier sets remain historical. The native review
 ledger reports zero agents started and never stopped. No owned tool is running.
