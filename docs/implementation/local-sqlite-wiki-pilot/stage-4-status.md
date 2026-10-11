@@ -1,8 +1,9 @@
 # Local SQLite wiki pilot status — 2026-10-11
 
 The model-free core and bounded configured-Claude fake-client flow are technically
-qualified on synthetic evidence. Tasks 4.1–4.3 are implemented; Task 4.4 and the
-final Stage 4 gate are pending. Real-vault lookup and owner usefulness are pending.
+qualified on synthetic evidence. All fourteen implementation tasks and the four
+declared Stage 4 gate checks are complete. [Final gate](stage-4-gate.md) records
+the actual evidence and audit limitations. Real-vault lookup and owner usefulness are pending.
 The pilot remains opt-in with owner-local configuration disabled by default;
 normal adoption, other hosts and broader content egress were not selected.
 
@@ -98,18 +99,24 @@ exact-resolution review findings are fixed; historical receipts remain private.
 evaluator: fresh default `/root/client_answer_judgment_v3`, briefed only on goals,
 criteria and artifact locations — 0 Blocking / 1 Material / 0 Minor at `5151290`;
 factual support 6/6, citations 8/8. Material repaired at source/fix scope above.
-Final Stage 4 Tier-2 review and independent architecture/goal judgment are pending.
+Final Stage 4 Tier-2 `/root/stage4_review` over `b20cfaa..faceb85` and Task4.4
+document fix scope: APPROVE, 0 Critical/Important. Fresh default evaluator
+`/root/final_pilot_judgment`: PASS, 0 Blocking/Material/Minor remaining.
+[Final judgment](/tmp/wiki-pilot-label-coverage-20261011-b1ya4qqc/final-judgment.json).
 
 DEC-001: existing project eligibility/containment consumers unchanged.
 DEC-002: strict unknown request/source shapes refuse; scoring rejects unsupported
 labels and gaps. DEC-003: file-back uses the existing owner-confirmed maintenance
 and base-hash guarded writer; lookup has no source-writing authority.
 GDEC-SEC-001: no private payload or security-report body copied into canonical docs.
-Project-local architecture decision remains Task 4.4.
+Project-local selected architecture is recorded in [DEC-004](/mnt/vault/Portfolio/ai-tools/obsidian-wiki-plugin/decisions.md).
 
-dispatch: 0 of 0 rostered worker tasks; Tasks 4.1–4.3 inline. Review/evaluator agents
-performed required review roles. Stage 4 remediation is 0 completed final-gate
-rounds; Stage 3's saved 2/2 account is preserved. Final gate not yet passed.
+dispatch: 0 of 0 rostered worker tasks; all fourteen declared tasks inline.
+Required review/evaluator agents performed review roles. Stage 4 final verification
+passed in its first recorded round; no final-gate remediation was needed.
+Stage 3's saved 2/2 account is preserved. Plugin version is0.11.0; no merge/publish.
+Final installed integration1/1, live CLI build/lookup/get/verify/revoke and full
+regression41/41 pass; [final gate](stage-4-gate.md) links every actual receipt.
 
 ## Historical spend and proof limitations
 
@@ -124,7 +131,11 @@ rounds; Stage 3's saved 2/2 account is preserved. Final gate not yet passed.
 The canonical vault plan has no pre-execution audit baseline or Git history;
 full historical plan-flip audit is NOT RUN. Earlier available checks found
 missing Stage 1 records, prior-tree Stage 3 fingerprints and Stage 2 commit-title
-advisories. Current proof reconciliation is pending; later proofs cannot certify
-historical test-first ordering. Do not create a retrospective baseline or describe
+advisories. Current proof records are reconciled to their actual commit trees: contract,
+policy, reads, receipts, citations, CLI, adapter, packaging and acceptance sensitivity
+are proven today. Workload test-harness and external canonical-document mutation
+limitations are recorded as deviations; later proofs cannot certify historical
+test-first ordering. The [final audit](/tmp/wiki-pilot-label-coverage-20261011-b1ya4qqc/final-plan-audit.json)
+has zero Blocking findings, five named advisories and historical1/3/5 NOT RUN. Do not create a retrospective baseline or describe
 this historical audit as passing. See [progress](progress.md) for retained stage
 history and [original audit](/tmp/wiki-pilot-amended-20261011-ladm22rq/final-plan-audit.json).
