@@ -354,7 +354,7 @@ obsidian-wiki-plugin/                # marketplace root
 
 These can be added in a later iteration if useful.
 
-## Local SQLite pilot (opt-in, qualification pending)
+## Local SQLite pilot (opt-in, synthetic qualification)
 
 The canonical package contains stdlib-only `scripts/wiki-access.py` for guarded
 search/resolve/get/verify/status and separate `scripts/wiki-access-admin.py` for
@@ -365,9 +365,12 @@ Owner-local configuration defaults disabled; see [operator instructions](scripts
 
 The user-typed `/obsidian-wiki:ask --local-pilot <question>` selects the command
 adapter. Ordinary ask retains its index path. Skills/agents have no shell grant;
-only the command names the dedicated read executable. Actual installed-Claude
-permission matching and fake-answer support remain pending Task 4.3; this is not
-normal adoption or real-vault quality proof. Source claims require complete guarded
+only the command names the dedicated read executable. Six actual configured-Claude
+fake-only traces exercised packaged permission matching, lookup, read and verified
+citations. Their factual support and abstention passed; later scoring and recovery
+guidance fixes have model-free evidence, without another provider run. Real-vault
+lookup and owner usefulness remain pending; normal adoption is a separate decision.
+Source claims require complete guarded
 reads and every citation occurrence verified; structural provenance is separate
 from semantic support. Confirmed file-back hands off to the guarded writer.
 
