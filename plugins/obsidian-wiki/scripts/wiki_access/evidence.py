@@ -21,16 +21,47 @@ def anchor_inventory(raw, body, locator):
     """Count identities in authoritative content, expose only projected anchors."""
     def scan(text):
         heads=[]; blocks=[]; fence=None; offset=0; paragraph=0
+        html_comment=False; percent_comment=False; html_tag=None; math=False; list_context=False
         for line in text.splitlines(keepends=True):
-            previous=fence; head,fence=policy.heading(line,fence)
             end=offset+len(line.encode('utf-8'))
+            # This deliberately supports a small rendered-anchor subset. Code,
+            # comments and uncertain structured blocks cannot manufacture anchors.
+            if fence is not None:
+                _,fence=policy.heading(line,fence); paragraph=end; offset=end; continue
+            if re.match(r'^(?: {4}|\t| {0,3}>)',line):
+                paragraph=end; offset=end; continue
+            comment_line=html_comment or '<!--' in line or percent_comment or '%%' in line
+            if '<!--' in line:html_comment=True
+            if '-->' in line:html_comment=False
+            if line.count('%%') % 2:percent_comment=not percent_comment
+            if comment_line:
+                paragraph=end; offset=end; continue
+            if html_tag is not None:
+                if re.search(r'</'+re.escape(html_tag)+r'\s*>',line,re.I):html_tag=None
+                paragraph=end; offset=end; continue
+            tag=re.match(r'^ {0,3}<([A-Za-z][A-Za-z0-9-]*)(?:\s|/?>)',line)
+            if tag:
+                if not re.search(r'</'+re.escape(tag[1])+r'\s*>',line,re.I) and not line.strip().endswith('/>'):
+                    html_tag=tag[1]
+                paragraph=end; offset=end; continue
+            if line.strip()=='$$':math=not math;paragraph=end;offset=end;continue
+            if math:paragraph=end;offset=end;continue
+            head,fence=policy.heading(line,fence)
+            if fence is not None:
+                paragraph=end;offset=end;continue
             if head:
                 heads.append({'name':head[1], 'level':head[0], 'start':offset})
-                paragraph=end
-            if previous is None and fence is None:
+                paragraph=end;list_context=False
+            item=bool(re.match(r'^ {0,3}(?:[-+*]|[0-9]+[.)])[ \t]+\S',line))
+            if item:paragraph=offset;list_context=True
+            if not head and (not list_context or item):
                 block=re.search(r'(?:^|\s)\^([A-Za-z0-9-]{1,128})[ \t]*\r?\n?$',line)
-                if block: blocks.append({'name':block[1], 'start':paragraph, 'end':end})
-            if not line.strip() or previous is not None or fence is not None: paragraph=end
+                # Standalone IDs on structured blocks are outside this subset;
+                # page citations still verify the exact read quote.
+                if block and line[:block.start()].strip():
+                    blocks.append({'name':block[1], 'start':paragraph, 'end':end})
+            if not line.strip() or re.fullmatch(r'[ \t]*[-=*]{3,}[ \t]*\r?\n?',line):
+                paragraph=end;list_context=False
             offset=end
         for i, head in enumerate(heads):
             head['end']=next((h['start'] for h in heads[i+1:] if h['level'] <= head['level']),offset)

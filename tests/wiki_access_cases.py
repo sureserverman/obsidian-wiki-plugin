@@ -890,6 +890,27 @@ class ReceiptCases(unittest.TestCase):
 
 
 class CitationCases(unittest.TestCase):
+    def test_anchor_contexts_never_certify_another_item_code_or_comment(self):
+        import tempfile
+        bodies=[('- First evidence. ^first\n- Second evidence. ^second\n','First evidence.','#^second',False),
+                ('- First evidence. ^first\n- Second evidence. ^second\n','Second evidence.','#^second',True),
+                ('    Code evidence. ^fake\n','Code evidence.','#^fake',False),
+                ('> ```\n> Code evidence. ^fake\n> ```\n','Code evidence.','#^fake',False),
+                ('<!--\n## Fake\nSecret evidence. ^secret\n-->\n','Secret evidence.','#Fake',False),
+                ('<!--\n## Fake\nSecret evidence. ^secret\n-->\n','Secret evidence.','#^secret',False),
+                ('%%\n## Fake\nSecret evidence. ^secret\n%%\n','Secret evidence.','#Fake',False),
+                ('%%\n## Fake\nSecret evidence. ^secret\n%%\n','Secret evidence.','#^secret',False),
+                ('<pre>\n## Fake\nCode evidence. ^fake\n</pre>\n','Code evidence.','#Fake',False),
+                ('$$\nMath evidence. ^fake\n$$\n','Math evidence.','#^fake',False),
+                ('> Quote evidence.\n\n^quote\n\n','Quote evidence.','#^quote',False)]
+        for body,quote,suffix,valid in bodies:
+            with self.subTest(suffix=suffix,body=body),tempfile.TemporaryDirectory() as tmp:
+                root,manager,service,found=ReadCases().fixture(tmp,[body]);bundle=ReadCases().get(service,found);page=bundle['value']['pages'][0]
+                check=self.verify(service,bundle,[self.citation(page,quote,page['locator']+suffix)])['value']['citations'][0]
+                self.assertEqual(check['valid'],valid)
+                if not valid and quote not in ('First evidence.',):
+                    self.assertNotIn(page['locator']+suffix,page['citation_targets'])
+
     def citation(self,page,quote,target=None):
         raw=page['body'].encode(); start=raw.index(quote.encode())
         return {'target':target or page['locator'], 'page_id':page['page_id'],
@@ -911,6 +932,8 @@ class CitationCases(unittest.TestCase):
             checks=result['value']['citations'];self.assertEqual(len(checks),3)
             self.assertEqual([c['valid'] for c in checks],[True,True,False])
             self.assertEqual(result['value']['verification'],'structural_only')
+            self.assertIsInstance(result['value']['verified_at'],int)
+            self.assertTrue(checks[0]['target_verified']);self.assertTrue(checks[0]['read_verified'])
             self.assertNotIn('fact_verified',contracts.encode(result).decode())
             shifted=dict(good,start=good['start']+1)
             self.assertFalse(self.verify(service,bundle,[shifted])['value']['citations'][0]['valid'])
@@ -1084,6 +1107,14 @@ class Stage3IntegrationCases(unittest.TestCase):
             manifest=a.fake_manifest('development')
             for note in manifest['notes']:(root/note['locator']).write_text(note['raw'])
             self.assertTrue(cli.call(env,{'operation':'refresh'},True)[1]['ok'])
+            ranked=cli.call(env,{'operation':'search','query':manifest['notes'][0]['raw'].split('title: ',1)[1].split('\n',1)[0]})[1]
+            self.assertEqual(ranked['state'],'ok',ranked)
+            chosen=ranked['value']['pages'][0]
+            ranked_bundle=cli.call(env,{'operation':'get','generation':ranked['generation'],'page_ids':[chosen['page_id']]})[1]
+            ranked_page=ranked_bundle['value']['pages'][0]
+            ranked_verified=cli.call(env,{'operation':'verify_citations','read_receipt':ranked_bundle['value']['read_receipt'],
+                'citations':[CitationCases().citation(ranked_page,ranked_page['body'])]})[1]
+            self.assertTrue(ranked_verified['value']['citations'][0]['valid'])
             for note in manifest['notes']:
                 found=cli.call(env,{'operation':'resolve','selector':{'kind':'path','value':note['locator']}})[1]
                 page_id=found['value']['pages'][0]['page_id']
