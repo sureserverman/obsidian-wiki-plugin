@@ -1,5 +1,5 @@
 ---
-name: ask
+name: legacy-ask
 allowed-tools: Read, Glob, Grep, Write
 description: >
   Use when the user asks a research or recall question that their Obsidian vault at

@@ -1,76 +1,151 @@
-# Local SQLite wiki pilot results — 2026-10-11
+# Local SQLite wiki pilot status — 2026-10-11
 
-Core technically complete; opt-in command adapter and copied-package operation
-implemented. Full Stage 4 and the whole plan remain incomplete at Task 4.3.
-Pilot inactive. No real-wiki model call, configured-client trace or adoption.
+Stage 3's model-free core is technically complete on synthetic evidence. Tasks
+4.1–4.2 are implemented. Task 4.3, Task 4.4 and the final Stage 4 gate remain
+incomplete. The configured Claude adapter failed qualification; the pilot remains
+inactive. No real-wiki answer-model run or normal adoption was selected.
 
-Implementation: branch `feat/local-sqlite-wiki-pilot`, core gate `b20cfaa`,
-adapter `37e9929`, packaging `78bb7b1`, locked model-free runner `21ba7d4`.
-Canonical plan/architecture: `2026-10-09-local-sqlite-wiki-pilot-plan.md` and
-`2026-10-09-local-sqlite-wiki-pilot-architecture.md`.
+Branch: `feat/local-sqlite-wiki-pilot`; core gate `b20cfaa`, adapter `37e9929`,
+packaging `78bb7b1`, initial acceptance runner `21ba7d4`. This progress change
+adds actual client traces and current-source qualification tooling, repairs
+qualification containment and exact-resolution scoring, and records the blocker.
+It is a partial Task 4.3 commit, not a green task or gate.
 
-| Evidence | Actual result | Scope |
+## Current local evidence
+
+| Check | Actual result | Qualification scope |
 | --- | --- | --- |
-| Frozen independent Recall@5 | 20/20 (100%); 5/5 each exact/conceptual/rationale/historical | Fresh synthetic questions; separate from development |
-| Exact path/title/alias resolution | 60/60 | Actual copied installed CLI |
-| Read-bound citation occurrences | 50/50, including duplicates | Structural provenance; no semantic answer verdict |
-| Absent/protected/ambiguous/contradictory/date/partial controls | 1/1 each | Model-free lookup/evidence only; client answer judgment pending |
-| Warm end-to-end search p95 | 0.067058 s, 20 queries | Includes startup, scans and JSON; host/fake corpus |
-| Cold unavailable status / refresh | 0.042748 / 0.066234 s | Host/fake corpus; no NFS timing promise |
-| Observed peak child RSS | 21,520 KiB | Linux RUSAGE_CHILDREN peak for actual CLI subprocesses |
-| Total pilot state / maximum read response | 199,006 / 4,349 bytes | Below 128 MiB / 24,000-byte limits |
-| Installed live CLI trace | PASS, 0.707 s | Fresh fake build/lookup/get/verify, then revoke and refuse old/buffered evidence |
-| Stage4IntegrationCases | 1/1 PASS, 0.567 s | Installed rotation, revocation, source preservation, disabled/admin separation |
-| Full plugin regression | 41/41 wrappers PASS, 31.370 s | 71 pilot cases, six integrated cases, recursive syntax 51 Python sources |
-| Configured-Claude permission matching and claim support | BLOCKED, zero calls/traces | Hard spend bound not established; no fabricated answers credited |
-| Real-vault lookup / owner usefulness | Pending / pending | No current private question set or source qualification receipt |
+| Fresh independent v4 Recall@5 | 20/20; 5/5 each exact/conceptual/rationale/historical | Synthetic installed CLI; separate development topics |
+| Exact path/title/alias resolution | 60/60 | Synthetic installed CLI |
+| Read-bound citation occurrences | 50/50, including repeated citations | Structural provenance only |
+| Absent/protected/ambiguous/contradictory/date/partial controls | 1/1 each | Model-free evidence behavior; actual answer handling unqualified |
+| Warm search p95 | 0.061530 s | Host end-to-end CLI, including startup/scans/JSON |
+| Cold unavailable status / refresh | 0.047730 / 0.064539 s | Synthetic host measurements |
+| Peak child RSS | 21,832 KiB | Observed Linux RUSAGE_CHILDREN peak |
+| Total state / maximum read response | 194,886 / 4,389 bytes | Below 128 MiB / 24,000-byte limits |
+| Installed live CLI | PASS | Fresh fake lookup/get/verify, then revocation and old/buffered evidence refusal |
+| Stage4IntegrationCases | 1/1 PASS, 0.523 s | Installed key rotation/revocation, source preservation, disabled/admin separation |
+| Full regression | 41/41 wrappers PASS; 76 pilot tests | Actual discovery runner; six integration cases; 53 Python sources syntax checked |
+| Configured client traces | 0/6 qualified; $0.2832846 total | Actual Claude Code 2.1.296, configured `claude-opus-5-5[1m]` |
+| Real-vault lookup / owner usefulness | Pending / pending | Runner implemented; representative current private workload not supplied/run |
 
-The implementation lock was created before opening the original independent set.
-Lock-file SHA256: `d541737aa9cb21be5401b1fcde7a392ff23cb1a3dd5b028432d2542aa967188c`. Opened manifest canonical hash:
-`4fe63607081f75fdd20fb097982f5caae1c3d0894603de61403dec9d6b9e2062`. The exclusive private consumption marker remains;
-this set will not be rerun for an independent claim. Any locked code change retires
-this receipt for the changed implementation and requires a new independent set.
-The same lock still validates after acceptance and regressions.
+Current lock SHA256: `c4cb3660afa94bfefffb946b22a3f0156fdd75aa0534179cdd912b6592c2c2a7`.
+Independent v4 manifest canonical hash:
+`4f3140e7adc7f51c605ef0ea8c57f6ed6b10a26aad593fab4989d2a7d8772e88`.
+The complete 36-file lock was validated before and after acceptance and final
+checks. The original acceptance set and v2/v3 sets were each opened once; code
+changes retired their implementation-specific receipts. None was rerun as an
+independent quality claim. V4 was frozen after the final scoring/command-disclosure
+fixes. Historical research holdouts remain untouched.
 
-Actual payload-bearing CLI events, source before/after inventories, manifests,
-timed receipts and implementation lock remain 0600 in the original local 0700
-execution pack outside Git/vault. No source payload or private security report
-is copied here. Retrieval left fixture source inventories unchanged; revocation
-was an explicit fixture mutation. Historical research holdouts were not reopened.
-The independent run succeeded once in 10.013 seconds.
+Private manifests, consumption markers, locks, actual client stdout/stderr,
+launch/cost receipts and model-free traces remain in a local 0700 execution pack,
+with 0600 files outside Git/vault. Canonical documents contain sanitized aggregates.
+A regression started during a deliberate mutation proof was invalid (40/41),
+discarded, and replaced by a full passing run after restoration. The committed
+first-claim proof detects a deliberately broken search and restores product code.
 
-review: Tier-1 Task 4.1 default agent /root/cli_review over b20cfaa..Task-4.1 working tree — 0 Critical/1 Important file-back bypass; fixed guarded-writer handoff and maintenance/base-hash obligations, AdapterCases2/2 and scoped-grant regression PASS.
-review: Tier-2 default agent /root/stage4_review over b20cfaa..Task-4.3 working tree, plus narrow lock-flow follow-up — 0 Critical; duplicate same-note get, trace creation permissions, optional aliases and FIFO input refusal fixed. Alias/dedup/0600 fixes independently confirmed; final FIFO fix closes on direct nonblocking refusal test and full 71-case regression. One optional Write-grant Suggestion remains.
+## Actual client result
 
-dispatch: 0 of 0 rostered worker tasks dispatched; 3 started Stage 4 tasks inline;
-0 table-routed inline. Task 4.3 assessment incomplete; Task 4.4 not started.
-ledger: actual native reviews and start/stop receipts; legacy parser advisory for
-native naming/dispatch-description rows; unstopped zero. No client-proof substitute.
-evaluator: final Stage 4 judgment NOT RUN — actual configured-client evidence missing;
-no whole-plan/final-gate PASS asserted. Stage 3 spent two of two remediation rounds;
-Stage 4's remediation account remains zero, with no fabricated gate pass.
+The owner's 2026-10-11 amendment accepted an estimated $1 total cap, with possible
+overshoot, for the six fixed fake-only traces, 150 seconds each, no automatic
+retry, model override or global configuration edit. All six launches are consumed.
+Recorded overshoot is $0; no further provider calls were made.
 
-## Resume at Task 4.3
+| Case | Recorded cost USD | Actual result / independent semantic judgment |
+| --- | --- | --- |
+| exact | 0.0856998 | Initial status denied; required checkpoint instruction absent |
+| alias | 0.0552720 | Initial status denied; alias and required instruction absent |
+| missing/protected | 0.0357778 | Initial status denied; safe refusal, admission behavior unexercised |
+| date | 0.0361574 | Initial status denied; both dated observations absent, no continuity asserted |
+| contradiction | 0.0358658 | Initial status denied; both observations absent, no present state asserted |
+| oversized | 0.0345118 | Initial status denied; no cause invented, omission behavior unexercised |
 
-Claude Code 2.1.296 is installed. The actual local client preflight exited 4 with
-BLOCKED, zero model calls and zero traces. The approved Task 4.3 requires total
-maximum $1.00, six fixed fake-only traces, 150 seconds each, no retry/model override
-or global configuration edit. It explicitly says: “If the client cannot enforce/record
-the budget or is unavailable, keep its support status BLOCKED and the default route
-unchanged.” Official CLI documentation describes `--max-budget-usd` as an estimated
-cap that can be exceeded: https://code.claude.com/docs/en/cli-reference#flags.
-No verified provider-side hard total bound exists in this execution evidence.
+All actual traces attempted the dedicated read executable once for `status` and
+received the client's native `dontAsk` denial. No successful read or emitted
+citation occurred. Every trace stayed below 150 seconds (observed range about
+6–10 seconds; first recovered duration is client-reported). Zero unsupported
+source claims were observed, but all-abstention answers to answerable questions
+fail Task 4.3. Client process success is not qualification success.
 
-Required dependency: establish a verified hard spend bound on the existing route,
-or obtain explicit owner amendment accepting estimated cap enforcement for the six
-fake-only traces. Then finish actual client execution/trace validation and claim-level
-judgment; current client mode only performs fail-closed preflight. Do not mark
-permission matching or semantic support passed from unit fixtures. The private-source
-mode also reports pending qualification explicitly; it is not a completed live-source
-runner. Representative private questions/source qualification and owner usefulness
-remain separate pending follow-ups, never inferred from synthetic results.
+The first trace's runner stopped on a non-object system notice. Its original
+launch remains consumed; cost/model/duration were recovered offline from actual
+stdout, without a retry. Only the five unlaunched cases ran after parser and
+containment fixes, under a separately recorded implementation lock. Their fake
+source inventories were unchanged. The aggregate retains the first trace's
+original implementation identity; it is not a single-current-lock passing run.
 
-Task 4.4's project-local DEC, architecture/results close-out and final Stage 4
-judgment remain due after required Task 4.3 evidence. Keep DEC-001/002/003 and
-GDEC-SEC-001 in force. Optional config-file locality and unused Write-grant
-Suggestions remain recorded; neither is a claim of normal adoption.
+Qualification sessions copy existing configured auth/model routing into temporary
+owner-only configuration, remove it afterwards, disable model tools except Bash,
+and use a deny-only hook to reject every command except strict literal-JSON stdin
+to the dedicated read executable. Import/hook failures block. The hook does not
+approve the packaged grant. Existing plugin lifecycle hooks are disabled in the
+transient qualification copy to prevent session enumeration; complete plugin
+lifecycle behavior is not qualified by this harness. No CLI allow-list override
+was used to mask frontmatter matching. Global settings were not changed.
+
+Model-free diagnosis confirms both `ask` and `legacy-ask` were registered in actual
+client initialization. The natural-language skill has a distinct name and no
+shell grant; manual `ask` has model invocation disabled and the scoped executable
+grant. Claude's local command validator passes. No managed-settings file or
+settings.d directory was found; user permissions contain only a default mode.
+These checks do not explain or fix the native grant denial. The executable's
+stdin interface works in installed subprocess tests. Actual permission matching
+remains unresolved; do not promote the trailing-wildcard candidate to qualified.
+
+## Reviews and architecture
+
+review: required Task 4.3 boundary default agent `/root/cli_review` — final APPROVE,
+0 Critical/0 Important. Fixed configuration/ambient environment escape, raw-Bash
+read bypass, deny-hook import/failure handling, unknown/duplicate expense records,
+and uncited negative-case links. Twelve scoped cases and independent adversarial
+controls passed; no provider calls were credited as passing.
+
+review: required Stage 4 default agent `/root/stage4_review` over `b20cfaa` through
+the working tree — 0 Critical/1 Important. Fixed exact-resolution scoring against
+all eligible source projections, including notes outside the question set;
+compare the complete ordered locator list and unique/ambiguous state. Class sweep
+covers path/title/alias, unrelated extra candidates and actual legitimate
+ambiguity. Ten AcceptanceRunnerCases pass; corruption now fails 40/60 selections.
+
+judgment: fresh default agent `/root/stage4_judgment`, briefed only on goal, stage
+goal and gate criteria — FAIL, 1 Blocking/1 Material. Blocking: actual client
+lookup/read/citation and date/contradiction answer support remain unexercised.
+Material: ARCH-02 omitted the implemented generation-to-store dependency. The
+architecture amendment explicitly records refresh's pure build/schema/recipe
+edge; the full import-edge sweep confirms store depends only on contracts/stdlib,
+so admission remains in policy and publication in generation. No cycle, source
+writer, provider dependency or alternate admission policy is introduced.
+
+DEC-001: existing project containment and vault-context consumers remain outside
+pilot admission. DEC-002: strict source/request/error shapes refuse visibly.
+DEC-003: file-back delegates to the existing maintenance/base-hash guarded writer;
+lookup adds no source-writing authority. GDEC-SEC-001: payloads and security-report
+bodies remain local; canonical results contain aggregates only.
+
+dispatch: 0 of 0 rostered worker tasks; Tasks 4.1–4.3 inline, Task 4.3 incomplete.
+Review/evaluator agents performed their required roles, not implementation tasks.
+Stage 4 remediation remains 0 completed rounds: these are Task 4.3 repairs and
+preliminary gate evidence, not a completed final-gate round. Stage 3's saved 2/2
+account is preserved. Required final-gate judgment remains failed; Task 4.4 and
+final close-out are not passed.
+
+## Resume dependency
+
+Resume Task 4.3 by diagnosing the native client grant mismatch with a narrowly
+controlled fake-only comparison, then fixing and qualifying the packaged route.
+The six-case allowance has been consumed. Additional paid diagnostic or acceptance
+launches require explicit owner authorization; remaining dollars do not authorize
+a seventh trace. No automatic retry or permission bypass is selected.
+
+A proposed diagnostic comparison would retain the current deny-only shell guard,
+Bash-only tool surface, fake vault, isolated configured route and 150-second limit.
+One control would add a session-only literal grant for the exact fake read
+executable; another would isolate the packaged frontmatter grant. Neither control
+would establish packaged-client acceptance. Record costs and actual status events,
+then freeze fresh acceptance labels after any implementation change. No real-wiki
+model data, generic shell/interpreter grant or global configuration write is needed.
+
+Representative private source qualification and owner usefulness stay separately
+pending. Task 4.4's selected project-local DEC and final close-out follow Task 4.3.
+Keep the existing DEC IDs in force and the pilot inactive.
