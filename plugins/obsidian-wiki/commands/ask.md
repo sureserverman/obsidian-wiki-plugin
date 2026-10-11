@@ -17,9 +17,10 @@ layer. The sole shell grant is the dedicated read executable above. The trailing
 is intended to cover literal stdin redirection; the executable rejects all
 arguments, and compound shell commands require their own independent grant. Never invoke
 an interpreter, sqlite3, the admin executable, shell helpers or a source reader.
-Here-string status calls passed the packaged grant in all six latest fake-only
-traces. Lookup/citation requests failed their strict schemas, so keep the adapter
-unqualified until a fresh authorized run completes lookup, read and verification.
+Six configured-Claude fake-only traces completed the packaged status, lookup,
+bounded read and citation-verification flows, with correct factual support and
+abstention. This qualifies that bounded synthetic flow; real-vault usefulness,
+normal adoption and other hosts require separate evidence or owner decisions.
 
 1. Call `status` through the read executable. Missing/disabled/stale/unavailable
    state stops this answer with its bounded code and an operator instruction to
@@ -35,6 +36,12 @@ unqualified until a fresh authorized run completes lookup, read and verification
    answer, including after omissions, errors or source drift. Over-budget pages
    are omitted in full; never treat snippets, omitted pages or an all-omitted
    bundle as read evidence. Stop or state a partial answer if evidence is missing.
+   The 24,000-byte cap is fixed in this pilot. Never recommend raising it as an
+   operator remedy. The admin CLI only refreshes/checks derived state; it does not
+   edit notes or change this cap. For an omitted page, continue to abstain unless
+   the owner separately chooses source maintenance through the existing guarded
+   writer (for example, shortening or splitting an eligible note), then starts a
+   new answer after an explicit refresh. Do not perform maintenance during lookup.
 4. Draft using only the returned complete projections. Preserve dates, observation
    versus instruction/rationale, uncertainty and status. Dated endpoints do not
    establish interval continuity or present state. Quote both conflicting

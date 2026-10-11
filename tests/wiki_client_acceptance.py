@@ -51,6 +51,31 @@ def recorded_cost(events):
     return cost if type(cost) in (int,float) and math.isfinite(cost) and cost>=0 else None
 
 
+def label_covered(label, pages, citations):
+    """Authenticated sentence quotes may jointly cover one frozen passage.
+
+    Only whitespace between/beside quotes may be uncovered. The authentic read
+    must still contain the exact frozen passage at its specified UTF-8 offsets.
+    """
+    page=next((p for p in pages if p['locator']==label['note']),None)
+    if page is None:return False
+    body=page['body'].encode('utf-8');start=label['start'];end=label['end']
+    if body[start:end]!=label['quote'].encode('utf-8'):return False
+    intervals=sorted((max(start,c['start']),min(end,c['end'])) for c in citations
+                     if c['target'].split('#',1)[0]==label['note'] and c['page_id']==page['page_id']
+                     and c['end']>start and c['start']<end)
+    if not intervals:return False
+    def whitespace(lo,hi):
+        try:return body[lo:hi].decode('utf-8').isspace()
+        except UnicodeError:return False
+    cursor=start
+    for lo,hi in intervals:
+        if hi<=cursor:continue
+        if lo>cursor and not whitespace(cursor,lo):return False
+        cursor=max(cursor,hi)
+    return cursor>=end or whitespace(cursor,end)
+
+
 def validate_trace(events, entry, case, returncode, seconds):
     """Fail closed: no missing tool results, invented responses or wire budgets."""
     results = [e for e in events if e.get('type') == 'result']
@@ -130,7 +155,7 @@ def validate_trace(events, entry, case, returncode, seconds):
                 raise Refusal()
             available.remove(target)
         for label in case['support']:
-            if not any(c['target'].split('#', 1)[0] == label['note'] and label['quote'] in c['quote'] and c['start'] <= label['start'] and c['end'] >= label['end'] for c in citations):
+            if not label_covered(label,bundle['pages'],citations):
                 raise Refusal()
     elif case['id'] == 'oversized':
         if len(gets) != 1 or gets[0]['response'].get('value', {}).get('pages') or not gets[0]['response'].get('value', {}).get('omitted') or targets or verifications:

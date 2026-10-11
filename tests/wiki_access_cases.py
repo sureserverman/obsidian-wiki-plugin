@@ -1294,6 +1294,49 @@ class Stage4IntegrationCases(unittest.TestCase):
 
 
 class AcceptanceRunnerCases(unittest.TestCase):
+    def test_client_support_labels_allow_separately_verified_sentences_without_missing_content(self):
+        import tempfile,json,re,copy
+        import wiki_access_acceptance as a
+        import wiki_client_acceptance as c
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest=c.fake_client_manifest();probe=a.Probe(tmp,manifest['fixture'])
+            probe.call({'operation':'refresh'},True);probe.events=[]
+            probe.call({'operation':'status'})
+            case=next(x for x in manifest['cases'] if x['id']=='date')
+            _,bundle,_=probe.evidence(case['support'])
+            probe.events=[e for e in probe.events if e['request']['operation']!='verify_citations']
+            pages={p['locator']:p for p in bundle['value']['pages']};citations=[]
+            for label in case['support']:
+                page=pages[label['note']];cursor=label['start']
+                for quote in re.split(r'(?<=\.) ',label['quote']):
+                    start=page['body'].encode().index(quote.encode(),cursor);end=start+len(quote.encode())
+                    citations.append({'target':label['note'],'page_id':page['page_id'],'start':start,'end':end,'quote':quote})
+                    cursor=end
+            self.assertEqual(len(citations),3)
+            before_verify=copy.deepcopy(probe.events)
+            entry=str(probe.package/'scripts/wiki-access.py')
+            def trace(records):
+                probe.events=copy.deepcopy(before_verify)
+                verified=probe.call({'operation':'verify_citations','read_receipt':bundle['value']['read_receipt'],'citations':records})
+                self.assertTrue(all(x['valid'] for x in verified['value']['citations']))
+                events=[{'type':'system','subtype':'init','model':'mock-parser-only'}]
+                for i,event in enumerate(probe.events):
+                    command='"'+entry+'" <<<\''+contracts.encode(event['request']).decode().replace("'",r'\u0027')+"'"
+                    events.append({'type':'assistant','message':{'content':[{'type':'tool_use','name':'Bash','id':str(i),'input':{'command':command}}]}})
+                    raw=contracts.encode(event['response']).decode()
+                    events.append({'type':'user','tool_use_result':{'stdout':raw,'stderr':'','interrupted':False},'message':{'content':[{'type':'tool_result','tool_use_id':str(i),'content':raw}]}})
+                events.append({'type':'result','subtype':'success','is_error':False,'result':' '.join('[['+r['target']+']]' for r in records),'total_cost_usd':.1})
+                return events
+            good=trace(citations)
+            self.assertEqual(c.validate_trace(good,entry,case,0,1)['citation_occurrences'],3)
+            # Every submitted quote remains authentic in these controls. Missing
+            # a sentence/word must still fail required-label coverage.
+            with self.assertRaises(contracts.Refusal):c.validate_trace(trace(citations[:-1]),entry,case,0,1)
+            missing_word=copy.deepcopy(citations);missing_word[-1]['start']+=3;missing_word[-1]['quote']=missing_word[-1]['quote'][3:]
+            with self.assertRaises(contracts.Refusal):c.validate_trace(trace(missing_word),entry,case,0,1)
+            wrong_label=copy.deepcopy(case);wrong_label['support'][1]['quote']='Invented interval observation.'
+            with self.assertRaises(contracts.Refusal):c.validate_trace(good,entry,wrong_label,0,1)
+
     def test_client_trace_requires_actual_tools_cost_model_and_single_bundle(self):
         import wiki_client_acceptance as c
         entry='/tmp/installed-plugin/scripts/wiki-access.py'

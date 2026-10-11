@@ -1,266 +1,130 @@
 # Local SQLite wiki pilot status — 2026-10-11
 
-Stage 3's model-free core is technically complete on synthetic evidence. Tasks
-4.1–4.2 are implemented. Task 4.3, Task 4.4 and the final Stage 4 gate remain
-incomplete. The configured Claude adapter remains unqualified after strict-request failures; the pilot remains
-inactive. No real-wiki answer-model run or normal adoption was selected.
+The model-free core and bounded configured-Claude fake-client flow are technically
+qualified on synthetic evidence. Tasks 4.1–4.3 are implemented; Task 4.4 and the
+final Stage 4 gate are pending. Real-vault lookup and owner usefulness are pending.
+The pilot remains opt-in with owner-local configuration disabled by default;
+normal adoption, other hosts and broader content egress were not selected.
 
-Branch: `feat/local-sqlite-wiki-pilot`; core gate `b20cfaa`, adapter `37e9929`,
-packaging `78bb7b1`, initial acceptance runner `21ba7d4`. This progress change
-records six further authorized client traces, provides the complete read-request
-contract inline, and records fresh synthetic qualification and the blocker.
-It is a partial Task 4.3 commit, not a green task or gate.
+Branch: `feat/local-sqlite-wiki-pilot`; core gate `b20cfaa`. The six latest actual
+client traces ran product commit `5151290`. Their original results are preserved.
+The later scorer correction and read-cap recovery guidance have separate,
+model-free evidence; they are not a new provider execution of the revised command.
 
-## Current local evidence
+## Current receipts and qualification scopes
 
-| Check | Actual result | Qualification scope |
+Private execution packs are local 0700 directories with 0600 files, outside Git
+and the vault. Linked results contain the checkable receipts; this document records
+sanitized aggregates. Research holdouts were not reopened.
+
+| Check | Actual result | Receipt / scope |
 | --- | --- | --- |
-| Fresh independent v6 Recall@5 | 20/20; 5/5 each exact/conceptual/rationale/historical | Synthetic installed CLI; separate development topics |
-| Exact path/title/alias resolution | 60/60 | Synthetic installed CLI |
-| Read-bound citation occurrences | 50/50, including repeated citations | Structural provenance only |
-| Absent/protected/ambiguous/contradictory/date/partial controls | 1/1 each | Model-free evidence behavior; actual answer handling unqualified |
-| Warm search p95 | 0.068044 s | Host end-to-end CLI, including startup/scans/JSON |
-| Cold unavailable status / refresh | 0.046781 / 0.067807 s | Synthetic host measurements |
-| Peak child RSS | 21,676 KiB | Observed Linux RUSAGE_CHILDREN peak |
-| Total state / maximum read response | 194,902 / 4,389 bytes | Below 128 MiB / 24,000-byte limits |
-| Installed live CLI | PASS | Fresh fake lookup/get/verify, then revocation and old/buffered evidence refusal |
-| Stage4IntegrationCases | 1/1 PASS; part of four fix-scope checks in 1.606 s | Installed key rotation/revocation, source preservation, disabled/admin separation |
-| Full regression | 41/41 wrappers PASS; 78 pilot tests | Actual discovery runner; six integration cases; 53 Python sources syntax checked |
-| Latest configured client traces | Status6/6, search/read1; 0/6 qualified; $0.4116868 | Actual configured Claude2.1.296 route; schema refusals, no native mode denial |
-| Real-vault lookup / owner usefulness | Pending / pending | Runner implemented; representative current private workload not supplied/run |
+| Fresh independent v7 Recall@5 | 20/20; 5/5 each exact/conceptual/rationale/historical | [v7 result](/tmp/wiki-pilot-label-coverage-20261011-b1ya4qqc/independent-v7-result.json), synthetic installed CLI |
+| Exact path/title/alias resolution | 60/60 | Same v7 receipt, complete eligible-source candidate oracle |
+| Read-bound citation occurrences | 50/50 | Same v7 receipt, structural provenance |
+| Absent/protected/ambiguous/contradictory/date/partial controls | 1/1 each | Same v7 receipt, model-free evidence behavior |
+| Warm search p95 | 0.064007 s | Same v7 receipt; startup/scans/JSON included |
+| Cold unavailable status / refresh | 0.046675 / 0.067497 s | Same v7 receipt, host |
+| Peak child RSS | 22,124 KiB | Same v7 receipt, Linux RUSAGE_CHILDREN |
+| State / maximum serialized read | 194,886 / 4,389 bytes | Same v7 receipt, below 128 MiB / 24,000 bytes |
+| Latest configured client flow | 6/6 frozen facts and abstention; 8/8 citations; max read 4,377 bytes | [offline revalidation](/tmp/wiki-client-inline-schema-20261011-3hi_4gnb/offline-rescored-result.json), original `5151290` actual outputs |
+| Actual-answer independent judgment | 0 Blocking; all six factual cases and eight citations pass; one Material recovery-advice defect | [original judgment](/tmp/wiki-client-inline-schema-20261011-3hi_4gnb/independent-answer-judgment.json), unchanged historical FAIL |
+| Material recovery-advice repair | Fixed at command-source scope, boundary review approved | [closure](/tmp/wiki-client-inline-schema-20261011-3hi_4gnb/material-closure.json); no later provider call |
+| Regression after scoring/advice repair | 41/41 wrappers; 79 pilot tests; six integration cases; 53 Python sources syntax checked | [regression log](/tmp/wiki-client-inline-schema-20261011-3hi_4gnb/coverage-repair-regression.log), host |
+| Current command status text / workload checks | AdapterCases and WorkloadCases pass | [scoped log](/tmp/wiki-pilot-label-coverage-20261011-b1ya4qqc/current-adapter-workload.log), host |
+| Real-vault lookup / owner usefulness | Pending / pending | Representative current private workload and owner grading not run |
 
-Current lock SHA256: `ccd0388f816b5667fccf7dd7018ea3572c25688c2f53402a8f91c2a18ac7b6fd`.
-Independent v6 manifest canonical hash:
-`a35733a027b6c36d3b779ecd126f7e29c8445098d560e4a16cec5a368996ef91`.
-The complete 36-file lock was validated before and after acceptance and final
-checks. The original acceptance set and v2/v3/v4/v5 sets were each opened once; code
-changes retired their implementation-specific receipts. None was rerun as an
-independent quality claim. V6 was frozen after the inline contract and copied installed-flow test repair. Historical research holdouts remain untouched.
+V7 implementation-lock canonical SHA256:
+`f25756ef7f89d6599fbe79bf79c4a23b5594d9879403d8b5299b0138de792190`.
+[V7 lock](/tmp/wiki-pilot-label-coverage-20261011-b1ya4qqc/implementation-lock-v7.json)
+contains all 36 required files and is validated before and after execution.
+Manifest canonical SHA256:
+`5d9b4be667feb2be836bd8950bb63a86c39b5b2bcd0d1f8a09057e1939b29de0`.
+Original and v2–v6 sets were opened once and retired after implementation changes.
+V7 uses newly frozen topics distinct from development and prior acceptance topics.
+No retired set was rerun for an independent quality claim.
 
-Private manifests, consumption markers, locks, actual client stdout/stderr,
-launch/cost receipts and model-free traces remain in a local 0700 execution pack,
-with 0600 files outside Git/vault. Canonical documents contain sanitized aggregates.
-A regression started during a deliberate mutation proof was invalid (40/41),
-discarded, and replaced by a full passing run after restoration. The committed
-first-claim proof detects a deliberately broken search and restores product code.
+## Six actual client traces at 5151290
 
-## Actual client result
+The owner's carry-on authorization permitted six fresh fake-only launches under
+an estimated $1 total with accepted possible overshoot, 150 seconds each, no
+automatic retries, model override or global settings edits. All six are consumed;
+actual cost $0.7172794, overshoot $0. Configured Claude 2.1.296 was used. Immutable
+launch/stdout/receipt files are in the local
+[client run](/tmp/wiki-client-inline-schema-20261011-3hi_4gnb/client-799dbe1fa98bb8ff0b24d2c8948ef5a392dd1200bd39a34a480a9ef146ad843f).
 
-The owner's 2026-10-11 amendment accepted an estimated $1 total cap, with possible
-overshoot, for the six fixed fake-only traces, 150 seconds each, no automatic
-retry, model override or global configuration edit. All six launches are consumed.
-Recorded overshoot is $0; no further provider calls were made.
+| Case | Cost USD | Actual fact / abstention result |
+| --- | ---: | --- |
+| exact | 0.1378196 | Required checkpoint instruction, one verified citation |
+| alias | 0.1171650 | Alias resolves; required checkpoint instruction, one verified citation |
+| missing/protected | 0.0600890 | Both unavailable; abstains, no access code/canary/citation |
+| date | 0.1664768 | March 1 offline and March 7 online; interval unknown, three verified citations |
+| contradiction | 0.1689618 | Both dated observations; current state unknown, three verified citations |
+| oversized | 0.0667672 | Complete page omitted, no read receipt; correct abstention, faulty cap advice repaired separately |
 
-| Case | Recorded cost USD | Actual result / independent semantic judgment |
-| --- | --- | --- |
-| exact | 0.0856998 | Initial status denied; required checkpoint instruction absent |
-| alias | 0.0552720 | Initial status denied; alias and required instruction absent |
-| missing/protected | 0.0357778 | Initial status denied; safe refusal, admission behavior unexercised |
-| date | 0.0361574 | Initial status denied; both dated observations absent, no continuity asserted |
-| contradiction | 0.0358658 | Initial status denied; both observations absent, no present state asserted |
-| oversized | 0.0345118 | Initial status denied; no cause invented, omission behavior unexercised |
+Source inventories were unchanged; observed durations 10.237–32.138 seconds.
+No raw fallback, second get, refresh, broad shell, automatic retry or unsupported
+source claim occurred. Every displayed citation was independently checked against
+its authenticated read receipt, generation, page ID, exact UTF-8 quote/offsets
+and native valid/verified fields. Temporary owner-only configured auth/routing
+was removed after execution. The deny-only hook rejects unrelated commands and
+never approves permissions. Plugin lifecycle hooks are disabled in the transient
+harness; complete plugin lifecycle behavior is outside this qualification scope.
+No real-wiki content was sent to the model.
 
-All actual traces attempted the dedicated read executable once for `status` and
-received the client's native `dontAsk` denial. No successful read or emitted
-citation occurred. Every trace stayed below 150 seconds (observed range about
-6–10 seconds; first recovered duration is client-reported). Zero unsupported
-source claims were observed, but all-abstention answers to answerable questions
-fail Task 4.3. Client process success is not qualification success.
+The original automated result failed the date/contradiction coverage predicate:
+a frozen label contains two sentences while the model verified each separately.
+The repaired scorer covers the exact frozen passage using intervals from the
+same authenticated page and allows only whitespace gaps. Missing sentences,
+missing words, altered frozen text or another page still refuse. A genuine RED
+regression preceded the repair; independent review revalidated all six immutable
+outputs. Original result, lock, launch identities, labels and stdout are retained;
+the separate correction records every input stdout hash and scorer hash.
 
-The first trace's runner stopped on a non-object system notice. Its original
-launch remains consumed; cost/model/duration were recovered offline from actual
-stdout, without a retry. Only the five unlaunched cases ran after parser and
-containment fixes, under a separately recorded implementation lock. Their fake
-source inventories were unchanged. The aggregate retains the first trace's
-original implementation identity; it is not a single-current-lock passing run.
+The independent actual-answer evaluator returned FAIL only for advice to raise
+the fixed read cap. The command now explicitly preserves 24,000 bytes, distinguishes
+admin refresh from source editing, and requires separate owner-selected guarded
+maintenance before any later refreshed answer. The original faulty answer and
+judgment remain unchanged. This source repair does not prove future model advice.
 
-Qualification sessions copy existing configured auth/model routing into temporary
-owner-only configuration, remove it afterwards, disable model tools except Bash,
-and use a deny-only hook to reject every command except strict literal-JSON stdin
-to the dedicated read executable. Import/hook failures block. The hook does not
-approve the packaged grant. Existing plugin lifecycle hooks are disabled in the
-transient qualification copy to prevent session enumeration; complete plugin
-lifecycle behavior is not qualified by this harness. No CLI allow-list override
-was used to mask frontmatter matching. Global settings were not changed.
+## Reviews, decisions and remaining gate
 
-Model-free diagnosis confirms both `ask` and `legacy-ask` were registered in actual
-client initialization. The natural-language skill has a distinct name and no
-shell grant; manual `ask` has model invocation disabled and the scoped executable
-grant. Claude's local command validator passes. No managed-settings file or
-settings.d directory was found; user permissions contain only a default mode.
-Those initial checks did not explain the denial. The subsequent diagnostic and
-model-free native analysis below isolate a heredoc rejection; the replacement
-input form still awaits actual client qualification.
+review: required Task 4.3 boundary default agent `/root/cli_review` over the scorer
+and recovery-guidance fix — APPROVE, 0 Critical/Important/Suggestion. Fifteen
+focused checks and eight independent coverage controls passed; all six original
+traces revalidated. Prior containment, native here-string, installed-schema and
+exact-resolution review findings are fixed; historical receipts remain private.
 
-## Reviews and architecture
+evaluator: fresh default `/root/client_answer_judgment_v3`, briefed only on goals,
+criteria and artifact locations — 0 Blocking / 1 Material / 0 Minor at `5151290`;
+factual support 6/6, citations 8/8. Material repaired at source/fix scope above.
+Final Stage 4 Tier-2 review and independent architecture/goal judgment are pending.
 
-review: required Task 4.3 boundary default agent `/root/cli_review` — final APPROVE,
-0 Critical/0 Important. Fixed configuration/ambient environment escape, raw-Bash
-read bypass, deny-hook import/failure handling, unknown/duplicate expense records,
-and uncited negative-case links. Twelve scoped cases and independent adversarial
-controls passed; no provider calls were credited as passing.
+DEC-001: existing project eligibility/containment consumers unchanged.
+DEC-002: strict unknown request/source shapes refuse; scoring rejects unsupported
+labels and gaps. DEC-003: file-back uses the existing owner-confirmed maintenance
+and base-hash guarded writer; lookup has no source-writing authority.
+GDEC-SEC-001: no private payload or security-report body copied into canonical docs.
+Project-local architecture decision remains Task 4.4.
 
-review: required Stage 4 default agent `/root/stage4_review` over `b20cfaa` through
-the working tree — 0 Critical/1 Important. Fixed exact-resolution scoring against
-all eligible source projections, including notes outside the question set;
-compare the complete ordered locator list and unique/ambiguous state. Class sweep
-covers path/title/alias, unrelated extra candidates and actual legitimate
-ambiguity. Ten AcceptanceRunnerCases pass; corruption now fails 40/60 selections.
+dispatch: 0 of 0 rostered worker tasks; Tasks 4.1–4.3 inline. Review/evaluator agents
+performed required review roles. Stage 4 remediation is 0 completed final-gate
+rounds; Stage 3's saved 2/2 account is preserved. Final gate not yet passed.
 
-judgment: fresh default agent `/root/stage4_judgment`, briefed only on goal, stage
-goal and gate criteria — FAIL, 1 Blocking/1 Material. Blocking: actual client
-lookup/read/citation and date/contradiction answer support remain unexercised.
-Material: ARCH-02 omitted the implemented generation-to-store dependency. The
-architecture amendment explicitly records refresh's pure build/schema/recipe
-edge; the full import-edge sweep confirms store depends only on contracts/stdlib,
-so admission remains in policy and publication in generation. No cycle, source
-writer, provider dependency or alternate admission policy is introduced.
+## Historical spend and proof limitations
 
-DEC-001: existing project containment and vault-context consumers remain outside
-pilot admission. DEC-002: strict source/request/error shapes refuse visibly.
-DEC-003: file-back delegates to the existing maintenance/base-hash guarded writer;
-lookup adds no source-writing authority. GDEC-SEC-001: payloads and security-report
-bodies remain local; canonical results contain aggregates only.
+| Consumed allowance | Launches | Cost USD | Result at that time |
+| --- | ---: | ---: | --- |
+| Initial qualification | 6 | 0.2832846 | Native heredoc permission denials |
+| Permission diagnostics | 2 | 0.0634152 | Both native denials; offline parser isolated heredoc rejection |
+| Here-string qualification at 6c12c66 | 6 | 0.4116868 | Status succeeds; incomplete request schemas |
+| Inline-schema qualification at 5151290 | 6 | 0.7172794 | Complete frozen factual and abstention flow; recovery advice repaired separately |
+| Total | 20 | 1.4756660 | No automatic retries or additional paid launches |
 
-dispatch: 0 of 0 rostered worker tasks; Tasks 4.1–4.3 inline, Task 4.3 incomplete.
-Review/evaluator agents performed their required roles, not implementation tasks.
-Stage 4 remediation remains 0 completed rounds: these are Task 4.3 repairs and
-preliminary gate evidence, not a completed final-gate round. Stage 3's saved 2/2
-account is preserved. Required final-gate judgment remains failed; Task 4.4 and
-final close-out are not passed.
-
-## Authorized permission diagnostics and repair
-
-The owner authorized exactly two additional fake-only diagnostic traces under an
-estimated $0.25 total cap with possible overshoot. Both launches are consumed:
-
-| Diagnostic | Cost USD | Seconds | Actual outcome |
-|---|---:|---:|---|
-| Packaged grant | 0.0451702 | 7.738 | One status call, native dontAsk denial |
-| Session-only exact executable grant | 0.0182450 | 6.684 | One status call, native dontAsk denial |
-
-Total $0.0634152, zero overshoot, unchanged fake-source inventory. Cumulative
-recorded spend with the earlier six traces is $0.3466998. No successful status,
-read or citation occurred. The literal session grant also failed, ruling out a
-failure caused solely by expanding CLAUDE_PLUGIN_ROOT. No further paid launch is
-authorized by unused dollars. The configured model/auth route was retained;
-credentials were removed with the temporary configuration. No global edits,
-model override, automatic retries or real-wiki model content were used.
-
-Model-free analysis executes the installed Claude 2.1.296 embedded parser and
-semantic analyzer on the recorded command. Its early brace-plus-quote check
-classifies the quoted JSON heredoc as `too-complex`, reason `Contains brace with
-quote character (expansion obfuscation)`, differential=true. The same executable
-and JSON in a single-quoted here-string (`<<<`) classify as `simple`. All three
-controls (recorded heredoc, bare executable, here-string) produce the expected
-results with the environment-scrub predicate both false and true: six checks.
-Logging was inert; the scrub predicate was parameterized. This executes the
-native semantic path offline, not the entire client's permission pipeline.
-Private receipts retain the installed binary/module/inspection hashes and exact
-results; extracted client code stays outside Git and the vault.
-
-The repair updates command instructions, client harness instructions and the
-strict deny-only guard together. It permits one direct exact executable and one
-single-quoted JSON here-string. Apostrophes encode as JSON \u0027; shell quote
-breaks, extra arguments/operators, substitutions outside the literal payload,
-heredocs and non-read operations refuse. Payload decoding now shares the CLI's
-strict duplicate-key/size/constant checks. A real local Bash round-trip preserves
-apostrophe, dollar/backtick/substitution text and creates no injection sentinel.
-The guard still never approves permissions. No broad shell or interpreter grant
-was introduced. Native syntax success does not establish actual client access.
-
-Presence-shaped defect sweep: `rg -n 'heredoc|WIKI_REQUEST|<<.*REQUEST' plugins
- tests docs -g '*.py' -g '*.md'`. Current operational examples, guard and harness
-are repaired; the remaining heredoc is an explicit rejection control and the
-historical diagnostic description. Earlier opened acceptance sets are retired
-on this implementation change; fresh independent qualification is required.
-
-## Latest six-case qualification and inline contract repair
-
-The owner authorized six fresh fake-only traces on6c12c66 under estimated$1
-with possible overshoot,150seconds each,no automatic retries. All six launches
-are consumed once, total$0.4116868, overshoot0, source inventory unchanged.
-Observed duration11.444–29.277seconds. Packaged status succeeds6/6 with no native
-mode denial. Contradiction also completes search and one authenticated read;
-all remaining denials are the containment guard rejecting invalid request schemas.
-
-| Case | Cost USD | Actual events and answer judgment |
-|---|---:|---|
-| exact | 0.0563204 | Status succeeds; resolve uses unsupported locator field; required instruction absent |
-| alias | 0.0492352 | Status succeeds; resolve uses query/generation/limit instead of selector; required instruction absent |
-| missing-protected | 0.0545156 | Status succeeds; both invalid resolves refused; no access code/canary, admission unexercised |
-| date | 0.0551738 | Status succeeds; both invalid resolves refused; required dated observations absent |
-| contradiction | 0.1484530 | Status/search/get succeed; verify citations omit page_id and refuse; required observations withheld |
-| oversized | 0.0479888 | Status succeeds; invalid resolve refuses; over-budget omission unexercised, no cause invented |
-
-Fresh independent default evaluator `/root/client_answer_judgment_v2`, briefed
-only on goals/pass criteria/artifact locations, reads the actual six answers and
-events against frozen labels: FAIL, two Blocking (answerable lookup and citation
-completion), one Material (oversized omission unqualified). No displayed
-citations or invented instruction/access-code/cause/canary occurred. Safe
-withholding remains safety evidence, not useful answer qualification. All
-processes exit0 while all six transport receipts fail. Receipt/manifest/launch
-lock identities agree. This judgment covers6c12c66, not the repaired moving tree.
-
-The shipped command supplied only a status request example and prose naming
-other operations; the full strict schemas lived in operator documentation that
-the Bash-only qualification surface did not expose. The repair makes every read
-operation's actual schema directly available in the invoked command. It includes
-all resolve selector kinds, the single generation-bound get, authentic receipt,
-per-citation page_id, body UTF-8/exclusive offsets, response fields and strict
-verification/refusal behavior. No request API, guard, grant, source authority or
-model route is broadened. Do not attribute strict field validation to a remaining
-native permission failure.
-
-Absence-shaped defect invariant: every read operation in contracts.FIELDS has
-an inline strict-schema-valid request example, and all path/title/alias modes
-are covered. The new test first failed because all JSON request examples were
-absent. It now executes each documented request through copied installed admin
-and read artifacts in a complete build/status/resolve/search/get/verify flow.
-Required boundary review found one Important evidence mismatch (initially the
-test invoked repository binaries); copied installed execution fixes it. Final
-review APPROVE0Critical/Important/Suggestions; AdapterCases3/3 PASS. Artifact
-scope sweep: `rg -n 'ROOT.*wiki-access.py|def test.*installed|installed.*flow'
- tests/wiki_access_cases.py`; genuine installed receipts use copied packages.
-
-Full regression at entry41/41 wrappers,78 pilot cases,53syntax sources and six
-integration cases passes. Test-only installed-artifact correction then passes
-four AdapterCases/Stage4Integration checks in1.606seconds; no overlapping mutation
-or unreported full rerun is credited. Fresh independent-v6 recall20/20, exact60/60,
-citations50/50 and six structural controls1/1; current36-file lock validates after
-checks. Installed liveCLI PASS. First-claim mutation proof refreshed for the final
-tree. Earlier opened sets retired without reuse. Current-model semantic support
-and real-source/usefulness qualification stay separately pending.
-
-Cumulative14 authorized launches cost$0.7583866: earlier six$0.2832846, two
-diagnostics$0.0634152 and latest six$0.4116868. No launch is retried, no expense is
-unknown and no unused dollars authorize another call. No real-wiki model content,
-global edit, model override or adoption is selected.
-
-## Resume dependency
-
-The inline-contract repair and required boundary review are complete on fresh
-synthetic evidence. Seek fresh authorization for six fake-only configured-client
-traces on the reviewed repair (estimated$1 total, accepted possible overshoot,
-150seconds each,no automatic retries,existing configured route). All14 earlier
-launches remain consumed; leftover dollars grant no new launch. Packaged status
-access is proved, while useful read/verified-answer completion remains unqualified
-until actual current-client events and independent answer judgment pass. No
-permission bypass or adoption is selected.
-
-Representative private source qualification and owner usefulness stay separately
-pending. Task 4.4's selected project-local DEC and final close-out follow Task 4.3.
-Keep the existing DEC IDs in force and the pilot inactive.
-
-## Post-commit audit limits
-
-The plan-flip audit was run after the progress commit. Its full verdict is NOT RUN:
-the vault-resident plan has no pre-execution baseline/Git history, so checks 1/3/5
-cannot establish historical checkbox transitions. Available checks flag missing
-Stage 1 first-claim records, earlier Stage 3 proof fingerprints bound to prior
-test trees, and Stage 2 commit-title matching advisories. These are retained as
-final close-out proof/provenance debt; no fresh baseline is fabricated and no
-whole-plan audit PASS is claimed. Earlier stage receipts remain historical
-qualification evidence for their recorded revisions. The v6 lock and current
-local checks above are the new synthetic receipts; earlier sets remain historical. The native review
-ledger reports zero agents started and never stopped. No owned tool is running.
+The canonical vault plan has no pre-execution audit baseline or Git history;
+full historical plan-flip audit is NOT RUN. Earlier available checks found
+missing Stage 1 records, prior-tree Stage 3 fingerprints and Stage 2 commit-title
+advisories. Current proof reconciliation is pending; later proofs cannot certify
+historical test-first ordering. Do not create a retrospective baseline or describe
+this historical audit as passing. See [progress](progress.md) for retained stage
+history and [original audit](/tmp/wiki-pilot-amended-20261011-ladm22rq/final-plan-audit.json).
