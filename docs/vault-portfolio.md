@@ -81,7 +81,8 @@ and the rest) refuse it; the resolver without `--for-write` treats it as an empt
 To keep one project's records in its repo (for example a public project whose
 backlog and decisions belong beside its code), set `records: repo` on its entry and
 leave it `enabled: true`. It stays registered, but gets no vault home, and no script
-reads a vault folder left at its old path. The resolver exits 3 for it, so planning
+reads a vault folder left at its old path, with one exception: `integrate` reads its
+`integration.md` there, because its edges name your other projects. The resolver exits 3 for it, so planning
 uses `<repo>/docs`. `rebuild` writes no sidecar block for it and gives it no roll-up
 row. `migrate` and `unify` skip it. `compass` and `plan-status` list it with the
 reason. Any other `records` value is refused.

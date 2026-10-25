@@ -92,6 +92,10 @@ With this file present, `integrate` also expects `example-api`'s `integration.md
 `impacts: [[example-app]]` and `example-deploy`'s to declare `depends_on: [[example-app]]`. A
 missing declaration on either side is reported as an asymmetry.
 
+A project whose registry entry sets `records: repo` keeps its `integration.md` in the vault
+all the same, at the path above: `integrate` reads it, while every other script leaves that
+folder alone. Its edges name other projects, which a public repo should not carry.
+
 ## Hard rules
 
 - `integration.md` is pure declaration. `integrate` reads it and never rewrites it. Declared

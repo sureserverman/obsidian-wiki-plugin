@@ -47,9 +47,10 @@ def outside(path, skip):
 def build_graph(vd, registered_names, skip=()):
     depends, impacts = {}, {}   # name -> [(target, why)]
     # portfolio-rebuild's one reader of the format; a file it cannot read refuses
-    # the run before anything is rendered or written. `skip` holds the vault
-    # folders of entries that keep their records in their repo: nothing under
-    # them is that project's state, so nothing there is read.
+    # the run before anything is rendered or written. `skip` holds vault folders
+    # whose integration.md is not read. main() passes none: an entry that keeps its
+    # records in its repo still keeps its edges in the vault, because they name the
+    # owner's other projects.
     parsed = pr.read_integrations(sorted(f for f in (vd / "Portfolio").rglob("integration.md")
                                          if outside(f, skip)),
                                   "portfolio-integrate")
@@ -140,14 +141,16 @@ def main():
     vd = vault_dir()
     everything = pr.load_projects(enabled_only=False)
     names = {p["name"] for p in everything}
-    # An entry that keeps its records in its repo has no vault home; a folder left
-    # at its old vault path is not its state.
+    # An entry that keeps its records in its repo has no vault home: its backlog
+    # there is not its state, so the integration backlog skips that folder. Its
+    # integration.md is read all the same: the edges name the
+    # owner's other projects, so they stay in the vault rather than in a public repo.
     skip = {vd / "Portfolio" / p["area"] / p["name"] for p in everything
             if pr.records_in_repo(p)}
     if args.write:
         pr.require_write(vd)
 
-    depends, impacts, asym, dangling = build_graph(vd, names, skip)
+    depends, impacts, asym, dangling = build_graph(vd, names)
     graph_md = render_graph(depends, impacts, asym, dangling)
     ibl_md, n_items = rollup_integration_backlog(vd, skip)
 

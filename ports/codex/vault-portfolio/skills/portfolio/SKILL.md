@@ -169,7 +169,7 @@ Hard rules:
 - Drift is reported on every run, even when there is none: the report header is the proof the check happened.
 - The 8-in-flight cap on parallel sub-agents is non-negotiable and not configurable from the CLI.
 - `enabled: false` projects appear in `scan` output but are excluded from `unify`, `maturity`, `migrate`, `rebuild`, `compass` and `security-scan`.
-- `records: repo` projects keep their records in the repo. Every script honours that: no vault home, no sidecar home block, and no `migrate` or `unify` action for them. `maturity` skips them too, naming the `reason` from `--all-homes`.
+- `records: repo` projects keep their records in the repo. Every script honours that: no vault home, no sidecar home block, and no `migrate` or `unify` action for them. `maturity` skips them too, naming the `reason` from `--all-homes`. Their edges are the exception: `integrate` reads `<vault>/Portfolio/<area>/<name>/integration.md`, because edges name the owner's other projects and stay in the vault.
 
 ## Integration
 

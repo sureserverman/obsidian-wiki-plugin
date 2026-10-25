@@ -5,7 +5,7 @@ skills/compass/SKILL.md:
   depends_on:
     commands/compass.md: c234b41e7fc5fb74c884e788e5578aa7d01b692018d7436d1e84368606099981
 skills/portfolio/SKILL.md:
-  base_sha256: 55074230ed576d6c0eb60dc47c98d5444aef51b549a6fee06a61bffc13c228fd
+  base_sha256: d8cf27a3b96f6d7cdbf9d117659ccab51b2716010f280689e06a42164f113cea
   depends_on:
     commands/portfolio.md: a1b900d9d6122aa9a9d299c40c53f892c92ebc24ebd63b2e53efb25120efd5e8
 skills/portfolio/references/domain-slugs.md:

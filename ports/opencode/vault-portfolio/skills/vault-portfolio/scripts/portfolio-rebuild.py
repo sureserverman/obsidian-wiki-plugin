@@ -10,7 +10,8 @@
   names as [[wikilinks]], reading from the vault Portfolio tree.
 
 An entry that sets `records: repo` (records_in_repo()) has no vault home: it gets
-no sidecar block, its integration.md is not read, and no roll-up lists it.
+no sidecar block, rebuild does not read its integration.md (integrate does),
+and no roll-up lists it.
 
 Idempotent: re-running with no upstream change produces byte-identical output
 (timestamp suppressed when content is unchanged).

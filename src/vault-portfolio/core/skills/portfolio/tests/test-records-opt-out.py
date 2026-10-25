@@ -14,7 +14,9 @@ Each script runs as a subprocess on a throwaway HOME, vault and projects root:
     roll-ups and integration read skip the opted-out entry's vault folder;
   * migrate --all --write moves nothing of it, and --project names it as opted out;
   * unify --write leaves its vault folder alone, and --project names it;
-  * integrate never reads an integration.md or backlog under its vault folder;
+  * integrate never reads a backlog under its vault folder, but does read its
+    integration.md: the edges are registry metadata, kept in the vault because they
+    name the owner's other projects (since 0.1.3);
   * compass-scan, security-scan and plan-status-audit list it as not assessed,
     with the reason, and read nothing under its vault folder;
   * domain-decisions --promote refuses to derive a vault home for it;
@@ -220,16 +222,32 @@ def case_unify():
 
 
 def case_integrate():
-    print("integrate: nothing under an opted-out vault folder is read")
+    print("integrate: an opted-out entry's edges are read, its backlog is not")
     td, w = world(stale=True)
     with td:
         rc, out, err = w.run(script("portfolio-integrate"), "--write")
-        check(rc == 0, f"a broken integration.md in the opted-out folder does not refuse "
-                       f"the run (rc={rc}: {err.strip()[-300:]})")
+        check(rc != 0 and "integration.md" in err and "Traceback" not in err,
+              f"a broken integration.md in the opted-out folder refuses the run, as any "
+              f"project's does: its edges are read (rc={rc}: {err.strip()[-300:]})")
+    td, w = world(stale=True)
+    with td:
+        (w.lib_home / "integration.md").write_text(
+            "---\nproject: example-lib\nimpacts:\n  - target: \"[[example-app]]\"\n"
+            "    why: the app reads the lib's format\n---\n")
+        (w.app_home / "integration.md").write_text(
+            "---\nproject: example-app\ndepends_on:\n  - target: \"[[example-lib]]\"\n"
+            "    why: reads the lib's format\n---\n")
+        rc, out, err = w.run(script("portfolio-integrate"), "--write")
+        check(rc == 0, f"well-formed edges on both sides run clean (rc={rc}: {err.strip()[-300:]})")
+        check("asymmetries: 0 |" in out,
+              f"the opted-out entry's impacts close the app's depends_on ({out.strip()[:300]})")
+        graph = w.vault / "Portfolio" / "integration-graph.md"
+        check(graph.is_file() and "example-lib" in graph.read_text(),
+              "the graph carries the opted-out entry's edge")
         ib = w.vault / "Portfolio" / "integration-backlog.md"
         text = ib.read_text() if ib.is_file() else ""
-        check("example-app-edge" in text and "example-lib" not in text,
-              "the integration backlog rolls up the ordinary entry only")
+        check("example-app-edge" in text and "example-lib-edge" not in text,
+              "the integration backlog still rolls up the ordinary entry only")
 
 
 def case_readers():
