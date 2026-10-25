@@ -1,7 +1,7 @@
 # vault-context — deterministic lane
 
-This `scripts/` directory is vault-context's **deterministic lane**, vendored from
-a shared determinism kit. It encodes one rule:
+This `scripts/` directory is vault-context's **deterministic lane**, built on a
+vendored determinism kit. It encodes one rule:
 
 > **Mechanical, decidable checks belong in scripts. Semantic judgment belongs to
 > the LLM.** Scripts flag; the model decides and writes.
@@ -35,8 +35,10 @@ project has link state (a `.claude/vault-context.md` sidecar or a CLAUDE.md
 - `link-circular` (error) — the project sits at or under the resolved vault (the
   deterministic backstop for the `/link` skill's circular-link refusal).
 - `link-area-directory` (error) — the root is a grouping folder, not a project: not a
-  git repo, and either absent from `~/.claude/projects-registry.yaml` or holding other
-  registered projects beneath it.
+  git repo, and either absent from the registry (see vault-portfolio's configuration)
+  or holding other registered projects beneath it.
+- `link-registry-unknown` (warn) — the registry could not be located
+  (`lib/registry_path.py` did not run), so the area-directory rule was not applied.
 - `link-sidecar-no-body-markers` / `link-sidecar-no-header` (warn) — the sidecar is
   malformed against `assets/vault-context-template.md`.
 - `link-import-missing` / `link-import-dangling` / `link-import-no-ref` (warn) — the
@@ -85,5 +87,5 @@ per check, end with `render_findings`. Anything requiring taste or rewriting is
 and consume its JSON instead of re-deriving the rules.
 
 > Validating vault-context's *plugin structure* (manifest, frontmatter, layout) is
-> a plugin validator's job — run one, such as `validate-plugin.sh` against this repo.
+> a plugin validator's job, not this lane's.
 > The validators here check vault-context's own domain.

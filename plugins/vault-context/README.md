@@ -108,7 +108,7 @@ Matching is intentionally simple (token overlap, no embeddings, no stemming). Sw
 - **Project `CLAUDE.md` is touched only inside delimited markers.** The plugin owns `<!-- vault-context:start --> ... <!-- vault-context:end -->`. Surrounding content is left byte-identical.
 - **Read-only by default.** `link`, `refresh`, and `unlink` are the only commands that ever write. `status` is read-only.
 - **Hook never modifies files.** It only prints a prompt, and only in a directory `link` would actually accept.
-- **Area directories are refused.** A grouping folder that merely holds project repos never gets a sidecar (exit 4), and the refusal happens before anything is created — no `.claude/` directory, no partial file. A directory counts as a project when no other registered project lives beneath it *and* it is either a git repo or a `path:` in `~/.claude/projects-registry.yaml`.
+- **Area directories are refused.** A grouping folder that merely holds project repos never gets a sidecar (exit 4), and the refusal happens before anything is created — no `.claude/` directory, no partial file. A directory counts as a project when no other registered project lives beneath it *and* it is either a git repo or a `path:` in the registry (see vault-portfolio's configuration).
 - **No external services.** Everything runs locally; nothing leaves your machine.
 
 ## Determinism boundary
@@ -120,7 +120,7 @@ guard, the area-directory guard, sidecar well-formedness, sidecar↔CLAUDE.md im
 drift, and index freshness.
 
 The area-directory rule lives once in `scripts/lib/eligibility.sh` and is shared by
-three callers that must not disagree: the write path (`write-context.sh` refuses),
+three callers that must not disagree: the sidecar writer (`write-context.sh` refuses),
 the detect path (`validate-link.sh` reports `link-area-directory` for a sidecar that
 predates the guard), and the SessionStart hook (which nudges only where linking can
 succeed — nudging elsewhere would repeat every session, since a refusal creates

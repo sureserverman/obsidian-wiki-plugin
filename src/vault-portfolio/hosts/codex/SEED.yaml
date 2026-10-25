@@ -1,0 +1,97 @@
+# Host rows of the divergence ledger for this plugin on this host: the paths a
+# host layer must reconsider. Paths only, relative to the ports tree; the content
+# is rewritten when the host layer is built. Not read by build.py.
+plugin: vault-portfolio
+host: codex
+es_ref: 95bfd7c
+rows:
+- id: cod-cf866d9f26
+  path: core/skills/compass/tests/
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-29974d1bca
+  path: core/skills/portfolio/tests/fixtures/~b335630551
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-ab509645c2
+  path: core/skills/portfolio/tests/fixtures/~cd2d49e7b3
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-48d751fdbd
+  path: core/skills/portfolio/tests/fixtures/~2d1fd74fb6
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-9e600b1d74
+  path: core/skills/portfolio/tests/fixtures/~c1560c0eb7
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-2670b4a78f
+  path: core/skills/portfolio/tests/fixtures/~6c166ddcbf
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-a31cc5a7b6
+  path: core/skills/portfolio/tests/fixtures/~ea02a9831e
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-af25565d52
+  path: core/skills/portfolio/tests/fixtures/~896b73e280/
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-113026aae1
+  path: core/skills/portfolio/tests/fixtures/~96d474343e/
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-c8cc057250
+  path: core/skills/portfolio/tests/manual.md
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-b76cfeec61
+  path: core/skills/portfolio/tests/migrate-dryrun.txt
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-b34280b698
+  path: core/skills/portfolio/tests/test-business-degradation.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-e5bc8f22fd
+  path: core/skills/portfolio/tests/test-portfolio-decisions.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-29dc24aa31
+  path: core/skills/portfolio/tests/test-portfolio-unify.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-d0baaf11b2
+  path: core/skills/portfolio/tests/test-security-degradation.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-c7b832f3ac
+  path: core/skills/portfolio/tests/test-security-scan.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-31ecd0608c
+  path: core/skills/portfolio/tests/test-vault-unreachable.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'
+- id: cod-e245fe6c50
+  path: core/skills/portfolio/tests/test-vault-write-idempotency.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on Codex; its subject ships there unchanged,
+    untested by this file'

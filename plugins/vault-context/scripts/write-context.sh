@@ -98,8 +98,8 @@ trap 'rm -f "$tmpfile"' EXIT
 
 # Body is printed verbatim on the placeholder line. Using gsub for body
 # would mangle any literal `&` (awk treats `&` in the replacement string
-# as "the entire match"), and vault page titles can contain `&` — see
-# e.g. "macOS Recovery Mode, MDM Removal & User Creation".
+# as "the entire match"), and vault page titles can contain `&` — e.g.
+# "Backups & Restore".
 body_file="$(mktemp)"
 trap 'rm -f "$tmpfile" "$body_file"' EXIT
 printf '%s' "$body" > "$body_file"
@@ -125,13 +125,13 @@ awk -v proj="$project_name" \
 }
 ' "$template" > "$tmpfile"
 
-# Carry over the PORTFOLIO-STATUS block, which /planning:portfolio rebuild appends
-# below this plugin's footer. We render the whole sidecar from the template, so
-# without this the refresh would silently drop that block (it owns content the
-# template doesn't). Re-append it using the portfolio skill's own convention
-# (strip trailing newlines, one blank-line separator) so a later rebuild finds
-# both sentinels and stays a no-op. Block contract: upstream-marketplace
-# planning/skills/portfolio/references/sidecar-format.md.
+# Carry over the PORTFOLIO-STATUS block, which /vault-portfolio:portfolio rebuild
+# appends below this plugin's footer. We render the whole sidecar from the
+# template, so without this the refresh would silently drop that block (it owns
+# content the template doesn't). Re-append it using the portfolio skill's own
+# convention (strip trailing newlines, one blank-line separator) so a later
+# rebuild finds both sentinels and stays a no-op. Block contract: vault-portfolio's
+# skills/portfolio/references/sidecar-format.md.
 if [ -f "$output_file" ]; then
     carried="$(python3 - "$output_file" <<'PY'
 import re, sys

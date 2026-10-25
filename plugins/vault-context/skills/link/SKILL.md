@@ -50,12 +50,12 @@ guard is the `link-circular` error in `scripts/validate-link.sh` — the determi
 backstop for it.)
 
 **Refuse to run in an area directory.** A grouping folder that merely holds project
-repos (`~/dev/ai-tools`, `~/dev/android`) is not a project: a sidecar there duplicates
+repos (`~/dev/tools`, `~/dev/apps`) is not a project: a sidecar there duplicates
 every child repo's context into every session under the whole tree, on top of each
 child's own sidecar. A directory counts as a project when it is a git repo (the
 fallback for a fresh repo nobody has registered yet), or when it is listed as a
-`path:` in `~/.claude/projects-registry.yaml` **with no other registered project
-beneath it**. That last clause is load-bearing: the registry can itself carry an area
+`path:` in the registry (see vault-portfolio's configuration) **with no other
+registered project beneath it**. That last clause is load-bearing: the registry can itself carry an area
 directory as an entry, so registration alone is not evidence — containment is.
 
 You do not implement this check: `scripts/write-context.sh` enforces it before it

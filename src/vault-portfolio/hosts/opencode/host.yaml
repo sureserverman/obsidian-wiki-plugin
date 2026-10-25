@@ -1,0 +1,162 @@
+# OpenCode: vault-portfolio's OpenCode layer, installed by ports/opencode/install.sh. The
+# skills load from a `skills` paths entry in opencode.json, the two command wrappers are
+# files in OpenCode's commands folder, and the installer prints the config entries rather
+# than writing them. Tests and fixtures are left out (every host but the identity host).
+host: opencode
+out: ports/opencode/vault-portfolio
+rulings:
+  names:
+    choice: {vault-portfolio: prefix vault-}
+    note: the same names as on Cursor (vault-portfolio, vault-compass), so one plugin has one set of names
+    date: 2026-10-24
+    evidence: opencode-probe 2026-10-24
+  external_directory:
+    choice: document-and-check
+    note: install.sh prints, and never writes, the permission.external_directory entry for the records home, and the README documents it; a caller checks that each write landed and fails loudly instead of reporting a preamble
+    date: 2026-10-24
+    evidence: opencode-probe 2026-10-24
+# The README is OpenCode's own: overrides/README.md replaces core's, which is Claude Code's.
+rewrites:
+  # The names ruling: the skills are vault-portfolio and vault-compass. OpenCode's docs ask
+  # that a skill's folder match its front matter `name`, so `moves:` renames the folders too.
+  - glob: skills/portfolio/SKILL.md
+    pattern: '\A(---\n(?:(?!---\n).*\n)*?)name: portfolio\n'
+    replace: '\1name: vault-portfolio\n'
+  - glob: skills/compass/SKILL.md
+    pattern: '\A(---\n(?:(?!---\n).*\n)*?)name: compass\n'
+    replace: '\1name: vault-compass\n'
+  # Natural-language triggering is unreliable on OpenCode, so each description says how to
+  # reach the skill by name. The line joins the folded description it follows.
+  - glob: skills/portfolio/SKILL.md
+    pattern: '\A(---\n(?:(?!---\n).*\n)*?description: >\n(?:[ \t]+\S.*\n)+)'
+    replace: '\1  On OpenCode, invoke it by name: /vault-portfolio, or ask for the vault-portfolio skill.\n'
+  - glob: skills/compass/SKILL.md
+    pattern: '\A(---\n(?:(?!---\n).*\n)*?description: >\n(?:[ \t]+\S.*\n)+)'
+    replace: '\1  On OpenCode, invoke it by name: /vault-compass, or ask for the vault-compass skill.\n'
+  # An OpenCode command is a prompt: it loads the skill and runs nothing. Each skill's
+  # opening note says so, and has the skill run the lines its command would.
+  - glob: skills/compass/SKILL.md
+    pattern: '^> \*\*This skill holds no shell grant of its own\.\*\*.*\n(?:>.*\n)*'
+    replace: |
+      > **On OpenCode, this skill runs its scanner itself.** An OpenCode command is a prompt:
+      > `/vault-compass` loads this skill, and nothing runs the scanner and hands you its JSON.
+      > Wherever this skill says the command runs the scanner, run this one line yourself, once
+      > per invocation, exactly so (no flags, no `cd`, no pipe, no redirection):
+      > `python3 <vault-portfolio-plugin>/skills/vault-compass/scripts/compass-scan.py`
+      > `<vault-portfolio-plugin>` is this plugin's folder, two levels above the base directory
+      > the skill tool printed for this skill. Keep the scanner's stdout, its stderr and its exit
+      > status as printed. The mode is the word after `/vault-compass`, or the one the user named
+      > with this skill: `now`, `next` or `review`, and nothing means `now`. On anything else,
+      > name the three modes and stop without running the scanner. OpenCode's `permission`
+      > settings decide whether the line asks the user first. If the line is refused, say so and
+      > stop. Never answer from memory.
+  - glob: skills/portfolio/SKILL.md
+    pattern: '^> \*\*This skill holds no shell grant of its own\.\*\*.*\n(?:>.*\n)*'
+    replace: |
+      > **On OpenCode, this skill runs its own script lines.** An OpenCode command is a prompt:
+      > `/vault-portfolio` loads this skill with the subcommand, and nothing runs a script and
+      > hands you its output. Wherever this skill or a reference says the command runs a line,
+      > run that line yourself, by the rules in `<vault-portfolio-plugin>/commands/portfolio.md`:
+      > refuse the unsafe characters it names, accept only the flags its table lists for the
+      > subcommand, pass each flag and each value as its own argument with every value
+      > single-quoted, and run each line exactly as shown, with no `cd`, pipe or redirection.
+      > Keep each script's stdout, stderr and exit status as printed. `<vault-portfolio-plugin>`
+      > is this plugin's folder, two levels above the base directory the skill tool printed for
+      > this skill. Read "never run the script yourself" below as: never run a line the command
+      > would not run. That file's grants are Claude Code's: on OpenCode, its `permission`
+      > settings decide which lines ask the user first. A write happens only when the user typed
+      > its flag (`--write`, `--fix`, `--restore` or a registry edit) after `/vault-portfolio` or
+      > in the request that named this skill: never add one yourself, and after a yes in chat,
+      > name the exact command line for the user to type rather than running it.
+      >
+      > **Check that every write landed.** OpenCode refuses a tool call on a path outside the
+      > workspace unless `permission.external_directory` allows it, and `opencode run` refuses
+      > without asking and still exits 0. After a write mode, confirm from the script's own output
+      > that it wrote, and read back any record you wrote with a tool. If anything was refused,
+      > say that the write did not land and stop; never report it done.
+  # Files reach the plugin root through a placeholder; the notes above say where it is.
+  - glob: '**/*.md'
+    pattern: '\$\{CLAUDE_PLUGIN_ROOT\}'
+    replace: '<vault-portfolio-plugin>'
+  # A skill's command is /vault-portfolio or /vault-compass, not /vault-portfolio:<skill>.
+  # The text the scripts write into a vault or a sidecar keeps Claude Code's spelling, as on
+  # Cursor: one vault can be rebuilt from either host, and a sentinel or roll-up line that
+  # changed with the host would rewrite every block on each switch. So the references that
+  # quote that text keep it (the two lookbehinds), and of the scripts only records-home.py,
+  # whose name is in a terminal message, takes the rewrite. The note added to
+  # sidecar-format.md below tells the user which name to type.
+  - glob: '**/*.md'
+    pattern: '(^|[^$\w/.])(?<!managed by )(?<!regenerated by `)/vault-portfolio:(portfolio|compass)\b'
+    replace: '\1/vault-\2'
+  - glob: skills/portfolio/references/sidecar-format.md
+    pattern: '(^- \*\*End:\*\* .*\n)'
+    replace: |
+      \1
+      On OpenCode the begin line keeps Claude Code's `/vault-portfolio:portfolio` spelling on
+      purpose, here, in the template below and in `portfolio-rebuild.py`. The block is a contract
+      between hosts, not prose: one vault and one sidecar can be rebuilt from Claude Code one day
+      and from OpenCode the next, and a begin line that changed with the host would rewrite every
+      block on each switch. The same holds for the command names and the script path the scripts
+      write into the roll-ups. The command an OpenCode user types is `/vault-portfolio rebuild`.
+  - glob: scripts/records-home.py
+    pattern: '(^|[^$\w/.])/vault-portfolio:(portfolio|compass)\b'
+    replace: '\1/vault-\2'
+  - glob: scripts/lib/eligibility.sh
+    pattern: '(^|[^$\w/.])/vault-portfolio:(portfolio|compass)\b'
+    replace: '\1/vault-\2'
+  # The skill folders move (see `moves:`), so every path that names one follows: plugin-root
+  # paths in the prose and the scripts, and the scripts' path joins.
+  - glob: '**/*.md'
+    pattern: '\bskills/(portfolio|compass)/'
+    replace: 'skills/vault-\1/'
+  # The one exception is the script path security-rollup.py stamps into the security roll-up,
+  # which is written text and keeps core's spelling (see above).
+  - glob: '**/*.py'
+    pattern: '(?<!`vault-portfolio/)\bskills/(portfolio|compass)/'
+    replace: 'skills/vault-\1/'
+  - glob: '**/*.py'
+    pattern: '(/ "skills" / )"(portfolio|compass)"'
+    replace: '\1"vault-\2"'
+  - glob: skills/compass/scripts/compass-scan.py
+    pattern: '(\.parents\[2\] / )"portfolio"'
+    replace: '\1"vault-portfolio"'
+  # A command file is Claude Code's; on OpenCode it ships only as the rules its skill
+  # follows. The commands OpenCode runs are commands/vault-portfolio.md and vault-compass.md.
+  - glob: commands/*.md
+    pattern: '\A(---\n(?:(?!---\n).*\n)*?---\n)'
+    replace: |
+      \1
+      > **On OpenCode this file is not a command.** OpenCode's commands are `/vault-portfolio`
+      > and `/vault-compass` (`commands/vault-portfolio.md` and `commands/vault-compass.md`),
+      > which load the skill. The skill reads this file for the rules its own script lines
+      > follow. The front matter, `$ARGUMENTS` and the permission wording are Claude Code's: on
+      > OpenCode, `$ARGUMENTS` is the text after the command, or what the user asked of the
+      > skill, and OpenCode's `permission` settings decide whether a line asks the user first.
+# Each skill's folder carries its ruled name. Rewrites, overrides and the lock stay keyed
+# by the core path; the move renames what ships.
+moves:
+  - {from: skills/portfolio, to: skills/vault-portfolio}
+  - {from: skills/compass, to: skills/vault-compass}
+# What the host matrix reports for OpenCode. The external-directory ruling (rulings above)
+# lands in records-resolver and rollups: the records home is outside any workspace.
+features:
+  - id: skills
+    status: native
+    note: 'vault-portfolio and vault-compass load from the skills.paths entry the installer prints, and `opencode debug skill` listed both at their moved folders; each is invoked by name, /vault-portfolio or /vault-compass, since natural-language auto-trigger is unreliable on OpenCode'
+  - id: records-resolver
+    status: equivalent
+    note: 'planning''s OpenCode package reads the same records_resolver setting; point it at scripts/records-home.py in the installed plugin folder. The records home is outside the workspace, and opencode run auto-rejected a tool call outside it and still exited 0 until a permission.external_directory allow let it through (probe), so the installer prints that entry and the README documents it'
+  - id: registration
+    status: native
+  - id: sidecar
+    status: native
+    note: 'the block is written as on claude, with Claude Code''s command spelling kept in the text written; OpenCode does not load `.claude/vault-context.md` into a session by itself'
+  - id: rollups
+    status: equivalent
+    note: 'rebuild writes the dashboards under `<vault>/Portfolio/`, outside the workspace: the skill checks from the script''s output and a read-back that each write landed, because without the permission.external_directory entry opencode run refuses the call and still exits 0'
+  - id: compass
+    status: equivalent
+    note: 'an OpenCode command is a prompt that runs nothing, so the skill runs the scanner''s one line itself, under OpenCode''s permission settings instead of an exact-line grant'
+  - id: business-layer
+    status: absent
+    note: 'no OpenCode plugin supplies a business scanner, so the business rollup is empty unless `business_scan` or `$BUSINESS_SCAN_PATH` names a scanner script by hand'

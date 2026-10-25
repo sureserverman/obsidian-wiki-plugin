@@ -1,0 +1,17 @@
+# One line per source member, or fixture directory prefix (ending in /), that did not move:
+#   <source path> -> R:<path kept in the planning repo>
+#   <source path> -> replaced:<synthetic fixture dir in this repo>
+#   <source path> -> dropped: <reason>
+core/skills/decisions/SKILL.md -> R:core/skills/decisions/SKILL.md
+core/skills/decisions/scripts/tests/test-decisions-relevant.py -> R:core/skills/decisions/scripts/tests/test-decisions-relevant.py
+core/skills/portfolio/references/maturity-axes.md -> R:core/skills/project-maturity/references/maturity-axes.md
+core/skills/portfolio/references/plan-parser.md -> R:core/skills/planning-projects/references/plan-parser.md
+core/skills/portfolio/scripts/_staleness.py -> R:core/lib/staleness.py
+core/skills/portfolio/tests/test-stale-cache-warning.py -> R:core/lib/tests/test-staleness.py
+core/skills/portfolio/tests/fixtures/plan-parser/ -> R:core/lib/tests/fixtures/plan-parser
+core/skills/compass/tests/fixtures/vault/ -> replaced:src/vault-portfolio/core/skills/compass/tests/fixtures/vault
+core/skills/decisions/scripts/tests/fixtures/ -> replaced:src/vault-portfolio/core/skills/portfolio/tests/fixtures/domain-decisions
+core/skills/portfolio/tests/fixtures/decisions/ -> replaced:src/vault-portfolio/core/skills/portfolio/tests/fixtures/decisions
+core/skills/portfolio/tests/fixtures/proj-a-plans-and-backlog/ -> replaced:src/vault-portfolio/core/skills/portfolio/tests/fixtures/proj-a-plans-and-backlog
+core/skills/portfolio/tests/fixtures/proj-b-plans-only/ -> replaced:src/vault-portfolio/core/skills/portfolio/tests/fixtures/proj-b-plans-only
+core/skills/portfolio/tests/fixtures/proj-c-bare/ -> replaced:src/vault-portfolio/core/skills/portfolio/tests/fixtures/proj-c-bare

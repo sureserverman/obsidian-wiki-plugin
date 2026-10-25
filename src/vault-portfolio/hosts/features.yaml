@@ -1,0 +1,17 @@
+# vault-portfolio's feature ids, in host-matrix order. Every hosts/<host>/host.yaml reports
+# a status for each (host-matrix.py --check).
+features:
+  - id: skills
+    what: the portfolio and compass skills, invocable by name
+  - id: records-resolver
+    what: "`scripts/records-home.py` answers planning's `records_resolver` call with a project's vault home"
+  - id: registration
+    what: a resolver write or a scan with `--write` adds a project to the registry, refusing a grouping folder
+  - id: sidecar
+    what: rebuild keeps a PORTFOLIO-STATUS block in each registered project's `.claude/vault-context.md`
+  - id: rollups
+    what: "rebuild writes the portfolio dashboards (backlog, maturity, decisions, security) under `<vault>/Portfolio/`"
+  - id: compass
+    what: a report-only now, next and review sweep from one run of the compass scanner
+  - id: business-layer
+    what: "an optional external business scanner (`business_scan` or `$BUSINESS_SCAN_PATH`) feeds a business dashboard and compass"

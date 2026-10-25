@@ -1,0 +1,14 @@
+README.md:
+  base_sha256: f7df17aebca0bbdd9fb34efef453b6195b62b8b759f63af4fadb291422a65145
+skills/compass/SKILL.md:
+  base_sha256: 897cb6b30509749ef4ff46ea7e51fd91eae08ad8f20fbc3f21acdb602db8c398
+  depends_on:
+    commands/compass.md: c234b41e7fc5fb74c884e788e5578aa7d01b692018d7436d1e84368606099981
+skills/portfolio/SKILL.md:
+  base_sha256: 55074230ed576d6c0eb60dc47c98d5444aef51b549a6fee06a61bffc13c228fd
+  depends_on:
+    commands/portfolio.md: a1b900d9d6122aa9a9d299c40c53f892c92ebc24ebd63b2e53efb25120efd5e8
+skills/portfolio/references/domain-slugs.md:
+  base_sha256: 42d9e3bbff3640c168b0a1c80c00c44f7a4371c72f052cc79e287cf05ca05769
+skills/portfolio/references/sidecar-format.md:
+  base_sha256: 6e1ad5c825458c5755fe173381c637424cfd8ae86ca9af0eac71b4867a4ac3d3

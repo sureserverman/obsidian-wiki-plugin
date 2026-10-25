@@ -15,7 +15,7 @@ JSON=0; ARGS=()
 for a in "$@"; do case "$a" in --json) JSON=1 ;; *) ARGS+=("$a") ;; esac; done
 [ "$JSON" = 1 ] && export FINDINGS_JSON=1
 ROOT="${ARGS[0]:-.}"
-# `pwd -P`, not `pwd`: the write path canonicalizes physically (write-context.sh),
+# `pwd -P`, not `pwd`: the sidecar writer canonicalizes physically (write-context.sh),
 # and both feed the same string to project_eligible, which compares registry paths
 # literally. A logical path would make the two callers reach opposite verdicts on
 # the identical directory whenever it is reached through a symlink — the exact
@@ -55,10 +55,16 @@ if [ -n "$vault" ]; then
 fi
 
 # --- area-directory guard ----------------------------------------------------
-# The write path (write-context.sh) refuses these outright; this is the
+# The sidecar writer (write-context.sh) refuses these outright; this is the
 # deterministic backstop for a sidecar written before the guard existed, or by
-# hand. Same rule, one definition: scripts/lib/eligibility.sh.
-if ! project_eligible "$ROOT"; then
+# hand. Same rule, one definition: scripts/lib/eligibility.sh. With the registry
+# location unknown (lib/registry_path.py could not run), the rule cannot be
+# applied, so the finding says that rather than calling the project an area
+# directory and advising an unlink.
+if [ -z "$VAULT_CONTEXT_REGISTRY" ]; then
+  add_finding warn link-registry-unknown link ".claude/vault-context.md" 0 \
+    "cannot check whether the project root is an area directory: the portfolio registry could not be located (lib/registry_path.py did not run — is python3 on PATH?)"
+elif ! project_eligible "$ROOT"; then
   add_finding error link-area-directory link ".claude/vault-context.md" 0 \
     "project root is an area directory, not a project — it is not a git repo, and is either absent from $VAULT_CONTEXT_REGISTRY or holds other registered projects beneath it; remove the sidecar and its CLAUDE.md import block with /vault-context:unlink and link the child projects instead"
 fi

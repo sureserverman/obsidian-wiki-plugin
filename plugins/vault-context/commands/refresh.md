@@ -18,7 +18,7 @@ modified, and the surrounding content of project `CLAUDE.md` is left alone.
 
 Like `/vault-context:link`, it refuses to write into an **area directory** — a grouping
 folder that is not a git repo and either is unregistered or holds other registered
-projects beneath it in `~/.claude/projects-registry.yaml`.
+projects beneath it in the registry (see vault-portfolio's configuration).
 A sidecar that predates that guard is not regenerated here: delete it with
 `/vault-context:unlink` and refresh the child projects instead.
 

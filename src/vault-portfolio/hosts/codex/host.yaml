@@ -1,0 +1,109 @@
+# Codex: the plugin Codex installs from the repo's .agents/plugins/marketplace.json.
+# Tests and fixtures are left out (every host but the identity host). There are no
+# overrides: every file ships from core/, and these rewrites are the whole Codex layer.
+host: codex
+out: ports/codex/vault-portfolio
+exclude: []
+rewrites:
+  # Codex's skill catalog shares one small budget, so each description stays within 120
+  # characters. The match stays inside the frontmatter and takes a folded description's
+  # continuation lines, blank ones included.
+  - glob: skills/compass/SKILL.md
+    pattern: '\A(---\n(?:(?!---\n).*\n)*?)description:.*\n(?:[ \t]+\S.*\n|[ \t]*\n(?=[ \t]+\S))*'
+    replace: '\1description: "Portfolio work compass: what is in flight, what to work on next, and a periodic review sweep. Report-only."\n'
+  - glob: skills/portfolio/SKILL.md
+    pattern: '\A(---\n(?:(?!---\n).*\n)*?)description:.*\n(?:[ \t]+\S.*\n|[ \t]*\n(?=[ \t]+\S))*'
+    replace: '\1description: "Portfolio records in the vault: scan, unify, maturity, migrate, integrate, rebuild, plan-status and decisions."\n'
+  # Codex has no plugin commands, so no command runs a script and hands a skill its output.
+  # Each skill's opening note says so, and has the skill run the lines its command would.
+  - glob: skills/compass/SKILL.md
+    pattern: '^> \*\*This skill holds no shell grant of its own\.\*\*.*\n(?:>.*\n)*'
+    replace: |
+      > **On Codex, this skill runs its scanner itself.** Codex has no plugin commands, so
+      > nothing runs the scanner and hands you its JSON. Wherever this skill says the command
+      > runs the scanner, run this one line yourself, once per invocation, exactly so (no flags,
+      > no `cd`, no pipe, no redirection):
+      > `python3 <vault-portfolio-plugin>/skills/compass/scripts/compass-scan.py`
+      > `<vault-portfolio-plugin>` is this plugin's folder, two levels above the folder this
+      > file is in. Keep the scanner's stdout, its stderr and its exit status as printed. The
+      > mode is the word after `$vault-portfolio:compass`: `now`, `next` or `review`, and
+      > nothing means `now`. On anything else, name the three modes and stop without running
+      > the scanner. The command's grant is Claude Code's: on Codex, its approval policy
+      > decides whether the line asks the user first. Never answer from memory.
+  - glob: skills/portfolio/SKILL.md
+    pattern: '^> \*\*This skill holds no shell grant of its own\.\*\*.*\n(?:>.*\n)*'
+    replace: |
+      > **On Codex, this skill runs its own script lines.** Codex has no plugin commands, so
+      > nothing runs a script and hands you its output. Wherever this skill or a reference says
+      > the command runs a line, run that line yourself, by the rules in
+      > `<vault-portfolio-plugin>/commands/portfolio.md`: refuse the unsafe characters it names,
+      > accept only the flags its table lists for the subcommand, pass each flag and each value
+      > as its own argument with every value single-quoted, and run each line exactly as shown,
+      > with no `cd`, pipe or redirection. Keep each script's stdout, stderr and exit status as
+      > printed. `<vault-portfolio-plugin>` is this plugin's folder, two levels above the folder
+      > this file is in. Read "never run the script yourself" below as: never run a line the
+      > command would not run. The command's grants are Claude Code's: on Codex, its approval
+      > policy decides which lines ask the user first. A write happens only when the user typed
+      > its flag (`--write`, `--fix`, `--restore` or a registry edit) after
+      > `$vault-portfolio:portfolio`: never add one yourself, and after a yes in chat, name the
+      > exact command line for the user to type rather than running it.
+  # Files reach the plugin root through a placeholder; the notes above say where it is.
+  - glob: '**/*.md'
+    pattern: '\$\{CLAUDE_PLUGIN_ROOT\}'
+    replace: '<vault-portfolio-plugin>'
+  # A skill is invoked as $vault-portfolio:<skill>, not /vault-portfolio:<skill>. The scripts
+  # print the same names, so they take the rewrite too; in the shell file the `$` sits in
+  # double quotes, so it is escaped there.
+  - glob: '**/*.md'
+    pattern: '(^|[^$\w/.])/vault-portfolio:'
+    replace: '\1$vault-portfolio:'
+  - glob: '**/*.py'
+    pattern: '(^|[^$\w/.])/vault-portfolio:'
+    replace: '\1$vault-portfolio:'
+  - glob: scripts/lib/eligibility.sh
+    pattern: '(^|[^$\w/.])/vault-portfolio:'
+    replace: '\1\\$vault-portfolio:'
+  # The README's paragraph on how the commands run the scripts is Claude Code's; on Codex
+  # the skills run the lines, and commands/ holds the rules they follow.
+  - glob: README.md
+    pattern: '^Two commands ship here,(?:.*\n)*?vault that is not configured\.\n'
+    replace: |
+      Two skills ship here: `$vault-portfolio:portfolio` (scan, unify, maturity, migrate,
+      integrate, rebuild, plan-status, decisions) and `$vault-portfolio:compass` (now, next,
+      review). Codex has no plugin commands, so each skill runs its own script lines. The
+      files under `commands/` are the rules those lines follow (the flags each subcommand
+      accepts and the characters refused), not commands Codex can run. Codex's approval
+      policy decides whether a line asks the user first, and a write happens only when the
+      user names its flag. Every write mode refuses while another owner holds the vault's
+      maintenance window. The vault comes from obsidian-wiki's own config, and nothing is
+      written to a vault that is not configured.
+  # A command file is Claude Code's; on Codex it ships only as the rules its skill follows.
+  - glob: commands/*.md
+    pattern: '\A(---\n(?:(?!---\n).*\n)*?---\n)'
+    replace: |
+      \1
+      > **On Codex this file is not a command.** Codex has no plugin commands, so nothing runs
+      > this file. Its skill reads it for the rules its own script lines follow. The front
+      > matter, `$ARGUMENTS` and the permission wording are Claude Code's: on Codex,
+      > `$ARGUMENTS` is the text after the skill's name, and Codex's approval policy decides
+      > whether a line asks the user first.
+features:
+  - id: skills
+    status: native
+    note: 'each skill appears as `vault-portfolio:<skill>` and is invoked as `$vault-portfolio:<skill>`; Codex has no plugin commands, so each skill runs the lines its command would'
+  - id: records-resolver
+    status: native
+    note: 'planning''s Codex plugin reads the same `records_resolver` setting; point it at `scripts/records-home.py` in the installed plugin folder'
+  - id: registration
+    status: native
+  - id: sidecar
+    status: native
+    note: 'the block is written as on claude; Codex does not load `.claude/vault-context.md` into a session by itself'
+  - id: rollups
+    status: native
+  - id: compass
+    status: equivalent
+    note: 'no command hands over the scanner''s JSON: the skill runs the scanner''s one line itself, under Codex''s approval policy instead of an exact-line grant'
+  - id: business-layer
+    status: absent
+    note: 'no Codex plugin supplies a business scanner, so the business rollup is empty unless `business_scan` or `$BUSINESS_SCAN_PATH` names a scanner script by hand'

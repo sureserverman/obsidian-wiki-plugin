@@ -1,0 +1,112 @@
+# Host rows of the divergence ledger for this plugin on this host: the paths a
+# host layer must reconsider. Paths only, relative to the ports tree; the content
+# is rewritten when the host layer is built. Not read by build.py.
+plugin: vault-portfolio
+host: opencode
+es_ref: 95bfd7c
+rows:
+- id: ope-b07347b787
+  path: ports/opencode/commands/portfolio.md
+  kind: added
+  reason: 'OpenCode command wrapper: the only host with positional command arguments; it hands off to
+    the skill of the same name'
+- id: ope-5ba864ddc9
+  path: ports/opencode/commands/compass.md
+  kind: added
+  reason: 'OpenCode command wrapper: the only host with positional command arguments; it hands off to
+    the skill of the same name'
+- id: ope-cf866d9f26
+  path: core/skills/compass/tests/
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-29974d1bca
+  path: core/skills/portfolio/tests/fixtures/~b335630551
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-ab509645c2
+  path: core/skills/portfolio/tests/fixtures/~cd2d49e7b3
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-48d751fdbd
+  path: core/skills/portfolio/tests/fixtures/~2d1fd74fb6
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-9e600b1d74
+  path: core/skills/portfolio/tests/fixtures/~c1560c0eb7
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-2670b4a78f
+  path: core/skills/portfolio/tests/fixtures/~6c166ddcbf
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-a31cc5a7b6
+  path: core/skills/portfolio/tests/fixtures/~ea02a9831e
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-9b4847bbfe
+  path: core/skills/portfolio/tests/fixtures/~1dfc47114a
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-1939cc8509
+  path: core/skills/portfolio/tests/fixtures/~ab2a9ea565
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-cd36a9d8d1
+  path: core/skills/portfolio/tests/fixtures/~800aabbaf4
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-c8cc057250
+  path: core/skills/portfolio/tests/manual.md
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-b76cfeec61
+  path: core/skills/portfolio/tests/migrate-dryrun.txt
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-b34280b698
+  path: core/skills/portfolio/tests/test-business-degradation.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-e5bc8f22fd
+  path: core/skills/portfolio/tests/test-portfolio-decisions.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-29dc24aa31
+  path: core/skills/portfolio/tests/test-portfolio-unify.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-d0baaf11b2
+  path: core/skills/portfolio/tests/test-security-degradation.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-c7b832f3ac
+  path: core/skills/portfolio/tests/test-security-scan.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-31ecd0608c
+  path: core/skills/portfolio/tests/test-vault-unreachable.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'
+- id: ope-e245fe6c50
+  path: core/skills/portfolio/tests/test-vault-write-idempotency.py
+  kind: removed
+  reason: 'loss: the portfolio''s test or fixture is not shipped on OpenCode; its subject ships there
+    unchanged, untested by this file'

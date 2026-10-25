@@ -1,0 +1,20 @@
+{
+  "name": "obsidian-wiki",
+  "interface": {
+    "displayName": "Obsidian Wiki"
+  },
+  "plugins": [
+    {
+      "name": "vault-portfolio",
+      "source": {
+        "source": "local",
+        "path": "./ports/codex/vault-portfolio"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

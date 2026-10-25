@@ -1,0 +1,20 @@
+# Host rows of the divergence ledger for this plugin on this host: the paths a
+# host layer must reconsider. Paths only, relative to the ports tree; the content
+# is rewritten when the host layer is built. Not read by build.py.
+plugin: vault-portfolio
+host: cursor
+es_ref: 95bfd7c
+rows:
+- id: cur-fb3d38cd09
+  path: ports/cursor/planning/skills/compass/SKILL.md
+  kind: changed
+  reason: 'host note: where the script sits in an installed Cursor plugin, added beside a path rewrite
+    (category J)'
+- id: cur-fc6632337c
+  path: ports/cursor/planning/skills/decisions/references/domain-slugs.md
+  kind: changed
+  reason: 'host note: how this works on Cursor (category J)'
+- id: cur-e5584cf13a
+  path: ports/cursor/planning/skills/portfolio/references/sidecar-format.md
+  kind: added
+  reason: 'host note: how this works on Cursor (category J)'

@@ -1,0 +1,5 @@
+[DRY ] apps/example-app: 4 files → <vault>/Portfolio/apps/example-app [no-git-fallback]  (plans/2026-01-10-all-done-plan.md, plans/2026-01-20-partial-with-deferred-plan.md, backlog.md, MATURITY.md)
+[DRY ] apps/example-cli: 1 files → <vault>/Portfolio/apps/example-cli [no-git-fallback]  (plans/2026-01-15-three-open-plan.md)
+[SKIP] apps/example-bare: nothing to migrate (no plans/backlog/MATURITY)
+
+DRY-RUN summary: migrated=0 dry=2 skipped=1 failed=0

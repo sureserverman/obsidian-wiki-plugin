@@ -100,3 +100,13 @@ plans/
 
 # executing-plans ephemeral progress state
 .claude/plan-progress.json
+
+# Test fixtures may hold plans/ and CLAUDE.md shapes on purpose (the two
+# patterns above would otherwise hide them, and the vault-portfolio build
+# refuses an ignored source).
+!**/tests/fixtures/**/plans/
+!**/tests/fixtures/**/CLAUDE.md
+
+# Security review reports stay local; findings are recorded as decisions.
+security-review-*.md
+*-audit-report-*.md

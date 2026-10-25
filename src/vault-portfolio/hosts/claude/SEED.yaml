@@ -1,0 +1,7 @@
+# Host rows of the divergence ledger for this plugin on this host: the paths a
+# host layer must reconsider. Paths only, relative to the ports tree; the content
+# is rewritten when the host layer is built. Not read by build.py.
+plugin: vault-portfolio
+host: claude
+es_ref: 95bfd7c
+rows: []

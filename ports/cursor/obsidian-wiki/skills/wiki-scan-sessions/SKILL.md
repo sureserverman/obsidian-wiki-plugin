@@ -39,7 +39,7 @@ Discovery is a script, not a walk. `scripts/index-sessions.py` writes
 plugin on this machine refreshes that file once per UTC day, and this port reads the same
 file. **Read that file.** Do not walk the stores or query their databases yourself: the
 inputs are untrusted transcripts from five external tools, and pairing those with ad-hoc
-shell commands is the exact combination the 2026-08-13 audit rated HIGH. The one shell
+shell commands is the exact combination a security audit rated high risk. The one shell
 command this skill may run is the fixed indexer invocation in the refresh note below.
 
 The index is a JSON object:
@@ -112,7 +112,7 @@ sides derive that date differently: `wiki-import-session` uses the first-event
 timestamp, while the index falls back to the file mtime whenever no event
 timestamp is reachable — always for Cursor, which has none. When they disagree
 the session reads as un-imported and is written a second time under the wrong
-date. Measured on the 2026-08-14 worklist: 64 of 606 "pending" rows were already
+date. Measured on one real worklist: 64 of 606 "pending" rows were already
 in the vault under a different date. `source-uuid` does not drift; the filename
 does. `scripts/build-worklist.py` applies this same key.
 
@@ -218,8 +218,8 @@ Sessions with score ≥ 3 are "high-value", 1–2 are "medium", 0 or negative is
 ### Trigger heuristics (label what made a session worth capturing)
 
 Tag each candidate with any of four **canonical trigger heuristics** it exhibits
-(these are the exact labels the upstream-marketplace `session-analyzer` / `skill-workshop`
-use — spell them identically so the two toolchains stay in sync). These are a
+(these labels are shared with session-mining tools that look for skill candidates —
+spell them exactly as written so reports from different toolchains stay in sync). These are a
 **secondary label**, not a second scoring pass: the numeric 0–5 score above is
 unchanged; the trigger tags ride into the report so a `wiki-import-session` pick
 inherits the "why this mattered" context.

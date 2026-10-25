@@ -1,0 +1,19 @@
+# Claude is the identity host: its output is core/ plus add/, with no rewrites,
+# no overrides and no excludes.
+host: claude
+out: plugins/vault-portfolio
+features:
+  - id: skills
+    status: native
+  - id: records-resolver
+    status: native
+  - id: registration
+    status: native
+  - id: sidecar
+    status: native
+  - id: rollups
+    status: native
+  - id: compass
+    status: native
+  - id: business-layer
+    status: native

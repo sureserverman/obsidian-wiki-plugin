@@ -29,7 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Shell syntax
-        run: find plugins -name '*.sh' -exec bash -n {} \;
+        run: find plugins src -name '*.sh' -exec bash -n {} \;
 
       - name: Python syntax
         run: bash tests/test_python_syntax.sh
@@ -40,7 +40,8 @@ jobs:
           import json, pathlib
           for p in ['.claude-plugin/marketplace.json',
                     'plugins/obsidian-wiki/.claude-plugin/plugin.json',
-                    'plugins/vault-context/.claude-plugin/plugin.json']:
+                    'plugins/vault-context/.claude-plugin/plugin.json',
+                    'plugins/vault-portfolio/.claude-plugin/plugin.json']:
               json.loads(pathlib.Path(p).read_text())
               print(f'ok {p}')
           PY

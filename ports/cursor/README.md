@@ -23,7 +23,7 @@ Use it from a Cursor session opened on the vault (or any project): `/wiki-ingest
 
 Cursor's compatibility loader also reads the **Claude Code plugin cache**
 (`~/.claude/plugins/cache/obsidian-wiki/…/skills/`), so an unprefixed `ingest` here collides
-with the Claude Code copy and Cursor served the cache copy, measured 2026-09-01 with the
+with the Claude Code copy and Cursor served the cache copy, as measured with the
 Cursor CLI. The prefix is what makes the port the copy that runs. Invoke as `/wiki-ingest`,
 `/wiki-import-session`, `/wiki-scan-sessions`, `/wiki-ask`, `/wiki-related`; the subagents
 are `wiki-vault-writer` and `wiki-vault-scanner`.
@@ -45,7 +45,7 @@ are `wiki-vault-writer` and `wiki-vault-scanner`.
 
 - **The tool-enforced "no shell" boundary on scan-sessions.** In Claude Code that skill
   carries `allowed-tools: Read, Glob, Grep`, so it *cannot* run a shell against the five
-  untrusted session stores (the combination the 2026-08-13 audit rated HIGH). Cursor has no
+  untrusted session stores (a combination a security audit rated high risk). Cursor has no
   per-skill tool allowlist, so in `wiki-scan-sessions` that boundary is prose only: the skill
   text permits exactly one fixed indexer command and forbids walking or querying the stores.
   A security control that used to be enforced by tooling is enforced here by the model
@@ -66,7 +66,7 @@ are `wiki-vault-writer` and `wiki-vault-scanner`.
 
 ## Conversion rules
 
-Follows `~/dev/ai-tools/port-repo/docs/cursor-conversion-spec.md`:
+Follows the usual Claude-to-Cursor conversion:
 `.claude-plugin/` → `.cursor-plugin/`, `allowed-tools:` dropped, `${CLAUDE_PLUGIN_ROOT}`
 → paths relative to the plugin install dir, agents lose `tools:` / `model:` (read-only
 agents get `readonly: true`), the hook-published vault path becomes
@@ -74,13 +74,13 @@ agents get `readonly: true`), the hook-published vault path becomes
 Agent-tool `subagent_type` dispatch becomes "delegate to the `<name>` Cursor subagent".
 
 **Do not hand-edit skill or agent bodies here.** Fix upstream in `plugins/obsidian-wiki`
-and re-port. Scripts must stay byte-identical to upstream (this project's DEC-002).
+and re-port. Scripts must stay byte-identical to upstream.
 
 ## Why the port lives in this repo
 
-port-repo' Cursor drift gate is pinned to the upstream-marketplace marketplace as its
-only upstream. Teaching it a second source was a bigger job than this port, so this port
-is self-contained here and is not covered by that gate.
+The usual Cursor drift gate tracks a single upstream marketplace. Teaching it a second
+source was a bigger job than this port, so this port is self-contained here and is not
+covered by that gate.
 
 ## Local SQLite pilot support boundary
 

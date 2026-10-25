@@ -1,0 +1,16 @@
+{
+  "name": "vault-portfolio",
+  "description": "Cross-project portfolio for an Obsidian vault: each project's plans, backlog, decisions and maturity under the vault, rolled up into dashboards, with a records resolver for the planning plugin.",
+  "author": {
+    "name": "Sure Serverman"
+  },
+  "homepage": "https://github.com/sureserverman/obsidian-wiki-plugin",
+  "repository": "https://github.com/sureserverman/obsidian-wiki-plugin",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Vault Portfolio",
+    "shortDescription": "Portfolio records, dashboards and a work compass in your vault",
+    "category": "Productivity"
+  }
+}

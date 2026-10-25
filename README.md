@@ -72,7 +72,45 @@ cd ~/dev/some-project
 
 The first run generates `<project>/.claude/vault-context.md` listing every vault page relevant to the project (matched from `<vault>/index.md` against project signals: manifests, README, dirs, recent commits) and adds a delimited `@.claude/vault-context.md` import block to project `CLAUDE.md`. From then on, every Claude Code session in that project loads the briefing eagerly. A SessionStart hook prompts to run `/vault-context:link` the first time you enter a fresh project.
 
-`vault-context` is **read-only with respect to the vault** — only `obsidian-wiki` writes there. See `plugins/vault-context/README.md` for the full command list.
+`vault-context` is **read-only with respect to the vault** — only `obsidian-wiki` (and `vault-portfolio`, under `Portfolio/`) writes there. See `plugins/vault-context/README.md` for the full command list.
+
+## Companion plugin: vault-portfolio
+
+`vault-portfolio@obsidian-wiki` is the cross-project layer for the `planning` plugin (`planning@staged-planning`). With it, each project's plans, backlog, decisions and maturity checklist live in the vault under `<vault>/Portfolio/<area>/<name>/` instead of the repo's `docs/`, and roll up into portfolio dashboards.
+
+```text
+/vault-portfolio:portfolio        # scan, unify, maturity, migrate, integrate, rebuild, plan-status, decisions
+/vault-portfolio:compass          # now, next, review: in flight, ranked next, periodic sweep
+```
+
+It is installed from a local checkout, on each host planning runs on:
+
+```bash
+git clone https://github.com/sureserverman/obsidian-wiki-plugin ~/src/obsidian-wiki-plugin
+cd ~/src/obsidian-wiki-plugin
+
+# Claude Code
+claude plugin marketplace add ~/src/obsidian-wiki-plugin
+claude plugin install vault-portfolio@obsidian-wiki
+
+# Codex
+codex plugin marketplace add ~/src/obsidian-wiki-plugin
+codex plugin add vault-portfolio@obsidian-wiki
+
+# Cursor (-> ~/.cursor/plugins/local/vault-portfolio)
+bash ports/cursor/install.sh vault-portfolio
+
+# OpenCode (--dry-run first shows the config entries it adds)
+bash ports/opencode/install.sh
+```
+
+Then one config line wires it to planning, naming its `scripts/records-home.py` as planning's records resolver, in `~/.config/staged-planning/config.yaml`:
+
+```yaml
+records_resolver: [python3, ~/src/obsidian-wiki-plugin/plugins/vault-portfolio/scripts/records-home.py]
+```
+
+Without that line planning keeps each project's records in its own `docs/`. The vault and registry order, the resolver's exit codes and the optional business layer are in [docs/vault-portfolio.md](docs/vault-portfolio.md).
 
 ## Commands
 

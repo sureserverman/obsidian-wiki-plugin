@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # test_bash_grants_scoped.sh — no skill or agent may hold an unscoped Bash grant.
 #
-# Regression: the 2026-08-13 security audit run (security-audit 1.36.3) raised two HIGH
+# Regression: a security audit raised two HIGH
 # findings (CWE-77) for `allowed-tools: Read, Glob, Grep, Bash` on scan-sessions
 # and `tools: … Bash` on the vault-scanner agent — components whose documented
 # job is enumerating and sampling raw session transcripts from five external AI
@@ -137,12 +137,76 @@ ok "no skill or agent holds a Bash grant — shell lives only in user-typed comm
 # ...and a command that runs a pipeline must actually declare what it uses, rather
 # than inheriting silently. index.md and link.md both had no key at all before.
 for c in plugins/obsidian-wiki/commands/lint.md plugins/obsidian-wiki/commands/index.md \
-         plugins/vault-context/commands/link.md; do
+         plugins/vault-context/commands/link.md \
+         plugins/vault-portfolio/commands/portfolio.md plugins/vault-portfolio/commands/compass.md; do
     [ -f "$c" ] || fail "$c is gone — update this test if it moved"
     grep -qE '^allowed-tools:.*Bash\(' "$c" \
         || fail "$c runs a script but declares no scoped Bash grant"
 done
-ok "the three pipeline commands declare their own scoped grants"
+ok "the five pipeline commands declare their own scoped grants"
+
+# vault-portfolio's commands are user-typed only: a command the model may invoke on
+# its own would carry its grants back to natural-language triggers. And their grants
+# are EXACT read-only command lines. A grant stays in force for the whole turn,
+# including while the skill reads vault-derived text, and a Bash rule with a `*`
+# matches any text in its place (code.claude.com/docs/en/permissions, "Wildcard
+# patterns"): `Bash(python3 …/portfolio-scan.py *)` pre-approved --add-all --write.
+# Any line with arguments must go through the permission prompt instead. An earlier
+# version of this check was a `case` glob, which let `…/skills/*/scripts/*.py` and a
+# `../` traversal through; this compares against an explicit list.
+VP_PLUGIN=plugins/vault-portfolio
+expected_grants() {
+    case "$1" in
+        portfolio.md) cat <<'GRANTS'
+Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/records-home.py --all-homes)
+Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/portfolio/scripts/_config.py)
+Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/portfolio/scripts/portfolio-rebuild.py)
+Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/portfolio/scripts/portfolio-scan.py)
+Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/portfolio/scripts/portfolio-unify.py)
+GRANTS
+        ;;
+        compass.md) cat <<'GRANTS'
+Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/compass/scripts/compass-scan.py)
+GRANTS
+        ;;
+        *) return 1 ;;
+    esac
+}
+VP_CMDS=0
+while IFS= read -r c; do
+    VP_CMDS=$((VP_CMDS + 1))
+    base="$(basename "$c")"
+    grep -qx 'disable-model-invocation: true' "$c" \
+        || fail "$c lost disable-model-invocation: true"
+    want="$(expected_grants "$base")" \
+        || fail "$c has no expected grant list here — add one before shipping it"
+    line="$(grep -m1 '^allowed-tools:' "$c")"
+    grants="$(printf '%s\n' "$line" | grep -oE 'Bash\([^)]*\)' | LC_ALL=C sort)"
+    [ -n "$grants" ] || fail "$c declares no Bash grant"
+    # Nothing Bash-like may hide outside a parenthesised grant either.
+    printf '%s' "$line" | sed -E 's/Bash\([^)]*\)//g' | grep -q 'Bash' \
+        && fail "$c declares a Bash grant that is not of the form Bash(<exact line>)"
+    while IFS= read -r g; do
+        case "$g" in *'*'*) fail "$c grants a wildcard line: $g" ;; esac
+        case "$g" in *'..'*) fail "$c grants a path with ..: $g" ;; esac
+        script="$(printf '%s' "$g" | sed -nE 's/^Bash\(python3 \$\{CLAUDE_PLUGIN_ROOT\}\/([^ )]+\.py)( [^)]*)?\)$/\1/p')"
+        [ -n "$script" ] || fail "$c grant is not python3 \${CLAUDE_PLUGIN_ROOT}/<script>.py: $g"
+        [ -f "$VP_PLUGIN/$script" ] || fail "$c grants a script that does not exist: $VP_PLUGIN/$script"
+    done <<< "$grants"
+    if [ "$grants" != "$(printf '%s\n' "$want" | LC_ALL=C sort)" ]; then
+        echo "  expected:" >&2; printf '    %s\n' "$want" >&2
+        echo "  found:" >&2;    printf '    %s\n' "$grants" >&2
+        fail "$c grants differ from the expected exact read-only lines"
+    fi
+done < <(find "$VP_PLUGIN/commands" -type f -name '*.md' | sort)
+[ "$VP_CMDS" -eq 2 ] || fail "expected 2 vault-portfolio commands, found $VP_CMDS"
+ok "vault-portfolio's commands are user-typed and grant only exact read-only lines"
+
+# Lines with arguments are prompted, but the prompt shows what the model wrote, so the
+# command must still refuse shell syntax in $ARGUMENTS before building a line from it.
+grep -q 'Refuse unsafe text first' "$VP_PLUGIN/commands/portfolio.md" \
+    || fail "portfolio.md lost its rule refusing shell syntax in \$ARGUMENTS"
+ok "portfolio.md refuses shell syntax in its arguments"
 
 # The opt-in ask command grants only the read executable, never admin/interpreters.
 ask_grant="$(grep '^allowed-tools:' plugins/obsidian-wiki/commands/ask.md)"

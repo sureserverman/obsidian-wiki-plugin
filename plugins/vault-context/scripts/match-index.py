@@ -34,8 +34,8 @@ The caller (write-context.sh) handles both cases.
 Self-integration guarantee: a "Portfolio Integrations/" entry whose declaring
 project is THIS repo always surfaces in the output, even if the TOP_N cap or a low
 token-overlap score would otherwise drop it. The owning repo is identified by mapping
-cwd to its slug via ~/.claude/projects-registry.yaml (the ecosystem's source-of-truth
-registry) — a definite ownership match, not fuzzy signal overlap. Best-effort: if the
+cwd to its slug via the portfolio registry (located by lib/registry_path.py) — a
+definite ownership match, not fuzzy signal overlap. Best-effort: if the
 registry is absent or has no entry for cwd, the guarantee is silently skipped.
 
 Pure stdlib. No third-party deps (the registry is read with a line scan, not PyYAML).
@@ -48,6 +48,9 @@ import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+from registry_path import registry_path  # noqa: E402
 
 # Scoring weights
 TAG_WEIGHT = 3
@@ -148,7 +151,7 @@ def title_tokens(title: str):
 
 
 def integration_slug(page: dict):
-    """Declaring project slug if `page` is a Portfolio integration entry, else None.
+    """Declaring project slug if `page` is an integration page under Portfolio/, else None.
 
     Index path for these is `Portfolio/<area>/<slug>/integration.md`; the slug is the
     component immediately before the filename.
@@ -163,15 +166,14 @@ def integration_slug(page: dict):
 def resolve_self_slug():
     """Best-effort map of the current working directory to its portfolio slug.
 
-    Reads ~/.claude/projects-registry.yaml and returns the `name:` of the project
-    whose `path:` equals cwd. Parsed with a stdlib line scan (entries are
+    Reads the registry `registry_path()` names and returns the `name:` of the
+    project whose `path:` equals cwd. Parsed with a stdlib line scan (entries are
     `- path:` / `name:` pairs) to keep this module dependency-free. Returns None if
     the registry is absent, unreadable, or has no entry for cwd — in which case the
     self-integration guarantee is simply skipped.
     """
     try:
-        text = (Path.home() / ".claude" / "projects-registry.yaml").read_text(
-            encoding="utf-8")
+        text = Path(registry_path()).read_text(encoding="utf-8")
     except OSError:
         return None
     cwd = os.path.realpath(os.getcwd())

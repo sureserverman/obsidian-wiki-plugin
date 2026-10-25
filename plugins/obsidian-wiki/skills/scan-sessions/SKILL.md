@@ -42,7 +42,7 @@ Discovery is **already done for you**. The SessionStart hook
 `${XDG_CONFIG_HOME:-~/.config}/obsidian-wiki/state/sessions-index.json`. **Read that
 file.** Do not shell out — this skill holds no Bash grant, deliberately: its inputs are
 untrusted transcripts from five external tools, and pairing that with a shell is the
-exact combination the 2026-08-13 audit rated HIGH.
+exact combination a security audit rated high risk.
 
 The index is a JSON object:
 
@@ -110,7 +110,7 @@ sides derive that date differently: `import-session` uses the first-event
 timestamp, while the index falls back to the file mtime whenever no event
 timestamp is reachable — always for Cursor, which has none. When they disagree
 the session reads as un-imported and is written a second time under the wrong
-date. Measured on the 2026-08-14 worklist: 64 of 606 "pending" rows were already
+date. Measured on one real worklist: 64 of 606 "pending" rows were already
 in the vault under a different date. `source-uuid` does not drift; the filename
 does. `scripts/build-worklist.py` applies this same key.
 
@@ -216,8 +216,8 @@ Sessions with score ≥ 3 are "high-value", 1–2 are "medium", 0 or negative is
 ### Trigger heuristics (label what made a session worth capturing)
 
 Tag each candidate with any of four **canonical trigger heuristics** it exhibits
-(these are the exact labels the upstream-marketplace `session-analyzer` / `skill-workshop`
-use — spell them identically so the two toolchains stay in sync). These are a
+(these labels are shared with session-mining tools that look for skill candidates —
+spell them exactly as written so reports from different toolchains stay in sync). These are a
 **secondary label**, not a second scoring pass: the numeric 0–5 score above is
 unchanged; the trigger tags ride into the report so an `import-session` pick
 inherits the "why this mattered" context.

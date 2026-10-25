@@ -2,11 +2,11 @@
 # eligibility.sh — the "is this directory a project?" rule.
 #
 # vault-context writes a per-project sidecar. An *area directory* — a grouping
-# folder like ~/dev/ai-tools that merely holds project repos — is not a project:
-# a sidecar there duplicates every child repo's context into every session under
-# the whole tree, on top of each child's own sidecar. This file is the single
-# definition of that boundary, shared by the write path (write-context.sh) and
-# the detect path (validate-link.sh) so the two cannot drift apart.
+# folder that merely holds project repos — is not a project: a sidecar there
+# duplicates every child repo's context into every session under the whole tree,
+# on top of each child's own sidecar. This file is the single definition of that
+# boundary, shared by the sidecar writer (write-context.sh) and the link check
+# (validate-link.sh) so the two cannot drift apart.
 #
 # The rule, in order:
 #
@@ -17,27 +17,33 @@
 #   3. Otherwise, a directory listed as a `path:` in the portfolio registry is
 #      a project.
 #
-# Containment comes first because neither of the other two signals survives
-# contact with this portfolio:
+# Containment comes first because neither of the other two signals is reliable
+# on its own:
 #
-#   - Registration is not evidence. The registry can and does carry an area
-#     directory as an entry (~/dev/ai-tools was registered on 2026-06-17), and
-#     that entry is how the duplicate sidecar this guard exists to prevent got
-#     written in the first place.
-#   - Being a git repo is not evidence either. ~/dev/infra/installers is a git
-#     monorepo root holding four registered projects (installers/{android,linux,
-#     mac,node}); its sidecar duplicated 26-27 of ~30 pages into every session
-#     under each child. A repo-first rule accepts it, which is exactly the
-#     defect, one directory over.
+#   - Registration is not evidence. A registry can carry an area directory as an
+#     entry, and such an entry is exactly how a duplicate sidecar gets written.
+#   - Being a git repo is not evidence either. A monorepo root holding several
+#     registered projects is a repo, and its sidecar would duplicate most of each
+#     child's pages into every session under it. A repo-first rule accepts it,
+#     which is the same defect one directory over.
 #
 # The cost of ordering it this way is that a registered monorepo root whose
-# subprojects are *also* registered would be refused. That is the deliberate
-# trade: a sweep of every ancestor of a registered path in this portfolio (17
-# directories) finds none of that shape, while the two directories the rule now
-# refuses are both live instances of the defect.
+# subprojects are *also* registered is refused. That is the deliberate trade: a
+# root of that shape is rare, while the shapes the rule refuses are the defect.
 
-# Registry location. Overridable so tests can point at a fixture.
-: "${VAULT_CONTEXT_REGISTRY:=${HOME}/.claude/projects-registry.yaml}"
+# Registry location: VAULT_CONTEXT_REGISTRY when set (tests point it at a fixture),
+# else lib/registry_path.py, the one definition of where the registry lives. If
+# that lookup cannot run (no python3), the location is unknown, it stays empty,
+# and project_eligible fails closed: containment cannot be checked, so no
+# directory is called a project. Treating "unknown" as "nothing registered" would
+# quietly accept an area directory that holds registered projects.
+if [ -z "${VAULT_CONTEXT_REGISTRY:-}" ]; then
+    _elig_dir="${BASH_SOURCE[0]%/*}"; [ "$_elig_dir" != "${BASH_SOURCE[0]}" ] || _elig_dir=.
+    VAULT_CONTEXT_REGISTRY="$(python3 "$_elig_dir/registry_path.py" 2>/dev/null)" || true
+    unset _elig_dir
+    [ -n "$VAULT_CONTEXT_REGISTRY" ] \
+        || echo "vault-context: registry_path.py could not run (is python3 on PATH?)" >&2
+fi
 
 # _registry_paths — print every `path:` entry, normalized (no quotes, no
 # trailing slash, no trailing comment), one per line. Silent when the registry
@@ -97,6 +103,7 @@ project_is_repo() {
 
 # project_eligible <abs-dir> — 0 iff vault-context may write a sidecar here.
 project_eligible() {
+    [ -n "$VAULT_CONTEXT_REGISTRY" ] || return 1
     project_contains_registered "$1" && return 1
     project_is_repo "$1" && return 0
     project_registered "$1" && return 0
@@ -106,6 +113,15 @@ project_eligible() {
 # area_directory_message <abs-dir> — the refusal text. Names the registry so the
 # user can see what the verdict was made from, and points at the two ways out.
 area_directory_message() {
+    if [ -z "$VAULT_CONTEXT_REGISTRY" ]; then
+        printf '%s\n' \
+"vault-context: cannot tell whether $1 is a project. Nothing was written." \
+"" \
+"The portfolio registry could not be located: lib/registry_path.py did not run" \
+"(is python3 on PATH?). Without the registry, a directory holding registered" \
+"projects cannot be told apart from a project, so none is accepted."
+        return 0
+    fi
     printf '%s\n' \
 "vault-context: $1 is an area directory — not a project. Nothing was written." \
 "" \
@@ -117,5 +133,5 @@ area_directory_message() {
 "" \
 "Run /vault-context:link or /vault-context:refresh from the child project" \
 "instead. If this really is a project, git init it (or, if the registry lists" \
-"it only by mistake, fix that through /planning:portfolio), then re-run."
+"it only by mistake, fix that through /vault-portfolio:portfolio), then re-run."
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "obsidian-wiki",
-  "description": "Marketplace hosting two complementary plugins for an Obsidian vault: obsidian-wiki (producer; runs in the vault) and vault-context (consumer; runs in project repos).",
+  "description": "Marketplace hosting three plugins for an Obsidian vault: obsidian-wiki (producer; runs in the vault), vault-context (consumer; runs in project repos) and vault-portfolio (the planning plugin's cross-project records layer).",
   "owner": {
     "name": "user"
   },
@@ -16,6 +16,12 @@
       "name": "vault-context",
       "description": "Surface Obsidian-vault knowledge inside project repos: scan the current project, match against the vault's index, and write a CLAUDE.md-loaded sidecar with relevant page references.",
       "source": "./plugins/vault-context",
+      "category": "productivity"
+    },
+    {
+      "name": "vault-portfolio",
+      "description": "Cross-project portfolio for an Obsidian vault: keep every project's plans, backlog, decisions and maturity under the vault, roll them up into portfolio dashboards, and answer the planning plugin's records-resolver call so its records land there.",
+      "source": "./plugins/vault-portfolio",
       "category": "productivity"
     }
   ]

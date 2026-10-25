@@ -1,0 +1,11 @@
+{
+  "name": "vault-portfolio",
+  "description": "Cross-project portfolio for an Obsidian vault, Cursor port: each project's plans, backlog, decisions and maturity under the vault, rolled up into dashboards, with a records resolver for the planning plugin. Two skills, /vault-portfolio and /vault-compass; no hooks.",
+  "author": {
+    "name": "Sure Serverman"
+  },
+  "homepage": "https://github.com/sureserverman/obsidian-wiki-plugin",
+  "repository": "https://github.com/sureserverman/obsidian-wiki-plugin",
+  "license": "MIT",
+  "keywords": ["obsidian", "portfolio", "planning", "backlog", "maturity", "decisions", "cursor"]
+}
