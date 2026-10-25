@@ -1,7 +1,7 @@
 {
   "name": "vault-portfolio",
   "description": "Cross-project portfolio for an Obsidian vault: each project's plans, backlog, decisions and maturity under the vault, rolled up into dashboards, with a records resolver for the planning plugin.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Sure Serverman"
   },
