@@ -14,8 +14,9 @@ check what a run produced, not to reproduce the work.
 
 1. Read every `integration.md` under `<vault>/Portfolio/` (schema in
    `integration-format.md`). A file's project is its frontmatter `project:`, else its folder
-   name. Nothing under the vault folder of a `records: repo` entry is read, here or in the
-   backlog roll-up: that folder is not the project's state. A file that cannot be read as a
+   name. A `records: repo` entry's `integration.md` is read like any other (its edges name the
+   owner's other projects, so they stay in the vault), but its backlog is not rolled up in step
+   3: that folder is not the project's state. A file that cannot be read as a
    declaration (`integration-format.md` § Hard rules)
    refuses the run, dry run included: the script exits non-zero naming each such file and
    why, and writes nothing.
@@ -28,8 +29,8 @@ check what a run produced, not to reproduce the work.
 3. Build `Portfolio/integration-backlog.md`: every `## BL-NNN — <title>` entry in any
    `backlog.md` under `Portfolio/` whose `Tags:` line contains `integration`, or that carries an
    `Integration:` line, grouped under `## edge: <slug>` by the entry's first `edge=<slug>` or
-   `plan=<arc>` (else `unspecified`). The items stay in their project's backlog; this file is a
-   cross-project view.
+   `plan=<arc>` (else `unspecified`). A `backlog.md` under a `records: repo` entry's vault folder
+   is skipped. The items stay in their project's backlog; this file is a cross-project view.
 4. An integration arc lives under `Portfolio/integrations/<arc>/` (schema in
    `integration-plan-format.md`). Each spanned project's backlog carries an
    `Integration: plan=<arc>` entry, and step 3 is what surfaces it. The script does not read the

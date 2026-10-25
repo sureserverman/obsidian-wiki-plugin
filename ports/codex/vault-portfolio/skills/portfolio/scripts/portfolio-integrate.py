@@ -8,8 +8,9 @@ every `integration`-tagged backlog entry into Portfolio/integration-backlog.md.
 Symmetry rule: if A declares `impacts: [[B]]`, B must declare `depends_on: [[A]]`
 (and vice-versa). Asymmetries are reported under `## Asymmetries (review)` and
 NEVER auto-fixed. Dangling targets (not a registered project) are flagged.
-Nothing under the vault folder of an entry that sets `records: repo` is read:
-that project has no vault home, so a folder left there is not its state.
+An entry that sets `records: repo` has no vault home: its backlog under its vault folder
+is not its state and is not rolled up. Its integration.md there is read all the same,
+because its edges name the owner's other projects and stay in the vault.
 --write is refused while another owner holds the vault's maintenance window.
 
 See references/integration-format.md for the per-project file schema.
