@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# findings.sh — shared finding accumulator + renderer for the plugin-kit
+# findings.sh — shared finding accumulator + renderer for the
 # deterministic validation suite.
 #
 # This is the one place the JSON contract lives. Every per-domain validator

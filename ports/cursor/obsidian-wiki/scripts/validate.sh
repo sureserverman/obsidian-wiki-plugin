@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # validate.sh <plugin-root> [--json]
 #
-# Generic deterministic-lane orchestrator for a plugin. Part of the plugin-kit
+# Generic deterministic-lane orchestrator for a plugin. Part of a shared
 # "determinism kit" — vendored into a plugin's scripts/ by install-kit.sh.
 #
 # It is domain-agnostic: it discovers every sibling validate-*.sh (the plugin's

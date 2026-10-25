@@ -77,5 +77,5 @@ per check, end with `render_findings`. Anything requiring taste or rewriting is
 and consume its JSON instead of re-deriving the rules.
 
 > Validating obsidian-wiki's *plugin structure* (manifest, frontmatter, layout) is
-> a plugin validator's job — run one, such as `validate-plugin.sh` against this repo.
+> a plugin validator's job — run one, such as `validate-plugin.sh`, against this repo.
 > The validators here check obsidian-wiki's own domain.

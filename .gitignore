@@ -110,3 +110,8 @@ plans/
 # Security review reports stay local; findings are recorded as decisions.
 security-review-*.md
 *-audit-report-*.md
+
+# Maintainer records (proof, research, implementation notes) live in the records home, not in this repo.
+proof/
+docs/research/
+docs/implementation/

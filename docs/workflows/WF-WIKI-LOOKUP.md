@@ -54,4 +54,4 @@ route retains its index entry and reports an oversized whole-index read as
 unsupported. Configured-client permission matching requires an actual trace;
 static grant checks do not prove it. Cursor remains on its existing manual path.
 
-Qualification receipts: [sanitized Stage4 results](../implementation/local-sqlite-wiki-pilot/stage-4-status.md). The fixed cap cannot be raised by admin refresh/check. Omitted evidence still requires abstention; source shortening/splitting is separate owner-selected maintenance through the existing guarded writer, followed by an explicit refresh and a new answer.
+The fixed cap cannot be raised by admin refresh/check. Omitted evidence still requires abstention; source shortening/splitting is separate owner-selected maintenance through the existing guarded writer, followed by an explicit refresh and a new answer.

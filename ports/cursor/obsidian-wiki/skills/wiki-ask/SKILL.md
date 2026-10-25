@@ -52,9 +52,9 @@ read any new hits. Note in your answer that you had to go outside the index.
 
 Write the answer. Every factual claim cites its source as an Obsidian wikilink:
 
-> VLESS/REALITY requires a valid TLS handshake upstream for SNI forwarding
-> ([[WireGuard Peer Keys]]), and bridges must be used because Tor cannot bootstrap through an
-> proxy transparent proxy ([[Tunnels Behind Captive Portals]]).
+> WireGuard needs each peer's public key on both ends
+> ([[WireGuard Peer Keys]]), and a relay must be used because the tunnel cannot start behind a
+> captive portal ([[Tunnels Behind Captive Portals]]).
 
 Rules:
 
