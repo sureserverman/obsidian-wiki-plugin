@@ -51,6 +51,8 @@ vault folder left at its old path. Say its records live in its repo; it is not a
 This skill's job is **judgment only**: ranking, narration and the agenda. Never re-derive facts
 the JSON already carries; never present a fact the JSON does not back.
 
+**Views.** `--mode now|next|review` keeps, per project, only the plans that mode reads (`now`: active and noted; `next`: active; `review`: active, noted, abandoned and unmeasurable) and counts the rest by kind in `plans_omitted`; `now` also leaves out a project with no such plan and no error. `--compact` prints one line without null, false or empty fields. `--part N` (with `--part-bytes`, default 24000) prints the projects in parts that each name `part` and `parts`, with `couldnt_assess` in part 1 only. With no flag the document is the whole one above. A host that cuts long tool output reads a mode's view part by part, each part from a fresh run of the same scan.
+
 **No JSON means no report.** The scanner prints nothing on stdout and exits non-zero when the
 vault is unset or unreachable or the registry is missing or malformed (exit 1), or when a config
 file does not parse (exit 2). Relay its message and stop. "Nothing is in flight" and "the corpus

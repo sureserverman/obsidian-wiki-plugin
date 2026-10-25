@@ -6,11 +6,17 @@ description: "Portfolio work compass: what is in flight, what to work on next, a
 
 > **On Codex, this skill runs its scanner itself.** Codex has no plugin commands, so
 > nothing runs the scanner and hands you its JSON. Wherever this skill says the command
-> runs the scanner, run this one line yourself, once per invocation, exactly so (no flags,
-> no `cd`, no pipe, no redirection):
-> `python3 <vault-portfolio-plugin>/skills/compass/scripts/compass-scan.py`
+> runs the scanner, run this line yourself, exactly so (no other flag, no `cd`, no pipe,
+> no redirection), with `<mode>` the mode and `<n>` starting at 1:
+> `python3 <vault-portfolio-plugin>/skills/compass/scripts/compass-scan.py --mode <mode> --compact --part <n>`
+> Codex cuts a long tool output, and the whole document outgrows that cut on a large
+> portfolio, so the scanner prints the mode's view one part at a time: each part names
+> `part` and `parts`; run it again with `<n>` = 2, 3, … through `parts`, once each, and
+> read the parts' `projects` in order as one list. `couldnt_assess` is in part 1 only.
+> `--compact` leaves out null, false and empty fields, so a missing field is false or
+> empty, and `plans_omitted` counts the plans the mode does not read (§ Views).
 > `<vault-portfolio-plugin>` is this plugin's folder, two levels above the folder this
-> file is in. Keep the scanner's stdout, its stderr and its exit status as printed. The
+> file is in. Keep each part's stdout, its stderr and its exit status as printed. The
 > mode is the word after `$vault-portfolio:compass`: `now`, `next` or `review`, and
 > nothing means `now`. On anything else, name the three modes and stop without running
 > the scanner. The command's grant is Claude Code's: on Codex, its approval policy
@@ -54,6 +60,8 @@ vault folder left at its old path. Say its records live in its repo; it is not a
 
 This skill's job is **judgment only**: ranking, narration and the agenda. Never re-derive facts
 the JSON already carries; never present a fact the JSON does not back.
+
+**Views.** `--mode now|next|review` keeps, per project, only the plans that mode reads (`now`: active and noted; `next`: active; `review`: active, noted, abandoned and unmeasurable) and counts the rest by kind in `plans_omitted`; `now` also leaves out a project with no such plan and no error. `--compact` prints one line without null, false or empty fields. `--part N` (with `--part-bytes`, default 24000) prints the projects in parts that each name `part` and `parts`, with `couldnt_assess` in part 1 only. With no flag the document is the whole one above. A host that cuts long tool output reads a mode's view part by part, each part from a fresh run of the same scan.
 
 **No JSON means no report.** The scanner prints nothing on stdout and exits non-zero when the
 vault is unset or unreachable or the registry is missing or malformed (exit 1), or when a config

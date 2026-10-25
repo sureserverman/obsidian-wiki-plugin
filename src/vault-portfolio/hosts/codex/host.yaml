@@ -21,11 +21,17 @@ rewrites:
     replace: |
       > **On Codex, this skill runs its scanner itself.** Codex has no plugin commands, so
       > nothing runs the scanner and hands you its JSON. Wherever this skill says the command
-      > runs the scanner, run this one line yourself, once per invocation, exactly so (no flags,
-      > no `cd`, no pipe, no redirection):
-      > `python3 <vault-portfolio-plugin>/skills/compass/scripts/compass-scan.py`
+      > runs the scanner, run this line yourself, exactly so (no other flag, no `cd`, no pipe,
+      > no redirection), with `<mode>` the mode and `<n>` starting at 1:
+      > `python3 <vault-portfolio-plugin>/skills/compass/scripts/compass-scan.py --mode <mode> --compact --part <n>`
+      > Codex cuts a long tool output, and the whole document outgrows that cut on a large
+      > portfolio, so the scanner prints the mode's view one part at a time: each part names
+      > `part` and `parts`; run it again with `<n>` = 2, 3, … through `parts`, once each, and
+      > read the parts' `projects` in order as one list. `couldnt_assess` is in part 1 only.
+      > `--compact` leaves out null, false and empty fields, so a missing field is false or
+      > empty, and `plans_omitted` counts the plans the mode does not read (§ Views).
       > `<vault-portfolio-plugin>` is this plugin's folder, two levels above the folder this
-      > file is in. Keep the scanner's stdout, its stderr and its exit status as printed. The
+      > file is in. Keep each part's stdout, its stderr and its exit status as printed. The
       > mode is the word after `$vault-portfolio:compass`: `now`, `next` or `review`, and
       > nothing means `now`. On anything else, name the three modes and stop without running
       > the scanner. The command's grant is Claude Code's: on Codex, its approval policy

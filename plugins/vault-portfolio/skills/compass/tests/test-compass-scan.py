@@ -537,10 +537,87 @@ def test_plan_enumeration(tmp):
           f"audit-only: {sorted(audited - set(files))})")
 
 
+def run_scan_args(home, *args):
+    return subprocess.run([sys.executable, "-I", str(SCRIPT), *args],
+                          capture_output=True, text=True, env=base_env(home))
+
+
+def test_views_and_parts(tmp):
+    print("views: --mode keeps what each mode reads; --compact; --part pages the projects")
+    home, _vault = make_env(tmp)
+    full = run_scan(home)
+    kinds = {"now": {"active", "noted"}, "next": {"active"},
+             "review": {"active", "noted", "abandoned", "unmeasurable"}}
+
+    def kind(p):
+        if p.get("active"):
+            return "active"
+        for k in ("abandoned", "unmeasurable"):
+            if p.get(k):
+                return k
+        return "noted" if p.get("note") else "done"
+
+    seen = {kind(p) for pr in full["projects"] for p in pr["plans"]}
+    check({"active", "done"} <= seen, f"the fixture holds active and done plans (got {seen})")
+    for mode, keep in kinds.items():
+        r = run_scan_args(home, "--mode", mode)
+        check(r.returncode == 0, f"--mode {mode} exits 0 ({r.stderr.strip()[:200]})")
+        if r.returncode:
+            continue
+        view = json.loads(r.stdout)
+        check(view.get("mode") == mode and view["couldnt_assess"] == full["couldnt_assess"],
+              f"--mode {mode} names its mode and keeps couldnt_assess whole")
+        got = {pr["name"]: pr for pr in view["projects"]}
+        for pr in full["projects"]:
+            kept = [p for p in pr["plans"] if kind(p) in keep]
+            if mode == "now" and not kept and not pr["errors"]:
+                check(pr["name"] not in got, f"now drops {pr['name']}: no plan in flight, no error")
+                continue
+            v = got.get(pr["name"])
+            check(v is not None and v["plans"] == kept,
+                  f"--mode {mode}: {pr['name']} keeps exactly its {sorted(keep)} plans")
+            omitted = {}
+            for p in pr["plans"]:
+                if kind(p) not in keep:
+                    omitted[kind(p)] = omitted.get(kind(p), 0) + 1
+            check(v is not None and v.get("plans_omitted") == omitted,
+                  f"--mode {mode}: {pr['name']} counts what it left out {omitted}")
+    r = run_scan_args(home, "--mode", "review", "--compact")
+    out = r.stdout.strip()
+    check(r.returncode == 0 and out and "\n" not in out, "--compact prints one line")
+
+    def falsy(o):
+        if isinstance(o, dict):
+            return any(v in (None, False, [], {}, "") or falsy(v) for v in o.values())
+        return isinstance(o, list) and any(falsy(v) for v in o)
+    check(r.returncode == 0 and not falsy(json.loads(out)),
+          "--compact leaves out null, false and empty fields")
+    r = run_scan_args(home, "--mode", "review", "--compact", "--part", "1", "--part-bytes", "300")
+    first = json.loads(r.stdout) if r.returncode == 0 else {}
+    n = first.get("parts", 0)
+    check(n > 1 and first.get("part") == 1, f"a small --part-bytes splits the projects (parts {n})")
+    names = []
+    for k in range(1, n + 1):
+        doc = json.loads(run_scan_args(home, "--mode", "review", "--compact", "--part", str(k),
+                                       "--part-bytes", "300").stdout)
+        check(doc.get("part") == k and doc.get("parts") == n, f"part {k} of {n} says so")
+        check(("couldnt_assess" in doc) == (k == 1), f"couldnt_assess rides in part 1 only (part {k})")
+        names += [pr["name"] for pr in doc["projects"]]
+    if n:
+        whole = [pr["name"] for pr in
+                 json.loads(run_scan_args(home, "--mode", "review").stdout)["projects"]]
+        check(names == whole, f"the parts together list every project once, in order ({names})")
+        r = run_scan_args(home, "--mode", "review", "--part", str(n + 1), "--part-bytes", "300")
+        check(r.returncode == 2 and not r.stdout.strip(),
+              "a part past the last exits 2 with nothing on stdout")
+    check(run_scan_args(home).stdout == json.dumps(full, indent=1) + "\n",
+          "with no flags the document is unchanged")
+
+
 def main():
     for test in (test_envelope_and_refusals, test_plan_state, test_partial_and_abandoned,
                  test_signals, test_decisions, test_legacy_unmeasurable, test_business,
-                 test_plan_enumeration):
+                 test_plan_enumeration, test_views_and_parts):
         with tempfile.TemporaryDirectory() as td:
             try:
                 test(Path(td))

@@ -1,7 +1,7 @@
 README.md:
   base_sha256: f7df17aebca0bbdd9fb34efef453b6195b62b8b759f63af4fadb291422a65145
 skills/compass/SKILL.md:
-  base_sha256: 897cb6b30509749ef4ff46ea7e51fd91eae08ad8f20fbc3f21acdb602db8c398
+  base_sha256: 18b405c7d42cea68bbc6ed36d506fd5adfa1c1e30c7c7bbef0254d115f44218a
   depends_on:
     commands/compass.md: c234b41e7fc5fb74c884e788e5578aa7d01b692018d7436d1e84368606099981
 skills/portfolio/SKILL.md:

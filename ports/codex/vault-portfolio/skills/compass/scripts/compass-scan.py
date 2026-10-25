@@ -457,16 +457,89 @@ def business_map():
         return {}
 
 
+# The plans each mode reads (SKILL.md § now / next / review). A plan that is none of
+# active, abandoned, unmeasurable or noted is simply done, and no mode lists it.
+VIEWS = {"now": {"active", "noted"}, "next": {"active"},
+         "review": {"active", "noted", "abandoned", "unmeasurable"}}
+
+
+def plan_kind(plan):
+    if plan.get("active"):
+        return "active"
+    for k in ("abandoned", "unmeasurable"):
+        if plan.get(k):
+            return k
+    return "noted" if plan.get("note") else "done"
+
+
+def view(doc, mode):
+    """The document cut to what `mode` reads: each project keeps the plans of the kinds
+    VIEWS names and counts the rest in plans_omitted; `now` also drops a project with
+    no such plan and no error."""
+    keep, projects = VIEWS[mode], []
+    for pr in doc["projects"]:
+        kept = [p for p in pr["plans"] if plan_kind(p) in keep]
+        omitted = {}
+        for p in pr["plans"]:
+            if plan_kind(p) not in keep:
+                omitted[plan_kind(p)] = omitted.get(plan_kind(p), 0) + 1
+        if mode == "now" and not kept and not pr["errors"]:
+            continue
+        projects.append({**pr, "plans": kept, "plans_omitted": omitted})
+    return {**doc, "mode": mode, "projects": projects}
+
+
+def prune(o):
+    """Drop null, false and empty values, at every depth (--compact)."""
+    if isinstance(o, dict):
+        kept = {k: prune(v) for k, v in o.items()}
+        return {k: v for k, v in kept.items() if v not in (None, False, [], {}, "")}
+    if isinstance(o, list):
+        return [prune(v) for v in o]
+    return o
+
+
+def page(doc, part, budget, size):
+    """Part `part` (1-based) of the document: the projects packed in order into parts of
+    at most `budget` bytes each by `size` (a project larger than the budget gets a part
+    to itself). couldnt_assess rides in part 1 only. None when `part` is past the last."""
+    parts, cur, used = [], [], 0
+    for pr in doc["projects"]:
+        n = size(pr)
+        if cur and used + n > budget:
+            parts.append(cur)
+            cur, used = [], 0
+        cur.append(pr)
+        used += n
+    parts.append(cur)
+    if not 1 <= part <= len(parts):
+        return None
+    out = {k: v for k, v in doc.items() if k not in ("projects", "couldnt_assess")}
+    out.update(part=part, parts=len(parts), projects=parts[part - 1])
+    if part == 1:
+        out["couldnt_assess"] = doc["couldnt_assess"]
+    return out
+
+
 def main():
     # --help answers before any configuration is read: a help request that fails on
     # an unconfigured machine tells the caller nothing about what the script does.
-    argparse.ArgumentParser(
+    ap = argparse.ArgumentParser(
         prog="compass-scan.py",
         description="Gather every enabled registry project's work-state evidence from "
                     "the vault into one JSON document on stdout. Read-only.",
         epilog="Exit codes: 0 the JSON document; 1 unconfigured or unreachable vault, or "
                "a registry that is missing or malformed; 2 a config file that does not "
-               "parse.").parse_args()
+               "parse, a bad argument, or a --part past the last.")
+    ap.add_argument("--mode", choices=sorted(VIEWS),
+                    help="keep only the plans that mode reads; count the rest per project")
+    ap.add_argument("--compact", action="store_true",
+                    help="one line, without null, false or empty fields")
+    ap.add_argument("--part", type=int, metavar="N",
+                    help="print part N of the projects; each part names how many there are")
+    ap.add_argument("--part-bytes", type=int, default=24000, metavar="B",
+                    help="the byte budget of one part (default 24000)")
+    args = ap.parse_args()
     vault, projects = load_env()
     out = {
         "generated": datetime.date.today().isoformat(),
@@ -505,8 +578,20 @@ def main():
                  "path": proj.get("path"), "reason": reason})
         else:
             out["projects"].append(entry)
-    json.dump(out, sys.stdout, indent=1)
-    print()
+    if args.mode:
+        out = view(out, args.mode)
+
+    def dumps(o):
+        if args.compact:
+            return json.dumps(prune(o), separators=(",", ":"), ensure_ascii=False)
+        return json.dumps(o, indent=1)
+
+    if args.part is not None:
+        out = page(out, args.part, args.part_bytes, lambda pr: len(dumps(pr)))
+        if out is None:
+            print(f"compass-scan: --part {args.part} is past the last part", file=sys.stderr)
+            sys.exit(2)
+    print(dumps(out))
 
 
 if __name__ == "__main__":
