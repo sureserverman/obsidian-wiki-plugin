@@ -46,5 +46,8 @@ jobs:
               print(f'ok {p}')
           PY
 
+      - name: No real home or mount path in the tree
+        run: python3 scripts/check-public-tree.py
+
       - name: Test suite
         run: bash tests/run.sh
