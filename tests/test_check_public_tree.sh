@@ -16,6 +16,13 @@ repo "see $H/carol/dev/x"
 python3 "$CHECK" --root "$TMP/r" >/dev/null 2>&1; [ $? -eq 1 ] && ok "a real home path fails" || bad "a real home path passed"
 repo "notes live in $M/vault/Portfolio"
 python3 "$CHECK" --root "$TMP/r" >/dev/null 2>&1; [ $? -eq 1 ] && ok "a real mount path fails" || bad "a real mount path passed"
+E=home
+repo "transcripts in ~/.claude/projects/-$E-carol-dev-x/"
+python3 "$CHECK" --root "$TMP/r" >/dev/null 2>&1; [ $? -eq 1 ] && ok "an encoded Claude project folder fails" || bad "an encoded Claude project folder passed"
+repo "cursor keeps ~/.cursor/projects/$E-carol-dev-x/"
+python3 "$CHECK" --root "$TMP/r" >/dev/null 2>&1; [ $? -eq 1 ] && ok "an encoded Cursor project folder fails" || bad "an encoded Cursor project folder passed"
+repo "e.g. -$E-alice-dev-foo and $E-alice-dev-foo"
+python3 "$CHECK" --root "$TMP/r" >/dev/null 2>&1; [ $? -eq 0 ] && ok "encoded placeholders pass" || bad "an encoded placeholder failed"
 repo 'e.g. /home/alice/dev/foo and /Users/someone/x and /mnt/notes'
 python3 "$CHECK" --root "$TMP/r" >/dev/null 2>&1; [ $? -eq 0 ] && ok "placeholders pass" || bad "a placeholder failed"
 repo 'clean'; mkdir "$TMP/r/d"; ln -s d "$TMP/r/link"; ln -s gone "$TMP/r/dangling"; git -C "$TMP/r" add link dangling

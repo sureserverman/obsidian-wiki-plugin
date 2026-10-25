@@ -2,7 +2,8 @@
 """check-public-tree.py — fail when a tracked file names a real home or mount path.
 
 The repository is public, so no tracked file may point at a maintainer's machine: an
-absolute home path (/home/<name>/, /Users/<name>/) or a private mount (/mnt/<name>/).
+absolute home path (/home/<name>/, /Users/<name>/), a private mount (/mnt/<name>/), or a
+home path as Claude Code and Cursor encode it in a project folder name (-home-<name>-…).
 Documentation uses placeholders instead, listed in PLACEHOLDERS. The check needs no
 private data, so CI can run it on every push.
 
@@ -17,6 +18,9 @@ from pathlib import Path
 
 PLACEHOLDERS = {"alice", "bob", "someone", "x", "you", "example", "notes"}
 PATH_RE = re.compile(r"/(?:home|Users|mnt)/([A-Za-z0-9._-]+)")
+# The same home folder as Claude Code and Cursor encode it in a project folder name:
+# /home/<name>/dev/x becomes -home-<name>-dev-x (Claude) or home-<name>-dev-x (Cursor).
+ENCODED_RE = re.compile(r"(?<![A-Za-z0-9])-?home-([A-Za-z0-9._]+)-")
 
 
 def tracked(root):
@@ -39,7 +43,7 @@ def main():
             if b"\0" in data:
                 continue
             for n, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
-                for m in PATH_RE.finditer(line):
+                for m in (*PATH_RE.finditer(line), *ENCODED_RE.finditer(line)):
                     if m.group(1) not in PLACEHOLDERS:
                         findings.append(f"{rel}:{n}: {m.group(0)}")
     except OSError as e:
