@@ -13,6 +13,7 @@ these rather than handling it here. All but `compass` are planning's skills.
   `maturity`; it owns the axes and the detectors.
 - **decisions** — authors the per-project `decisions.md`; this skill's `decisions` subcommand
   owns the per-domain registers, and `rebuild` rolls both up.
-- **dispatching-parallel-agents** — the per-project fan-out in `maturity`.
+- **No dispatch skill** — `maturity` dispatches its own per-project sub-agents (at most 8 in
+  flight, `subcommand-maturity.md`); planning's dispatch rules bind plan tasks, not this fan-out.
 - **compass** — "what should I work on next", "what's in flight" and periodic-review asks go to
   this plugin's `compass` skill, which reads (never writes) the artifacts this skill maintains.

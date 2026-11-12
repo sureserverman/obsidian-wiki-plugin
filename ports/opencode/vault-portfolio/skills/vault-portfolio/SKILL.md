@@ -182,7 +182,7 @@ Hard rules:
 
 ## Integration
 
-Routes to planning's `planning-projects` and `executing-plans` (which produce and tick the plans `unify` parses), `backlog` (the register `unify` appends to), `project-maturity` (per project, via sub-agent), `decisions` (the per-project register), `dispatching-parallel-agents` (the `maturity` fan-out), and to `compass` (which reads, never writes, the artifacts this skill maintains). What each is for: `references/integration.md`.
+Routes to planning's `planning-projects` and `executing-plans` (which produce and tick the plans `unify` parses), `backlog` (the register `unify` appends to), `project-maturity` (per project, via sub-agent), `decisions` (the per-project register), and to `compass` (which reads, never writes, the artifacts this skill maintains). What each is for: `references/integration.md`.
 
 ## Remember
 
