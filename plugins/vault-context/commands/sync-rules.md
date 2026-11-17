@@ -36,9 +36,10 @@ rule when a file matching its `paths` is read, written or edited.
      also makes `--check` exit 1; running without it does not clear those.
    - **"vault not reachable"** (exit 2) — the vault is not mounted or not configured.
      Every existing rule was left in place.
-   - **"no stack pages in …"** (exit 2) — the vault shows no stack pages while
-     generated rules exist, so nothing was removed. If the owner really deleted every
-     page, they remove the leftover `vault-stack-*.md` files by hand.
+   - **"vault not reachable or empty: no stack pages in …"** (exit 2) — the vault
+     shows no stack pages while generated rules exist, so nothing was removed. Most
+     often the vault is not mounted: check that first. Only if the owner really deleted
+     every page do they remove the leftover `vault-stack-*.md` files by hand.
    - **"file-system error"** (exit 2) — a rule could not be read or written. Rules
      written before the error stay updated; run again once the folder is writable.
    - **usage** (exit 2) — an unsupported `--host` or a `--only` value that is not a slug.

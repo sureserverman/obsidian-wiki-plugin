@@ -254,9 +254,10 @@ def main(argv=None):
             # half-mounted stacks folder. Removing every rule on that evidence
             # is the one mistake this tool must not make.
             if not args.json:
-                print(f"sync-stack-rules: no stack pages in {stacks_dir}, yet "
-                      f"{len(orphans)} generated rule(s) exist; removing none. If every page "
-                      "was deleted on purpose, remove the vault-stack-*.md files by hand",
+                print(f"sync-stack-rules: vault not reachable or empty: no stack pages in "
+                      f"{stacks_dir}, yet {len(orphans)} generated rule(s) exist; removing none. "
+                      "Check that the vault is mounted. Only if every page was deleted on "
+                      "purpose, remove the vault-stack-*.md files by hand",
                       file=sys.stderr)
             rc = 2
         else:
