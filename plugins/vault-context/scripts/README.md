@@ -13,7 +13,10 @@ scripts/
 ├── lib/findings.sh      # shared finding accumulator + JSON contract (vendored; do not fork)
 ├── lib/eligibility.sh   # the "is this directory a project?" rule — one definition, two callers
 ├── validate.sh          # orchestrator — discovers and runs every validate-*.sh, merges, prints a verdict
-└── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
+├── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
+├── validate-stacks.sh   # stack rules in step with the vault's stack pages (maps sync-stack-rules.py --check --lint --json)
+├── sync-stack-rules.py  # writes the generated stack rules; the one definition of stack-rule drift
+└── lib/stack_pages.py   # parses a stack page, matches its globs, decides whether a stack applies
 ```
 
 `lib/eligibility.sh` is shared by three callers deliberately. `write-context.sh`
@@ -44,6 +47,16 @@ project has link state (a `.claude/vault-context.md` sidecar or a CLAUDE.md
 - `link-import-missing` / `link-import-dangling` / `link-import-no-ref` (warn) — the
   sidecar and the CLAUDE.md `@.claude/vault-context.md` import block disagree.
 - `link-sidecar-stale` / `link-index-stale` (info) — freshness nudges.
+
+`validate-stacks.sh` activates only when the resolved vault holds `Portfolio/stacks/`.
+It holds no rule of its own: `sync-stack-rules.py --check --lint --json` decides
+drift, and the validator maps its JSON onto findings:
+
+- `stack-rule-stale` (warn) — a generated rule differs from its page, or its page is gone.
+- `stack-rule-missing` (warn) — a page has no rule yet.
+- `stack-source-missing` (warn) — a page's `sources` names a path that no longer exists.
+- `stack-page-invalid` (error) — the sync tool refuses the page.
+- `stack-rule-foreign` (error) — a `vault-stack-*.md` without the vault-context marker.
 
 The "activate only when the artifact is present" guard lets `validate.sh
 <plugin-root>` (the structural gate) pass trivially green while `validate.sh
