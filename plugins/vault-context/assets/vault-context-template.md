@@ -10,5 +10,7 @@ Re-run `/vault-context:refresh` after new ingests.
 
 <!-- vault-context:body:end -->
 
+<STACKS_BLOCK>
+
 ---
 *Read any listed path directly when you need full content. This file is auto-generated; edits will be overwritten by `/vault-context:refresh`.*
