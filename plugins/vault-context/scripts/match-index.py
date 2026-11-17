@@ -3,7 +3,9 @@
 
 Reads project signals from stdin (one normalized token per line) and a vault
 `index.md` file path from argv[1]. Scores each indexed page by tag/topic/title
-overlap with the signals plus a recency boost, picks the top 30 with score > 0,
+overlap with the signals, each matched token weighted by its rarity across the
+index (`ln(N/df)`), plus a recency boost for pages that matched. Picks the top 30
+matched pages with at most 5 from Plans/ and at most 8 from any other category,
 groups them by category dir, and prints JSON to stdout.
 
 Output JSON shape:
@@ -28,7 +30,8 @@ Output JSON shape:
       }
     }
 
-If fewer than 5 pages score > 0, prints a single line `NO_MATCHES` and exits 0.
+If fewer than 5 pages match a signal token with positive weight, prints a single
+line `NO_MATCHES` and exits 0.
 The caller (write-context.sh) handles both cases.
 
 Self-integration guarantee: a "Portfolio Integrations/" entry whose declaring
@@ -38,10 +41,17 @@ cwd to its slug via the portfolio registry (located by lib/registry_path.py) —
 definite ownership match, not fuzzy signal overlap. Best-effort: if the
 registry is absent or has no entry for cwd, the guarantee is silently skipped.
 
+Own-project guarantee: the "Projects/" page whose title equals the registry slug
+for cwd — else cwd's folder name — compared without case, always surfaces too.
+
+Guaranteed pages are placed first and count toward TOP_N and the category caps,
+so the output never exceeds either.
+
 Pure stdlib. No third-party deps (the registry is read with a line scan, not PyYAML).
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -59,8 +69,12 @@ TITLE_WEIGHT = 1
 RECENCY_BOOST = 0.5
 RECENCY_DAYS = 90
 
-# Output cap
+# Output caps
 TOP_N = 30
+PLANS_CAP = 5
+CATEGORY_CAP = 8
+PLANS_CATEGORY = "Plans/"
+PROJECTS_CATEGORY = "Projects/"
 MIN_MATCHES = 5
 
 # Header regexes for parsing index.md
@@ -193,25 +207,48 @@ def resolve_self_slug():
     return None
 
 
-def score_page(page: dict, signals: set, today: date) -> float:
-    score = 0.0
+def page_fields(page: dict):
+    """(tags, topics, title tokens, alias tokens) as lowercase token sets."""
+    tags = set(page.get("tags", []))
+    topics = {t.lower() for t in page.get("topics", [])}
+    titles = set(title_tokens(page.get("title", "")))
+    aliases = {token for alias in page.get("aliases", []) for token in title_tokens(alias)}
+    return tags, topics, titles, aliases
 
-    # Tag overlap (weight 3)
-    tag_set = set(page.get("tags", []))
-    score += TAG_WEIGHT * len(tag_set & signals)
 
-    # Topic overlap (weight 2) — case-insensitive
-    topic_set = {t.lower() for t in page.get("topics", [])}
-    score += TOPIC_WEIGHT * len(topic_set & signals)
+def token_weights(pages: list, signals: set) -> dict:
+    """Map each signal token to ln(N/df) over the indexed pages.
 
-    # Title-token overlap (weight 1)
-    title_set = set(title_tokens(page.get("title", "")))
-    score += TITLE_WEIGHT * len(title_set & signals)
+    df counts the pages whose tags, topics, title tokens or alias tokens hold the
+    token. A token on every page weighs 0; a token on no page is left out (it can
+    match nothing).
+    """
+    n = len(pages)
+    df = defaultdict(int)
+    for p in pages:
+        for token in set().union(*page_fields(p)) & signals:
+            df[token] += 1
+    return {t: math.log(n / c) for t, c in df.items() if c > 0}
 
-    alias_set = {token for alias in page.get("aliases", []) for token in title_tokens(alias)}
-    score += TITLE_WEIGHT * len(alias_set & signals)
 
-    # Recency boost
+def score_page(page: dict, weights: dict, today: date) -> float:
+    """Weighted overlap score; 0 when no token with positive weight matched.
+
+    The recency boost is added only to pages that matched, so recency alone
+    never makes a page eligible.
+    """
+    tags, topics, titles, aliases = page_fields(page)
+
+    def overlap(field_set):
+        return sum(weights.get(t, 0.0) for t in field_set)
+
+    score = (TAG_WEIGHT * overlap(tags)
+             + TOPIC_WEIGHT * overlap(topics)
+             + TITLE_WEIGHT * overlap(titles)
+             + TITLE_WEIGHT * overlap(aliases))
+    if score <= 0:
+        return 0.0
+
     updated = page.get("updated", "")
     if updated:
         try:
@@ -222,6 +259,37 @@ def score_page(page: dict, signals: set, today: date) -> float:
             pass
 
     return score
+
+
+def category_cap(category: str) -> int:
+    return PLANS_CAP if category == PLANS_CATEGORY else CATEGORY_CAP
+
+
+def select(ranked: list, guaranteed: list) -> list:
+    """Guaranteed pages first, then ranked pages up to TOP_N within the caps."""
+    chosen = []
+    seen = set()
+    per_category = defaultdict(int)
+
+    def take(p):
+        chosen.append(p)
+        seen.add(p["path"] or p["title"])
+        per_category[p.get("category", "")] += 1
+
+    for p in guaranteed:
+        if (p["path"] or p["title"]) not in seen:
+            take(p)
+    for p in ranked:
+        if len(chosen) >= TOP_N:
+            break
+        key = p["path"] or p["title"]
+        cat = p.get("category", "")
+        if key in seen or per_category[cat] >= category_cap(cat):
+            continue
+        take(p)
+
+    chosen.sort(key=lambda p: (-p["score"], p["title"].lower()))
+    return chosen
 
 
 def main():
@@ -245,33 +313,36 @@ def main():
 
     pages, index_date = parse_index(index_path)
     today = date.today()
+    weights = token_weights(pages, signals)
 
-    scored = []
-    for p in pages:
-        s = score_page(p, signals, today)
-        if s > 0:
-            p_with_score = dict(p)
-            p_with_score["score"] = round(s, 2)
-            scored.append(p_with_score)
+    all_scored = [dict(p, score=round(score_page(p, weights, today), 2)) for p in pages]
+    scored = [p for p in all_scored if p["score"] > 0]
 
     if len(scored) < MIN_MATCHES:
         print("NO_MATCHES")
         return
 
     scored.sort(key=lambda p: (-p["score"], p["title"].lower()))
-    top = scored[:TOP_N]
 
-    # Always surface THIS repo's own integration edges, even if the TOP_N cap (or a
-    # low token-overlap score) would drop them. Ownership is resolved from the
-    # registry (cwd -> slug), so it is a definite match, not a guess.
+    # Always surface THIS repo's own integration edges and its own Projects/ page,
+    # even if TOP_N, a category cap or a zero score would drop them. Integration
+    # ownership is resolved from the registry (cwd -> slug), so it is a definite
+    # match, not a guess; the Projects/ page falls back to cwd's folder name.
     self_slug = resolve_self_slug()
-    if self_slug and not any(integration_slug(p) == self_slug for p in top):
-        own = next((p for p in scored if integration_slug(p) == self_slug), None)
-        if own is None:
-            own = next((dict(p, score=round(score_page(p, signals, today), 2))
-                        for p in pages if integration_slug(p) == self_slug), None)
+    project_name = (self_slug or os.path.basename(os.path.realpath(os.getcwd()))).lower()
+    guaranteed = []
+    if self_slug:
+        own = next((p for p in all_scored if integration_slug(p) == self_slug), None)
         if own is not None:
-            top.append(own)
+            guaranteed.append(own)
+    if project_name:
+        own = next((p for p in all_scored
+                    if p.get("category") == PROJECTS_CATEGORY
+                    and p["title"].lower() == project_name), None)
+        if own is not None:
+            guaranteed.append(own)
+
+    top = select(scored, guaranteed)
 
     by_category = defaultdict(list)
     for p in top:
