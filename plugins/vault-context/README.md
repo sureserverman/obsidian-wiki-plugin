@@ -53,7 +53,8 @@ Restart Claude Code (or `/exit` and reopen) for the slash commands to register.
 | `/vault-context:link` | First-time scan: write `.claude/vault-context.md` and add `@`-import to project `CLAUDE.md`. Errors if the sidecar already exists; pass `--force` to overwrite. |
 | `/vault-context:refresh` | Re-scan the project and rewrite the sidecar. Use after vault changes + `/obsidian-wiki:index`. |
 | `/vault-context:status` | Read-only report: vault path, index date, sidecar age, match count, import status. |
-| `/vault-context:unlink` | Remove the sidecar and the delimited block from `CLAUDE.md`. The only destructive command — confirms first. |
+| `/vault-context:unlink` | Remove the sidecar and the delimited block from `CLAUDE.md`. Confirms first. |
+| `/vault-context:sync-rules` | Write, update and remove the generated stack rules (`vault-stack-*.md`) in the Claude rules folder from the vault's stack pages. `--check` writes nothing. Changes only files carrying the vault-context marker. |
 
 ## SessionStart hook
 
@@ -70,6 +71,12 @@ When all five pass, the hook prints a one-line nudge:
 ```
 [vault-context] No vault context for this project yet. Run `/vault-context:link` to scan your vault and surface relevant pages.
 ```
+
+When the sidecar exists instead, the hook prints at most one other line, in this order:
+a refresh nudge when the sidecar is older than `<vault>/index.md` (off with
+`VAULT_CONTEXT_NO_STALENESS_NUDGE=1`, which silences that nudge only), else, when `<vault>/Portfolio/stacks/` exists and
+`sync-stack-rules.py --check` reports drift, "Stack rules are out of date with the
+vault. Run /vault-context:sync-rules."
 
 The hook **never modifies a file**. The user opts in by running the slash command.
 
@@ -95,18 +102,33 @@ Both plugins resolve the vault path the same way (mirrored `scripts/resolve-vaul
 
 - **Tag overlap** (signal token in page's `tags` field) — weight **3**
 - **Topic overlap** (signal token in page's `topics` field) — weight **2**
-- **Title-token overlap** (signal token in page title tokens) — weight **1**
-- **Recency boost** — page `updated:` within last 90 days → flat **+0.5**
+- **Title-token overlap** (signal token in page title or alias tokens) — weight **1**
+- **Rarity** — each matched token's weight is multiplied by `ln(N/df)` (N indexed pages, df pages holding the token), so process words found on many pages count for little
+- **Recency boost** — page `updated:` within last 90 days → **+0.5**, only for a page that already matched
 
-Top 30 pages with score > 0, grouped by category. If fewer than 5 pages match, the matcher emits `NO_MATCHES` and the sidecar says so explicitly — so the SessionStart hook stops prompting.
+Top 30 pages with score > 0, at most **5** `Plans/` pages and **8** per other category, grouped by category. When at least 5 pages match, the project's own `Projects/` page (by title or file name) and its `Portfolio Integrations` page are always included. If fewer than 5 pages match, the matcher emits `NO_MATCHES` and the sidecar says so explicitly — so the SessionStart hook stops prompting.
 
-Matching is intentionally simple (token overlap, no embeddings, no stemming). Swap in `match-index.py` later if you want something fancier; the rest of the plugin doesn't change.
+Matching is token overlap — no embeddings, no stemming. Swap in `match-index.py` later if you want something fancier; the rest of the plugin doesn't change.
+
+## Stack rules
+
+A stack page in the vault (`Portfolio/stacks/<slug>.md`) holds the owner's file-keyed
+facts for one stack, with `paths:` globs saying which files it is about.
+`/vault-context:sync-rules` turns each page into `vault-stack-<slug>.md` in
+`${CLAUDE_CONFIG_DIR:-~/.claude}/rules` (override: `$VAULT_CONTEXT_RULES_DIR`), a
+path-scoped rule Claude Code loads the first time a matching file is read, written or
+edited. Generated copies are real files, so they keep working when the vault is not
+mounted; they go stale when a page is edited, until the next sync. The SessionStart
+hook says so in one line; `/vault-context:status` reports `stack-*` findings. Each
+project's sidecar names the stacks that apply to it under `## Stack rules`. The flow
+is specified in `docs/workflows/WF-STACK-RULES.md`.
 
 ## Safety guarantees
 
 - **Vault is never written.** Only `obsidian-wiki` mutates the vault.
 - **Project `CLAUDE.md` is touched only inside delimited markers.** The plugin owns `<!-- vault-context:start --> ... <!-- vault-context:end -->`. Surrounding content is left byte-identical.
-- **Read-only by default.** `link`, `refresh`, and `unlink` are the only commands that ever write. `status` is read-only.
+- **Read-only by default.** `link`, `refresh`, `unlink` and `sync-rules` are the only commands that ever write. `status` is read-only.
+- **Generated stack rules only.** `sync-rules` writes and removes only `vault-stack-*.md` files that carry its marker, in `${CLAUDE_CONFIG_DIR:-~/.claude}/rules` (or `$VAULT_CONTEXT_RULES_DIR` when set). A same-named file without the marker stops the run untouched, and a missing or empty vault removes nothing.
 - **Hook never modifies files.** It only prints a prompt, and only in a directory `link` would actually accept.
 - **Area directories are refused.** A grouping folder that merely holds project repos never gets a sidecar (exit 4), and the refusal happens before anything is created — no `.claude/` directory, no partial file. A directory counts as a project when no other registered project lives beneath it *and* it is either a git repo or a `path:` in the registry (see vault-portfolio's configuration).
 - **No external services.** Everything runs locally; nothing leaves your machine.

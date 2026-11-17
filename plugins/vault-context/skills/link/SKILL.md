@@ -92,11 +92,15 @@ The matcher scores each index entry by:
 
 - **Tag overlap** (signal token in page's `tags` field) — weight 3 per match
 - **Topic overlap** (signal token in page's `topics` field) — weight 2 per match
-- **Title-token overlap** (signal token appears in page title tokens) — weight 1 per match
+- **Title-token overlap** (signal token appears in page title or alias tokens) — weight 1 per match
+- **Rarity** — each matched token's weight is multiplied by `ln(N/df)`, so a token
+  found on many pages (`plan`, `stage`) counts for little and a rare one counts for much
 - **Recency boost** — page `updated:` within last 90 days → flat +0.5
 
-Output: JSON to stdout. Top 30 pages by score (only those scoring > 0), grouped by
-the category dir parsed from `path:`. If fewer than 5 pages score > 0, the matcher
+Output: JSON to stdout. Top 30 pages by score (only those scoring > 0), at most 5
+`Plans/` pages and 8 per other category, grouped by the category dir parsed from
+`path:`. When at least 5 pages match, the project's own `Projects/` page (by title or
+file name) and its `Portfolio Integrations` page are always included. If fewer than 5 pages score > 0, the matcher
 emits a single line `NO_MATCHES` instead — surface that to the user as
 "no relevant vault pages found for this project" but still write the sidecar so the
 SessionStart hook stops prompting.
@@ -113,7 +117,11 @@ with the matcher's JSON on stdin. The script:
    - [[Page Title]] — `<absolute path>` — <one-line summary from index>
    ```
    Absolute paths so Claude can `Read` them directly without cwd guesswork.
-4. Writes the result to `<cwd>/.claude/vault-context.md`, creating `.claude/` if missing.
+4. Adds a `## Stack rules` block (`scripts/render-stacks.py`) naming each vault stack
+   page whose `paths` match a file the project tracks — omitted when none applies.
+   Those rules load on their own from `~/.claude/rules`; `/vault-context:sync-rules`
+   keeps them in step with the vault.
+5. Writes the result to `<cwd>/.claude/vault-context.md`, creating `.claude/` if missing.
 
 ## Update project CLAUDE.md
 

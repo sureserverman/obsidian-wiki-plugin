@@ -13,7 +13,12 @@ scripts/
 ├── lib/findings.sh      # shared finding accumulator + JSON contract (vendored; do not fork)
 ├── lib/eligibility.sh   # the "is this directory a project?" rule — one definition, two callers
 ├── validate.sh          # orchestrator — discovers and runs every validate-*.sh, merges, prints a verdict
-└── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
+├── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
+├── validate-stacks.sh   # stack rules in step with the vault's stack pages (maps sync-stack-rules.py --check --lint --json)
+├── sync-stack-rules.py  # writes the generated stack rules; the one definition of stack-rule drift
+├── render-stacks.py     # the sidecar's `## Stack rules` block for one project (read-only)
+├── refresh-all.sh       # re-runs the link pipeline for every registered project that has a sidecar
+└── lib/stack_pages.py   # parses a stack page, matches its globs, decides whether a stack applies
 ```
 
 `lib/eligibility.sh` is shared by three callers deliberately. `write-context.sh`
@@ -45,9 +50,27 @@ project has link state (a `.claude/vault-context.md` sidecar or a CLAUDE.md
   sidecar and the CLAUDE.md `@.claude/vault-context.md` import block disagree.
 - `link-sidecar-stale` / `link-index-stale` (info) — freshness nudges.
 
+`validate-stacks.sh` activates only when the resolved vault holds `Portfolio/stacks/`.
+It holds no rule of its own: `sync-stack-rules.py --check --lint --json` decides
+drift, and the validator maps its JSON onto findings:
+
+- `stack-rule-stale` (warn) — a generated rule differs from its page (a hand edit counts), or its page is gone.
+- `stack-rule-missing` (warn) — a page has no rule yet.
+- `stack-source-missing` (warn) — a page's `sources` names a path that no longer exists.
+- `stack-page-invalid` (error) — the sync tool refuses the page.
+- `stack-rule-foreign` (error) — a `vault-stack-*.md` without the vault-context marker.
+- `stack-sync-error` (error) — the sync tool produced no JSON; the message carries its stderr.
+
+Stack rules are user-level, so this slice keys on the machine's vault and rules
+folder, not on the root it is given: on a machine whose vault holds
+`Portfolio/stacks/`, it reports the same findings for every root, the plugin root
+included. Where no vault resolves (CI, a clean machine) it stays silent.
+
 The "activate only when the artifact is present" guard lets `validate.sh
 <plugin-root>` (the structural gate) pass trivially green while `validate.sh
 <project-root>` does the real runtime work — one code path, no false findings.
+The one exception is the stack slice above, whose artifact is the machine's rules
+folder rather than anything under the root.
 
 Run the whole lane:
 

@@ -92,6 +92,17 @@ else
     match_count="$(printf '%s\n' "$rendered" | sed -nE 's/^__MATCH_COUNT__:(.*)/\1/p')"
 fi
 
+# The `## Stack rules` block: the vault stack pages whose `paths:` globs match a
+# file of this project. Empty when none applies; render-stacks.py warns on stderr
+# about a page it cannot parse and skips it, so one broken page never stops the
+# sidecar being written.
+stacks_renderer="$CLAUDE_PLUGIN_ROOT/scripts/render-stacks.py"
+if [ ! -f "$stacks_renderer" ]; then
+    printf 'write-context: stack renderer missing at %s\n' "$stacks_renderer" >&2
+    exit 1
+fi
+stacks_block="$(python3 "$stacks_renderer" "$vault_path" "$project_root")"
+
 # Substitute into the template using a temp file (no `sed -i` quoting headaches)
 tmpfile="$(mktemp)"
 trap 'rm -f "$tmpfile"' EXIT
@@ -101,15 +112,29 @@ trap 'rm -f "$tmpfile"' EXIT
 # as "the entire match"), and vault page titles can contain `&` — e.g.
 # "Backups & Restore".
 body_file="$(mktemp)"
-trap 'rm -f "$tmpfile" "$body_file"' EXIT
+stacks_file="$(mktemp)"
+trap 'rm -f "$tmpfile" "$body_file" "$stacks_file"' EXIT
 printf '%s' "$body" > "$body_file"
+printf '%s' "$stacks_block" > "$stacks_file"
 
 awk -v proj="$project_name" \
     -v dt="$today" \
     -v vp="$vault_path" \
     -v idate="$index_date" \
     -v mcount="$match_count" \
-    -v body_file="$body_file" '
+    -v body_file="$body_file" \
+    -v stacks_file="$stacks_file" \
+    -v stacks_empty="$([ -n "$stacks_block" ] && echo 0 || echo 1)" '
+# With no stack block, drop the placeholder line and the blank line after it,
+# so the sidecar reads exactly as it did before stack blocks existed.
+skip_blank && $0 == "" { skip_blank = 0; next }
+{ skip_blank = 0 }
+$0 == "<STACKS_BLOCK>" {
+    if (stacks_empty) { skip_blank = 1; next }
+    while ((getline line < stacks_file) > 0) print line
+    close(stacks_file)
+    next
+}
 {
     gsub(/<PROJECT_NAME>/, proj)
     gsub(/<DATE>/, dt)
