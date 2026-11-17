@@ -22,6 +22,10 @@
 #   Path B — gate 5b: <cwd>/.claude/vault-context.md exists AND is older
 #                     than <vault>/index.md, AND $VAULT_CONTEXT_NO_STALENESS_NUDGE
 #                     is not set.
+#   Path C — neither A nor B fired, <vault>/Portfolio/stacks/ exists, and
+#            `sync-stack-rules.py --check` reports drift (a page newer than its
+#            rule, a page never synced, or a rule whose page is gone): print the
+#            "run /vault-context:sync-rules" nudge. The check writes nothing.
 #
 # This script never modifies a file.
 
@@ -78,5 +82,20 @@ index_mtime="$(stat -c %Y "$vault/index.md" 2>/dev/null || stat -f %m "$vault/in
 if [ "$sidecar_mtime" -lt "$index_mtime" ]; then
     msg='[vault-context] Sidecar is older than the vault index — run `/vault-context:refresh` to pick up new pages.'
     printf '{"systemMessage":"%s"}\n' "$msg"
+    exit 0
+fi
+
+# Path C — stack rules out of step with their pages. sync-stack-rules.py --check
+# is the one definition of drift; it compares and never writes.
+if [ -d "$vault/Portfolio/stacks" ]; then
+    drift="$(python3 "$script_dir/sync-stack-rules.py" --vault "$vault" --check --json 2>/dev/null \
+        | python3 -c 'import json,sys
+try: d=json.load(sys.stdin)
+except ValueError: sys.exit(0)
+print(1 if any(p.get("state")!="in-sync" for p in d.get("pages",[])) or d.get("orphans") else 0)' 2>/dev/null || true)"
+    if [ "$drift" = 1 ]; then
+        msg='[vault-context] Stack rules are out of date with the vault. Run /vault-context:sync-rules.'
+        printf '{"systemMessage":"%s"}\n' "$msg"
+    fi
 fi
 exit 0

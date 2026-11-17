@@ -72,6 +72,12 @@ When all five pass, the hook prints a one-line nudge:
 [vault-context] No vault context for this project yet. Run `/vault-context:link` to scan your vault and surface relevant pages.
 ```
 
+When the sidecar exists instead, the hook prints at most one other line, in this order:
+a refresh nudge when the sidecar is older than `<vault>/index.md` (off with
+`VAULT_CONTEXT_NO_STALENESS_NUDGE=1`), else, when `<vault>/Portfolio/stacks/` exists and
+`sync-stack-rules.py --check` reports drift, "Stack rules are out of date with the
+vault. Run /vault-context:sync-rules."
+
 The hook **never modifies a file**. The user opts in by running the slash command.
 
 ## Vault discovery
@@ -102,6 +108,19 @@ Both plugins resolve the vault path the same way (mirrored `scripts/resolve-vaul
 Top 30 pages with score > 0, grouped by category. If fewer than 5 pages match, the matcher emits `NO_MATCHES` and the sidecar says so explicitly — so the SessionStart hook stops prompting.
 
 Matching is intentionally simple (token overlap, no embeddings, no stemming). Swap in `match-index.py` later if you want something fancier; the rest of the plugin doesn't change.
+
+## Stack rules
+
+A stack page in the vault (`Portfolio/stacks/<slug>.md`) holds the owner's file-keyed
+facts for one stack, with `paths:` globs saying which files it is about.
+`/vault-context:sync-rules` turns each page into `vault-stack-<slug>.md` in
+`${CLAUDE_CONFIG_DIR:-~/.claude}/rules` (override: `$VAULT_CONTEXT_RULES_DIR`), a
+path-scoped rule Claude Code loads the first time a matching file is read, written or
+edited. Generated copies are real files, so they keep working when the vault is not
+mounted; they go stale when a page is edited, until the next sync. The SessionStart
+hook says so in one line; `/vault-context:status` reports `stack-*` findings. Each
+project's sidecar names the stacks that apply to it under `## Stack rules`. The flow
+is specified in `docs/workflows/WF-STACK-RULES.md`.
 
 ## Safety guarantees
 

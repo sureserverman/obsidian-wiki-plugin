@@ -5,6 +5,8 @@
 #   2. Fresh sidecar       → silent (no output)
 #   3. Stale sidecar       → emits the new "stale, run /vault-context:refresh" nudge
 #   4. Stale + kill switch → silent
+#   5. Stack rules older than their pages → "run /vault-context:sync-rules" nudge,
+#      only when no other nudge fired, and the hook writes no rule
 set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -89,5 +91,57 @@ touch "$V4/index.md"
 OUT4="$( cd "$P4" && OBSIDIAN_VAULT_PATH="$V4" VAULT_CONTEXT_NO_STALENESS_NUDGE=1 bash "$HOOK" )"
 [ -z "$OUT4" ] || fail "kill-switched stale sidecar should be silent, got: $OUT4"
 ok "stale sidecar + VAULT_CONTEXT_NO_STALENESS_NUDGE=1 → silent"
+
+rm -rf "$V4" "$P4"
+
+# --- Stack rules -----------------------------------------------------------
+SYNC="$ROOT/plugins/vault-context/scripts/sync-stack-rules.py"
+STACK_MSG="Stack rules are out of date with the vault. Run /vault-context:sync-rules."
+ws5="$(setup_workspace)"; V5="${ws5%|*}"; P5="${ws5#*|}"
+R5="$(mktemp -d)"
+trap 'rm -rf "$V5" "$P5" "$R5"' EXIT
+export VAULT_CONTEXT_RULES_DIR="$R5"
+mkdir -p "$P5/.claude"
+touch -d '1 hour ago' "$V5/index.md"
+echo "fresh" > "$P5/.claude/vault-context.md"
+
+# 5a. No Portfolio/stacks folder in the vault → silent.
+OUT="$(run_hook "$P5" "$V5")"
+[ -z "$OUT" ] || fail "no stacks folder should be silent, got: $OUT"
+ok "no stacks folder in the vault → silent"
+
+# 5b. Rules in step with their pages → silent.
+mkdir -p "$V5/Portfolio/stacks"
+printf -- '---\nstack: alpha\npaths: ["**/*.rs"]\nsources: ["%s"]\nchecked: 2026-11-17\n---\nAlpha.\n' "$V5" \
+    > "$V5/Portfolio/stacks/alpha.md"
+python3 "$SYNC" --vault "$V5" --rules-dir "$R5" >/dev/null || fail "fixture sync"
+OUT="$(run_hook "$P5" "$V5")"
+[ -z "$OUT" ] || fail "in-sync rules should be silent, got: $OUT"
+ok "rules in step with their pages → silent"
+
+# 5c. A page newer than its rule → the stack-rules nudge, and no file changes.
+printf -- '---\nstack: alpha\npaths: ["**/*.rs"]\nsources: ["%s"]\nchecked: 2026-11-17\n---\nAlpha, edited.\n' "$V5" \
+    > "$V5/Portfolio/stacks/alpha.md"
+before="$(cd "$R5" && find . -type f -exec sha256sum {} + | sort | sha256sum)"
+OUT="$(run_hook "$P5" "$V5")"
+after="$(cd "$R5" && find . -type f -exec sha256sum {} + | sort | sha256sum)"
+case "$OUT" in *"$STACK_MSG"*) ;; *) fail "stack-rules nudge missing: $OUT" ;; esac
+[ "$(printf '%s\n' "$OUT" | grep -c systemMessage)" -eq 1 ] || fail "more than one nudge: $OUT"
+[ "$before" = "$after" ] || fail "the hook changed the rules folder"
+ok "page newer than its rule → one stack-rules nudge, rules folder byte-identical"
+
+# 5d. A stale sidecar wins: one nudge per session, the refresh one.
+touch -d '1 day ago' "$P5/.claude/vault-context.md"; touch "$V5/index.md"
+OUT="$(run_hook "$P5" "$V5")"
+case "$OUT" in *"/vault-context:refresh"*) ;; *) fail "refresh nudge lost beside stale rules: $OUT" ;; esac
+[ "$(printf '%s\n' "$OUT" | grep -c systemMessage)" -eq 1 ] || fail "more than one nudge: $OUT"
+ok "stale sidecar and stale rules → only the refresh nudge"
+
+# 5e. No sidecar: the link nudge, alone.
+rm "$P5/.claude/vault-context.md"
+OUT="$(run_hook "$P5" "$V5")"
+case "$OUT" in *"/vault-context:link"*) ;; *) fail "link nudge lost beside stale rules: $OUT" ;; esac
+[ "$(printf '%s\n' "$OUT" | grep -c systemMessage)" -eq 1 ] || fail "more than one nudge: $OUT"
+ok "no sidecar and stale rules → only the link nudge"
 
 echo "ALL OK"
