@@ -16,7 +16,7 @@ and no roll-up lists it.
 Idempotent: re-running with no upstream change produces byte-identical output
 (timestamp suppressed when content is unchanged).
 """
-import os, re, stat, subprocess, sys, tempfile, yaml, datetime
+import errno, os, re, stat, subprocess, sys, tempfile, yaml, datetime
 from pathlib import Path
 import importlib.util
 
@@ -275,6 +275,22 @@ def require_write(vault):
         sys.exit(f"vault write refused: {e}")
 
 
+def _stat_is_dir(p):
+    """True for a directory, False for a path that is not there; any other OSError raises.
+
+    Path.is_dir() cannot be used for this: from Python 3.14 it returns False on
+    EVERY OSError, so an unreadable vault (EACCES, ESTALE) would read as a missing
+    one. stat() still raises, and only the errnos that mean "not there" (the set
+    Path.is_dir() ignored before 3.14) become False.
+    """
+    try:
+        return stat.S_ISDIR(p.stat().st_mode)
+    except OSError as e:
+        if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EBADF, errno.ELOOP):
+            return False
+        raise
+
+
 def vault_problem(path, source):
     """The vault at `path` if it is REACHABLE, else exit with a specific message.
 
@@ -318,13 +334,12 @@ def vault_problem(path, source):
                       f"relative path, so it names a different directory depending "
                       f"on where you run from — refusing. Use an absolute path.")
     try:
-        existing = path.is_dir()
-        sentinel = existing and (path / "Portfolio").is_dir()
+        existing = _stat_is_dir(path)
+        sentinel = existing and _stat_is_dir(path / "Portfolio")
     except OSError as e:
-        # A vault that cannot be STATTED is unreachable, not a traceback. Newer
-        # Pythons' Path.is_dir() propagate OSError rather than returning False, and
-        # a dropped network mount usually surfaces as EACCES or ESTALE rather than
-        # ENOENT, so this function must turn those into a message too.
+        # A vault that cannot be STATTED is unreachable, not a traceback. A dropped
+        # network mount usually surfaces as EACCES or ESTALE rather than ENOENT, so
+        # this function must turn those into their own message, not "missing".
         return None, (f"vault unreachable: vault {path} (from {source}) could "
                       f"not be read ({e.__class__.__name__}: {e.strerror or e}) — "
                       f"refusing. Check the mount and its permissions.")
