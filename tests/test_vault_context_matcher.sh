@@ -28,10 +28,10 @@ ok()   { echo "  ok: $*"; }
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-mkdir -p "$WORK/home/.claude" "$WORK/alpha" "$WORK/beta" "$WORK/gamma" "$WORK/checkout"
+mkdir -p "$WORK/fakehome/.claude" "$WORK/alpha" "$WORK/beta" "$WORK/gamma" "$WORK/checkout"
 # `checkout` is registered as alpha; the alpha/beta folders are not registered,
 # so they fall back to their folder name.
-cat > "$WORK/home/.claude/projects-registry.yaml" <<YAML
+cat > "$WORK/fakehome/.claude/projects-registry.yaml" <<YAML
 version: 1
 projects:
   - path: $WORK/checkout
@@ -46,7 +46,7 @@ zephyrine"
 
 # run_in <dir> <signals> — run the matcher from <dir>; prints its stdout.
 run_in() {
-    ( cd "$1" && printf '%s\n' "$2" | HOME="$WORK/home" python3 "$MATCH" "$INDEX" )
+    ( cd "$1" && printf '%s\n' "$2" | HOME="$WORK/fakehome" python3 "$MATCH" "$INDEX" )
 }
 
 # count <json> <category> — number of pages listed under <category>.
