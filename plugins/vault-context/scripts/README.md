@@ -16,6 +16,8 @@ scripts/
 ├── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
 ├── validate-stacks.sh   # stack rules in step with the vault's stack pages (maps sync-stack-rules.py --check --lint --json)
 ├── sync-stack-rules.py  # writes the generated stack rules; the one definition of stack-rule drift
+├── render-stacks.py     # the sidecar's `## Stack rules` block for one project (read-only)
+├── refresh-all.sh       # re-runs the link pipeline for every registered project that has a sidecar
 └── lib/stack_pages.py   # parses a stack page, matches its globs, decides whether a stack applies
 ```
 

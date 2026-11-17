@@ -88,4 +88,41 @@ err="$(run --assert bogus=1 2>&1 >/dev/null)"; rc=$?
 [ "$rc" -eq 2 ] || fail "unknown --assert key exit $rc (want 2): $err"
 ok "an unknown --assert key is a usage error (exit 2)"
 
+# --- --simulate runs the shipped matcher from each project folder ------------------
+printf '%s\n' "# Index generated on 2026-11-17" "" "## Projects/" "" "### [[alpha]]" "- path: Projects/alpha.md" \
+    "- tags: zzalpha" "" "### [[Gamma]]" "- path: Projects/gamma.md" "- tags: zzgamma" "" "## Technologies/" "" \
+    "### [[Rust]]" "- path: Technologies/Rust.md" "- tags: rust" > "$V/index.md"
+for i in 1 2 3 4 5 6; do
+    printf '%s\n' "" "### [[Plan $i]]" "- path: Plans/Plan $i.md" "- tags: alpha, beta, gamma, plan" >> "$V/index.md"
+done
+sed -i '0,/## Projects\//s//## Plans\/\n\n### [[Plan 0]]\n- path: Plans\/Plan 0.md\n- tags: plan\n\n## Projects\//' "$V/index.md"
+out="$(run --simulate)"; rc=$?
+[ "$rc" -eq 0 ] || fail "--simulate exit $rc: $out"
+printf '%s' "$out" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert d["mode"] == "simulate" and d["projects"] == 3 and d["left_out"] == [], d
+assert d["stack_block_missing"] is None, d
+assert d["own_project_missing"] == 0, d
+' || fail "--simulate result: $out"
+ok "--simulate measures every linked project with the matcher, own pages kept"
+err="$(run --simulate --assert stack-block-missing-max=0 2>&1 >/dev/null)"; rc=$?
+[ "$rc" -eq 2 ] || fail "--simulate with a stack-block assertion exit $rc (want 2): $err"
+ok "--simulate refuses a stack-block assertion"
+
+# --- a left-out project, or nothing measured, fails the run ------------------------
+if [ "$(id -u)" != 0 ]; then
+    chmod 000 "$P/beta/.claude/vault-context.md"
+    err="$(run 2>&1 >/dev/null)"; rc=$?
+    chmod 644 "$P/beta/.claude/vault-context.md"
+    [ "$rc" -eq 1 ] || fail "an unreadable sidecar exit $rc (want 1): $err"
+    echo "$err" | grep -q 'left out beta' || fail "the left-out project is not named: $err"
+    ok "an unreadable sidecar is named as left out and fails the run"
+fi
+printf 'version: 1\nprojects:\n  - path: %s\n    name: delta\n' "$P/delta" > "$WORK/empty-registry.yaml"
+err="$(python3 "$TOOL" --registry "$WORK/empty-registry.yaml" --vault "$V" --assert plans-median-max=0.25 2>&1 >/dev/null)"; rc=$?
+[ "$rc" -eq 1 ] || fail "nothing measured exit $rc (want 1): $err"
+echo "$err" | grep -q 'no project measured' || fail "nothing measured is not said: $err"
+ok "a registry reaching no sidecar fails rather than passing every bound"
+
 echo "PASS: test_measure_sidecar_mix.sh"

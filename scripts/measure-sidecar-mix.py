@@ -24,7 +24,12 @@ is null there and cannot be asserted.
 bound. Keys: plans-median-max, no-tech-max, own-project-missing-max,
 stack-block-missing-max.
 
-Prints JSON on stdout. Exit 0 ok; 1 an assertion failed; 2 usage or unreadable input.
+A sidecar that cannot be read, or a project the simulated matcher fails on, is listed
+under `left_out` and fails the run, as does measuring no project at all: a bound
+asserted over nothing would pass while measuring nothing.
+
+Prints JSON on stdout. Exit 0 ok; 1 an assertion failed, a project was left out, or
+no project was measured; 2 usage or unreadable input.
 
 This reads the owner's real corpus, so it is a gate command and a task test, never a
 file under tests/test_*.sh (CP DEC-022). It never writes a file.
@@ -70,6 +75,7 @@ def read_registry(path):
         die(f"cannot read registry {path}: {e.strerror}")
     out, cur = [], None
     for line in text.splitlines():
+        line = re.sub(r"\s+#.*$", "", line)
         mp = re.match(r"\s*-\s*path:\s*(.+?)\s*$", line)
         if mp:
             cur = {"path": os.path.expanduser(mp.group(1).strip("\"'"))}
@@ -100,19 +106,25 @@ def parse_sidecar(text):
 
 
 def simulate(project, vault):
-    """{category: [titles]} the shipped matcher would list for this project."""
-    sig = subprocess.run(["bash", os.path.join(SCRIPTS, "extract-project-signals.sh")],
-                         cwd=project, capture_output=True, text=True, timeout=120)
-    if sig.returncode != 0:
+    """{category: [titles]} the shipped matcher would list for this project, or None.
+
+    Judged as a refresh judges it: the signal extractor exits non-zero in a repo with
+    no commits yet still prints its signals, so only the matcher's result counts.
+    """
+    try:
+        sig = subprocess.run(["bash", os.path.join(SCRIPTS, "extract-project-signals.sh")],
+                             cwd=project, capture_output=True, text=True, timeout=120,
+                             stdin=subprocess.DEVNULL)
+        m = subprocess.run([sys.executable, os.path.join(SCRIPTS, "match-index.py"),
+                            os.path.join(vault, "index.md")],
+                           cwd=project, input=sig.stdout, capture_output=True, text=True, timeout=120)
+        if m.returncode != 0:
+            return None
+        if m.stdout.strip().startswith("NO_MATCHES"):
+            return {}
+        data = json.loads(m.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
         return None
-    m = subprocess.run([sys.executable, os.path.join(SCRIPTS, "match-index.py"),
-                        os.path.join(vault, "index.md")],
-                       cwd=project, input=sig.stdout, capture_output=True, text=True, timeout=120)
-    if m.returncode != 0:
-        return None
-    if m.stdout.strip().startswith("NO_MATCHES"):
-        return {}
-    data = json.loads(m.stdout)
     return {c: [p.get("title", "") for p in ps] for c, ps in data.get("matches_by_category", {}).items()}
 
 
@@ -181,19 +193,21 @@ def main():
 
     shares, no_tech, own_missing, stack_missing = [], [], [], []
     measured = 0
+    left_out = []
     for name, path in read_registry(args.registry):
         sidecar = os.path.join(path, ".claude", "vault-context.md")
         if not os.path.isfile(sidecar):
             continue
         try:
             text = open(sidecar, encoding="utf-8", errors="replace").read()
-        except OSError:
+        except OSError as e:
+            left_out.append(f"{name}: sidecar unreadable ({e.strerror})")
             continue
         cats, has_block = parse_sidecar(text)
         if args.simulate:
             sim = simulate(path, vault)
             if sim is None:
-                print(f"measure-sidecar-mix: matcher failed for {name}; left out", file=sys.stderr)
+                left_out.append(f"{name}: matcher failed")
                 continue
             cats = sim
         measured += 1
@@ -220,6 +234,7 @@ def main():
         "no_tech_or_platform": len(no_tech),
         "own_project_missing": len(own_missing),
         "stack_block_missing": None if args.simulate else len(stack_missing),
+        "left_out": left_out,
         "lists": {
             "no_tech_or_platform": no_tech,
             "own_project_missing": own_missing,
@@ -229,6 +244,13 @@ def main():
     print(json.dumps(result, indent=2))
 
     rc = 0
+    for why in left_out:
+        print(f"measure-sidecar-mix: left out {why}", file=sys.stderr)
+        rc = 1
+    if measured == 0:
+        print("measure-sidecar-mix: no project measured — no registered project has a "
+              "readable sidecar", file=sys.stderr)
+        rc = 1
     for key, metric, bound in bounds:
         val = result[metric]
         if val > bound:

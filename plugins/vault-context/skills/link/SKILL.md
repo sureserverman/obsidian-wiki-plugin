@@ -99,8 +99,8 @@ The matcher scores each index entry by:
 
 Output: JSON to stdout. Top 30 pages by score (only those scoring > 0), at most 5
 `Plans/` pages and 8 per other category, grouped by the category dir parsed from
-`path:`. The project's own `Projects/` page and its `Portfolio Integrations` page are
-always included when they exist. If fewer than 5 pages score > 0, the matcher
+`path:`. When at least 5 pages match, the project's own `Projects/` page (by title or
+file name) and its `Portfolio Integrations` page are always included. If fewer than 5 pages score > 0, the matcher
 emits a single line `NO_MATCHES` instead — surface that to the user as
 "no relevant vault pages found for this project" but still write the sidecar so the
 SessionStart hook stops prompting.

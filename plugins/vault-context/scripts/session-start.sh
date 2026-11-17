@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # session-start.sh — SessionStart hook for vault-context.
 #
-# Two paths through this script (only one nudge fires per session):
+# Three paths through this script (only one nudge fires per session):
 #
 # A. NO sidecar yet — print the "no vault context yet, run /vault-context:link"
 #    nudge. Original behavior.
@@ -11,7 +11,10 @@
 #    distributes per-project refresh whenever the user opens a project
 #    after the daily vault-index regen.
 #
-# Common gates (must pass for either path):
+# C. Sidecar exists and is not stale, but the generated stack rules are out of
+#    step with their vault pages — print the "run /vault-context:sync-rules" nudge.
+#
+# Common gates (must pass for every path):
 #   1. Vault is configured (resolve-vault.sh exits 0)
 #   2. <vault>/index.md exists
 #   3. cwd is a directory /link would actually accept (lib/eligibility.sh)
@@ -21,7 +24,7 @@
 #   Path A — gate 5a: <cwd>/.claude/vault-context.md does NOT exist
 #   Path B — gate 5b: <cwd>/.claude/vault-context.md exists AND is older
 #                     than <vault>/index.md, AND $VAULT_CONTEXT_NO_STALENESS_NUDGE
-#                     is not set.
+#                     is not set (the switch silences only this path).
 #   Path C — neither A nor B fired, <vault>/Portfolio/stacks/ exists, and
 #            `sync-stack-rules.py --check` reports drift (a page newer than its
 #            rule, a page never synced, or a rule whose page is gone): print the
@@ -71,24 +74,23 @@ if [ ! -e "$sidecar" ]; then
     exit 0
 fi
 
-# Path B — sidecar exists. If the staleness-nudge kill switch is set, exit.
-[ -n "${VAULT_CONTEXT_NO_STALENESS_NUDGE:-}" ] && exit 0
-
-# Compare mtimes. If the sidecar is older than the vault index, nudge for refresh.
-# stat -c %Y is GNU coreutils; -f %m is BSD/macOS.
-sidecar_mtime="$(stat -c %Y "$sidecar" 2>/dev/null || stat -f %m "$sidecar" 2>/dev/null || printf 0)"
-index_mtime="$(stat -c %Y "$vault/index.md" 2>/dev/null || stat -f %m "$vault/index.md" 2>/dev/null || printf 0)"
-
-if [ "$sidecar_mtime" -lt "$index_mtime" ]; then
-    msg='[vault-context] Sidecar is older than the vault index — run `/vault-context:refresh` to pick up new pages.'
-    printf '{"systemMessage":"%s"}\n' "$msg"
-    exit 0
+# Path B — sidecar exists. Compare mtimes unless the staleness-nudge kill switch is
+# set (it silences this path only). If the sidecar is older than the vault index,
+# nudge for refresh. stat -c %Y is GNU coreutils; -f %m is BSD/macOS.
+if [ -z "${VAULT_CONTEXT_NO_STALENESS_NUDGE:-}" ]; then
+    sidecar_mtime="$(stat -c %Y "$sidecar" 2>/dev/null || stat -f %m "$sidecar" 2>/dev/null || printf 0)"
+    index_mtime="$(stat -c %Y "$vault/index.md" 2>/dev/null || stat -f %m "$vault/index.md" 2>/dev/null || printf 0)"
+    if [ "$sidecar_mtime" -lt "$index_mtime" ]; then
+        msg='[vault-context] Sidecar is older than the vault index — run `/vault-context:refresh` to pick up new pages.'
+        printf '{"systemMessage":"%s"}\n' "$msg"
+        exit 0
+    fi
 fi
 
 # Path C — stack rules out of step with their pages. sync-stack-rules.py --check
 # is the one definition of drift; it compares and never writes.
 if [ -d "$vault/Portfolio/stacks" ]; then
-    drift="$(python3 "$script_dir/sync-stack-rules.py" --vault "$vault" --check --json 2>/dev/null \
+    drift="$(PYTHONDONTWRITEBYTECODE=1 python3 "$script_dir/sync-stack-rules.py" --vault "$vault" --check --json 2>/dev/null \
         | python3 -c 'import json,sys
 try: d=json.load(sys.stdin)
 except ValueError: sys.exit(0)

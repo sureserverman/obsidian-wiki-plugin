@@ -10,7 +10,7 @@ the applying stacks in each project's sidecar.
 - **WF-STACK-RULES-001 — The page.** A stack page is `<vault>/Portfolio/stacks/<slug>.md`.
   Its frontmatter holds exactly `stack` (the slug, equal to the file stem), `paths`
   (globs: `**`, `*`, `?`, `{a,b}`), `sources` (absolute paths the facts were read
-  from), optional `related` (wiki page titles) and `checked` (a date). The body is
+  from), optional `related` (wiki page titles) and the required `checked` (a date). The body is
   at most 8,192 bytes. vault-context never writes it; the owner or a plan does.
 - **WF-STACK-RULES-002 — The sync.** `/vault-context:sync-rules`
   (`scripts/sync-stack-rules.py`) writes `vault-stack-<slug>.md` into
@@ -30,9 +30,11 @@ the applying stacks in each project's sidecar.
   the refresh nudge fired and `sync-stack-rules.py --check` reports drift, the hook
   prints one line: "Stack rules are out of date with the vault. Run
   /vault-context:sync-rules." It never runs the sync itself.
+  `VAULT_CONTEXT_NO_STALENESS_NUDGE=1` silences the refresh nudge only.
 - **WF-STACK-RULES-006 — The lane.** `validate-stacks.sh` reports `stack-rule-stale`,
   `stack-rule-missing`, `stack-source-missing` (warn), `stack-page-invalid` and
-  `stack-rule-foreign` (error) from the same `--check --lint --json` output.
+  `stack-rule-foreign` (error) from the same `--check --lint --json` output, and
+  `stack-sync-error` (error) when that output is not JSON.
 
 ## Invariants
 

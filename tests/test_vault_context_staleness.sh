@@ -130,6 +130,13 @@ case "$OUT" in *"$STACK_MSG"*) ;; *) fail "stack-rules nudge missing: $OUT" ;; e
 [ "$before" = "$after" ] || fail "the hook changed the rules folder"
 ok "page newer than its rule → one stack-rules nudge, rules folder byte-identical"
 
+# 5c'. The staleness kill switch silences the refresh nudge only, not this one.
+touch -d '1 day ago' "$P5/.claude/vault-context.md"; touch "$V5/index.md"
+OUT="$( cd "$P5" && OBSIDIAN_VAULT_PATH="$V5" VAULT_CONTEXT_NO_STALENESS_NUDGE=1 bash "$HOOK" )"
+case "$OUT" in *"$STACK_MSG"*) ;; *) fail "kill switch silenced the stack-rules nudge: $OUT" ;; esac
+ok "VAULT_CONTEXT_NO_STALENESS_NUDGE=1 with stale rules → the stack-rules nudge still fires"
+touch -d '1 hour ago' "$V5/index.md"; touch "$P5/.claude/vault-context.md"
+
 # 5d. A stale sidecar wins: one nudge per session, the refresh one.
 touch -d '1 day ago' "$P5/.claude/vault-context.md"; touch "$V5/index.md"
 OUT="$(run_hook "$P5" "$V5")"

@@ -44,6 +44,7 @@ import os, re, sys
 cur = None
 out = []
 for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    line = re.sub(r"\s+#.*$", "", line)
     mp = re.match(r"\s*-\s*path:\s*(.+?)\s*$", line)
     if mp:
         cur = {"path": os.path.expanduser(mp.group(1).strip("\"'"))}
@@ -82,10 +83,12 @@ while IFS=$'\t' read -r path name; do
     # extractor exits non-zero in a repo with no commits yet still prints its signals,
     # and a matcher failure reaches write-context.sh as input it refuses.
     if ( cd "$phys" \
-         && bash "$SCRIPTS/extract-project-signals.sh" \
+         && bash "$SCRIPTS/extract-project-signals.sh" </dev/null \
           | python3 "$SCRIPTS/match-index.py" "$VAULT/index.md" \
           | bash "$SCRIPTS/write-context.sh" "$name" "$VAULT" "$sidecar" >/dev/null ) 2>"$errf"; then
         echo "refreshed: $name"; refreshed=$((refreshed + 1))
+        # Keep warnings a successful run printed (an unparseable stack page, say).
+        grep -E '^(render-stacks|sync-stack-rules|write-context):' "$errf" | sed "s|^|  $name: |" || true
     else
         echo "FAILED: $name ($path): $(tail -n 3 "$errf" | tr '\n' ' ')"; failed=$((failed + 1))
     fi

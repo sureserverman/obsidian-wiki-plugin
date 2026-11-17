@@ -74,7 +74,7 @@ When all five pass, the hook prints a one-line nudge:
 
 When the sidecar exists instead, the hook prints at most one other line, in this order:
 a refresh nudge when the sidecar is older than `<vault>/index.md` (off with
-`VAULT_CONTEXT_NO_STALENESS_NUDGE=1`), else, when `<vault>/Portfolio/stacks/` exists and
+`VAULT_CONTEXT_NO_STALENESS_NUDGE=1`, which silences that nudge only), else, when `<vault>/Portfolio/stacks/` exists and
 `sync-stack-rules.py --check` reports drift, "Stack rules are out of date with the
 vault. Run /vault-context:sync-rules."
 
@@ -102,12 +102,13 @@ Both plugins resolve the vault path the same way (mirrored `scripts/resolve-vaul
 
 - **Tag overlap** (signal token in page's `tags` field) — weight **3**
 - **Topic overlap** (signal token in page's `topics` field) — weight **2**
-- **Title-token overlap** (signal token in page title tokens) — weight **1**
-- **Recency boost** — page `updated:` within last 90 days → flat **+0.5**
+- **Title-token overlap** (signal token in page title or alias tokens) — weight **1**
+- **Rarity** — each matched token's weight is multiplied by `ln(N/df)` (N indexed pages, df pages holding the token), so process words found on many pages count for little
+- **Recency boost** — page `updated:` within last 90 days → **+0.5**, only for a page that already matched
 
-Top 30 pages with score > 0, grouped by category. If fewer than 5 pages match, the matcher emits `NO_MATCHES` and the sidecar says so explicitly — so the SessionStart hook stops prompting.
+Top 30 pages with score > 0, at most **5** `Plans/` pages and **8** per other category, grouped by category. When at least 5 pages match, the project's own `Projects/` page (by title or file name) and its `Portfolio Integrations` page are always included. If fewer than 5 pages match, the matcher emits `NO_MATCHES` and the sidecar says so explicitly — so the SessionStart hook stops prompting.
 
-Matching is intentionally simple (token overlap, no embeddings, no stemming). Swap in `match-index.py` later if you want something fancier; the rest of the plugin doesn't change.
+Matching is token overlap — no embeddings, no stemming. Swap in `match-index.py` later if you want something fancier; the rest of the plugin doesn't change.
 
 ## Stack rules
 
