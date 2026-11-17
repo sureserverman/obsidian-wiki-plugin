@@ -41,8 +41,10 @@ cwd to its slug via the portfolio registry (located by lib/registry_path.py) —
 definite ownership match, not fuzzy signal overlap. Best-effort: if the
 registry is absent or has no entry for cwd, the guarantee is silently skipped.
 
-Own-project guarantee: the "Projects/" page whose title equals the registry slug
-for cwd — else cwd's folder name — compared without case, always surfaces too.
+Own-project guarantee: the "Projects/" page whose title or file name (the path's
+stem, `Projects/<slug>.md`) equals the registry slug for cwd — else cwd's folder
+name — compared without case, always surfaces too. Many project pages carry a
+display title ("Alpha Widget") over a slug file name (alpha-widget.md).
 
 Guaranteed pages are placed first and count toward TOP_N and the category caps,
 so the output never exceeds either.
@@ -336,9 +338,11 @@ def main():
         if own is not None:
             guaranteed.append(own)
     if project_name:
-        own = next((p for p in all_scored
-                    if p.get("category") == PROJECTS_CATEGORY
-                    and p["title"].lower() == project_name), None)
+        def is_own(p):
+            stem = os.path.splitext(os.path.basename(p.get("path", "")))[0].lower()
+            return p.get("category") == PROJECTS_CATEGORY and project_name in (p["title"].lower(), stem)
+        own = next((p for p in all_scored if p["title"].lower() == project_name and is_own(p)), None) \
+            or next((p for p in all_scored if is_own(p)), None)
         if own is not None:
             guaranteed.append(own)
 

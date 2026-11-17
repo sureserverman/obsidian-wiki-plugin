@@ -28,7 +28,7 @@ ok()   { echo "  ok: $*"; }
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-mkdir -p "$WORK/home/.claude" "$WORK/alpha" "$WORK/beta" "$WORK/checkout"
+mkdir -p "$WORK/home/.claude" "$WORK/alpha" "$WORK/beta" "$WORK/gamma" "$WORK/checkout"
 # `checkout` is registered as alpha; the alpha/beta folders are not registered,
 # so they fall back to their folder name.
 cat > "$WORK/home/.claude/projects-registry.yaml" <<YAML
@@ -104,6 +104,10 @@ ok "cwd named alpha → Projects/alpha kept although it scores 0"
 out_beta="$(run_in "$WORK/beta" "$SIGNALS")" || fail "matcher exited non-zero in beta"
 has "$out_beta" "alpha" && fail "Projects/alpha present when cwd is named beta"
 ok "cwd named beta → Projects/alpha absent"
+
+out_gamma="$(run_in "$WORK/gamma" "$SIGNALS")" || fail "matcher exited non-zero in gamma"
+has "$out_gamma" "Gamma Tool" || fail "Projects/gamma.md (titled Gamma Tool) missing when cwd is named gamma"
+ok "cwd named gamma → Projects/gamma.md kept by its file name although its title differs"
 
 # --- Test 5: registry slug and the own Portfolio Integrations page -----------
 out_reg="$(run_in "$WORK/checkout" "$SIGNALS")" || fail "matcher exited non-zero in checkout"

@@ -445,6 +445,14 @@ Pages indexed: 55
 - aliases: 
 - updated: 2020-01-01
 
+### [[Gamma Tool]]
+- path: Projects/gamma.md
+- summary: Fixture page whose title differs from its file name.
+- tags: project
+- topics: 
+- aliases: 
+- updated: 2020-01-01
+
 ## Technologies/
 
 ### [[Zephyrine]]
