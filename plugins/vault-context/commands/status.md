@@ -29,7 +29,7 @@ file.
    - `link-import-dangling` (warn) — CLAUDE.md imports a sidecar that doesn't exist.
    - `link-import-no-ref` (warn) — markers present but no `@.claude/vault-context.md`.
    - `link-sidecar-stale` / `link-index-stale` (info) — freshness nudges.
-   - `stack-rule-stale` / `stack-rule-missing` (warn) — a stack rule is older than
+   - `stack-rule-stale` / `stack-rule-missing` (warn) — a stack rule differs from
      its vault page, its page is gone, or a page was never synced; suggest
      `/vault-context:sync-rules`.
    - `stack-source-missing` (warn) — a stack page's `sources` names a path that no
@@ -38,6 +38,8 @@ file.
      page and the reason from the message.
    - `stack-rule-foreign` (error) — a `vault-stack-*.md` in the rules folder was not
      written by vault-context; the user renames or removes it.
+
+   - `stack-sync-error` (error) — the sync tool itself failed; report its message.
 
    The `stack-*` findings come only when the vault holds `Portfolio/stacks/`.
 

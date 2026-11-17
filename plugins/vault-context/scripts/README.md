@@ -52,15 +52,23 @@ project has link state (a `.claude/vault-context.md` sidecar or a CLAUDE.md
 It holds no rule of its own: `sync-stack-rules.py --check --lint --json` decides
 drift, and the validator maps its JSON onto findings:
 
-- `stack-rule-stale` (warn) — a generated rule differs from its page, or its page is gone.
+- `stack-rule-stale` (warn) — a generated rule differs from its page (a hand edit counts), or its page is gone.
 - `stack-rule-missing` (warn) — a page has no rule yet.
 - `stack-source-missing` (warn) — a page's `sources` names a path that no longer exists.
 - `stack-page-invalid` (error) — the sync tool refuses the page.
 - `stack-rule-foreign` (error) — a `vault-stack-*.md` without the vault-context marker.
+- `stack-sync-error` (error) — the sync tool produced no JSON; the message carries its stderr.
+
+Stack rules are user-level, so this slice keys on the machine's vault and rules
+folder, not on the root it is given: on a machine whose vault holds
+`Portfolio/stacks/`, it reports the same findings for every root, the plugin root
+included. Where no vault resolves (CI, a clean machine) it stays silent.
 
 The "activate only when the artifact is present" guard lets `validate.sh
 <plugin-root>` (the structural gate) pass trivially green while `validate.sh
 <project-root>` does the real runtime work — one code path, no false findings.
+The one exception is the stack slice above, whose artifact is the machine's rules
+folder rather than anything under the root.
 
 Run the whole lane:
 

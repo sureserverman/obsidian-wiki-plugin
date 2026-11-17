@@ -40,10 +40,10 @@ json.dump({"hooks": {"InstructionsLoaded": [{"hooks": [{"type": "command", "comm
 EOF
 
 (cd "$proj" && claude -p "Read the file $sample and reply with its first line only." \
-    --allowedTools Read --max-turns 4 --settings "$work/settings.json") \
+    --allowedTools Read --max-turns 4 --settings "$work/settings.json" </dev/null) \
     > "$work/claude.out" 2>&1 || true
 
-python3 - "$log" "$slug" <<'EOF'
+python3 - "$log" "$slug" "$work/claude.out" <<'EOF'
 import json, sys
 log, slug = sys.argv[1], sys.argv[2]
 want = f"vault-stack-{slug}.md"
@@ -73,5 +73,11 @@ for path, reason in seen:
         sys.exit(0)
 print(f"NOT LOADED: no InstructionsLoaded entry for {want} with load_reason path_glob_match "
       f"({len(seen)} load event(s) logged)")
+try:
+    tail = open(sys.argv[3], errors="replace").read()[-400:].strip()
+except OSError:
+    tail = ""
+if tail:
+    print("claude output (tail): " + tail.replace("\n", " | "))
 sys.exit(1)
 EOF

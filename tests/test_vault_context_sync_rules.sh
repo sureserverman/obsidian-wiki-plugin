@@ -191,6 +191,14 @@ echo "$out" | grep -q 'delta' || fail "refusal does not name the page: $out"
 [ -e "$R/vault-stack-delta.md" ] && fail "a rule was written for the invalid page"
 ok "a page with no paths is refused by name and gets no rule"
 
+# In a full write run a refused page does not stop the others.
+page alpha '["**/*.rs", "**/Cargo.toml"]' "$WORK/alpha-src.txt" $'# Alpha\n\nMixed-run edit.\n'
+out="$(sync 2>&1)"; rc=$?
+[ "$rc" -eq 1 ] || fail "write run with one refused page exit $rc (want 1): $out"
+grep -q 'Mixed-run edit' "$R/vault-stack-alpha.md" || fail "the valid page was not synced beside the refused one"
+[ -e "$R/vault-stack-delta.md" ] && fail "a rule was written for the refused page in a full run"
+ok "in a full run the refused page gets no rule and the valid pages still sync"
+
 # --- 10. usage refusals --------------------------------------------------------
 out="$(sync --host cursor 2>&1)"; rc=$?
 [ "$rc" -eq 2 ] || fail "--host cursor exit $rc (want 2): $out"

@@ -5,7 +5,7 @@
 # `sync-stack-rules.py --check --lint --json` — the one definition of drift — and
 # maps that JSON onto findings:
 #
-#   stack-rule-stale     (warn)  a rule is older than its page, or its page is gone
+#   stack-rule-stale     (warn)  a rule differs from its page, or its page is gone
 #   stack-rule-missing   (warn)  a page has never been synced
 #   stack-source-missing (warn)  a page's `sources` names a path that no longer exists
 #   stack-page-invalid   (error) a page the sync tool refuses to parse
@@ -31,10 +31,11 @@ if [ -z "$vault" ] || [ ! -d "$vault/Portfolio/stacks" ]; then
   render_findings "validate-stacks.sh" "$ROOT"; exit $?
 fi
 
-out="$(python3 "$DIR/sync-stack-rules.py" --vault "$vault" --check --lint --json 2>/dev/null || true)"
+errf="$(mktemp)"; trap 'rm -f "$errf"' EXIT
+out="$(python3 "$DIR/sync-stack-rules.py" --vault "$vault" --check --lint --json 2>"$errf" || true)"
 if ! printf '%s' "$out" | jq -e '.pages' >/dev/null 2>&1; then
   add_finding error stack-sync-error stacks "scripts/sync-stack-rules.py" 0 \
-    "sync-stack-rules.py --check --lint --json produced no valid JSON"
+    "sync-stack-rules.py --check --lint --json produced no valid JSON: $(tail -c 300 "$errf" | tr '\n' ' ')"
   render_findings "validate-stacks.sh" "$ROOT"; exit $?
 fi
 
@@ -44,7 +45,7 @@ while IFS=$'\t' read -r sev rule path msg; do
   add_finding "$sev" "$rule" stacks "$path" 0 "$msg"
 done < <(printf '%s' "$out" | jq -r --arg fix "$FIX" '
   ( .pages[] | select(.state=="stale")
-      | ["warn","stack-rule-stale",.rule,"rule for stack \(.slug) is older than its page — \($fix)"] ),
+      | ["warn","stack-rule-stale",.rule,"rule for stack \(.slug) differs from its page — \($fix)"] ),
   ( .pages[] | select(.state=="missing")
       | ["warn","stack-rule-missing",.rule,"stack \(.slug) has no rule yet — \($fix)"] ),
   ( .orphans[]

@@ -53,7 +53,8 @@ Restart Claude Code (or `/exit` and reopen) for the slash commands to register.
 | `/vault-context:link` | First-time scan: write `.claude/vault-context.md` and add `@`-import to project `CLAUDE.md`. Errors if the sidecar already exists; pass `--force` to overwrite. |
 | `/vault-context:refresh` | Re-scan the project and rewrite the sidecar. Use after vault changes + `/obsidian-wiki:index`. |
 | `/vault-context:status` | Read-only report: vault path, index date, sidecar age, match count, import status. |
-| `/vault-context:unlink` | Remove the sidecar and the delimited block from `CLAUDE.md`. The only destructive command — confirms first. |
+| `/vault-context:unlink` | Remove the sidecar and the delimited block from `CLAUDE.md`. Confirms first. |
+| `/vault-context:sync-rules` | Write, update and remove the generated stack rules (`vault-stack-*.md`) in the Claude rules folder from the vault's stack pages. `--check` writes nothing. Changes only files carrying the vault-context marker. |
 
 ## SessionStart hook
 
@@ -106,7 +107,8 @@ Matching is intentionally simple (token overlap, no embeddings, no stemming). Sw
 
 - **Vault is never written.** Only `obsidian-wiki` mutates the vault.
 - **Project `CLAUDE.md` is touched only inside delimited markers.** The plugin owns `<!-- vault-context:start --> ... <!-- vault-context:end -->`. Surrounding content is left byte-identical.
-- **Read-only by default.** `link`, `refresh`, and `unlink` are the only commands that ever write. `status` is read-only.
+- **Read-only by default.** `link`, `refresh`, `unlink` and `sync-rules` are the only commands that ever write. `status` is read-only.
+- **Generated stack rules only.** `sync-rules` writes and removes only `vault-stack-*.md` files that carry its marker, in `${CLAUDE_CONFIG_DIR:-~/.claude}/rules` (or `$VAULT_CONTEXT_RULES_DIR` when set). A same-named file without the marker stops the run untouched, and a missing or empty vault removes nothing.
 - **Hook never modifies files.** It only prints a prompt, and only in a directory `link` would actually accept.
 - **Area directories are refused.** A grouping folder that merely holds project repos never gets a sidecar (exit 4), and the refusal happens before anything is created — no `.claude/` directory, no partial file. A directory counts as a project when no other registered project lives beneath it *and* it is either a git repo or a `path:` in the registry (see vault-portfolio's configuration).
 - **No external services.** Everything runs locally; nothing leaves your machine.

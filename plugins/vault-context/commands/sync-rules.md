@@ -23,16 +23,25 @@ rule when a file matching its `paths` is read, written or edited.
    removed and left unchanged (or, with `--check`, which stacks are `missing`, `stale`
    or `orphan`).
 
-3. On a non-zero exit, say why and what fixes it:
-   - **exit 1, "page refused"** — the named stack page has a defect (no `paths`, an
-     unsupported glob, an unknown frontmatter key, a body over 8,192 bytes). Nothing
-     was written for that page. Fix the page in the vault, then run this again.
-   - **exit 1, "refusing: … has no vault-context marker"** — a file named
-     `vault-stack-*.md` in the rules folder was not written by this tool. Nothing was
-     written. The user renames or removes it; never delete it yourself.
-   - **exit 1 under `--check`** — drift; run `/vault-context:sync-rules` without it.
-   - **exit 2, "vault not reachable"** — the vault is not mounted or not configured.
+3. On a non-zero exit, read the stderr lines and report each cause:
+   - **"page refused: <page>: <reason>"** (exit 1) — that stack page has a defect (no
+     `paths`, an unsupported glob, an unknown frontmatter key, a body over 8,192
+     bytes). No rule was written or updated for it; its old rule, if any, stays. The
+     other pages were still synced. Fix the page in the vault, then run this again.
+   - **"refusing: … has no vault-context marker"** (exit 1) — a file named
+     `vault-stack-*.md` in the rules folder was not written by this tool. Nothing at
+     all was written. The user renames or removes it; never delete it yourself.
+   - **`--check` lines `missing:`, `stale:`, `orphan:`** (exit 1) — drift; run
+     `/vault-context:sync-rules` without `--check`. A refused page or a foreign file
+     also makes `--check` exit 1; running without it does not clear those.
+   - **"vault not reachable"** (exit 2) — the vault is not mounted or not configured.
      Every existing rule was left in place.
+   - **"no stack pages in …"** (exit 2) — the vault shows no stack pages while
+     generated rules exist, so nothing was removed. If the owner really deleted every
+     page, they remove the leftover `vault-stack-*.md` files by hand.
+   - **"file-system error"** (exit 2) — a rule could not be read or written. Rules
+     written before the error stay updated; run again once the folder is writable.
+   - **usage** (exit 2) — an unsupported `--host` or a `--only` value that is not a slug.
 
 Only the rules folder is written, and only files carrying the
 `vault-context:stack-rule` marker. The vault is never modified.

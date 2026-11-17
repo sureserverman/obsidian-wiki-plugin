@@ -84,6 +84,18 @@ printf '%s' "$out" | jq -e '[.findings[] | select(.rule=="stack-rule-missing")][
     || fail "missing finding does not name gamma: $out"
 ok "stale, missing, source-missing (warn) and page-invalid, rule-foreign (error) are each reported"
 
+# A rule whose page is gone is reported stale.
+rm "$ST/gamma.md" "$ST/delta.md" "$R/vault-stack-epsilon.md"
+python3 "$SYNC" --vault "$V" --rules-dir "$R" >/dev/null 2>&1
+rm "$ST/alpha.md"
+out="$(run_lane)"
+printf '%s' "$out" | jq -e '[.findings[] | select(.rule=="stack-rule-stale" and (.path|test("vault-stack-alpha")) and (.message|test("gone")))] | length == 1' >/dev/null \
+    || fail "orphan rule not reported as stack-rule-stale: $out"
+ok "a rule whose page is gone is reported as stack-rule-stale"
+page alpha "paths: [\"**/*.rs\"]
+sources: [\"$WORK/src.txt\"]" "Alpha."
+printf -- '---\npaths: ["**/*.c"]\n---\nHand written.\n' > "$R/vault-stack-epsilon.md"
+
 # The orchestrator picks the lane up.
 out="$(bash "$SCRIPTS/validate.sh" "$P" --json 2>/dev/null)"
 has "$out" stack-rule-foreign error || fail "validate.sh does not carry the stack lane: $out"

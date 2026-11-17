@@ -6,8 +6,8 @@ rules folder: frontmatter holding only `paths`, then a marker line, then the
 page body byte for byte. Claude Code loads the rule when a matching file is
 read, written or edited.
 
-The marker is an HTML comment (Claude Code strips block-level comments before
-the text reaches the model):
+The marker is an HTML comment, so a renderer shows nothing for it (Claude Code
+documents stripping block-level comments for CLAUDE.md files):
 
     <!-- vault-context:stack-rule source=<slug> sha256=<sha256 of the page file> -->
 
@@ -17,7 +17,8 @@ folder is never read.
 
 Modes:
   (default)   write, update and remove rules; print how many
-  --check     compare only; exit 1 on any drift (missing, stale, orphan rule)
+  --check     compare only; exit 1 on any drift (missing, stale, orphan rule),
+              a refused page or a foreign file
   --lint      validate pages only, including that every `sources` path exists
   --json      print the result as JSON
 
@@ -253,8 +254,10 @@ def main(argv=None):
             # half-mounted stacks folder. Removing every rule on that evidence
             # is the one mistake this tool must not make.
             if not args.json:
-                print(f"sync-stack-rules: vault not reachable: no stack pages in {stacks_dir}; "
-                      f"leaving {len(orphans)} rule(s) in place", file=sys.stderr)
+                print(f"sync-stack-rules: no stack pages in {stacks_dir}, yet "
+                      f"{len(orphans)} generated rule(s) exist; removing none. If every page "
+                      "was deleted on purpose, remove the vault-stack-*.md files by hand",
+                      file=sys.stderr)
             rc = 2
         else:
             pending = [s for s in states if s["state"] != "in-sync"]
