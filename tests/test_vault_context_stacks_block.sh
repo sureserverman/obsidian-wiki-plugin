@@ -65,7 +65,7 @@ REGISTRY="$WORK/projects-registry.yaml"
 export VAULT_CONTEXT_REGISTRY="$REGISTRY"
 
 # --- fixture projects --------------------------------------------------------
-# make_project <dir> <file> — a git repo with <file> staged (git ls-files sees it).
+# make_project <dir> <file> — a git repo with <file> added to the index (git ls-files sees it).
 make_project() {
     mkdir -p "$1/$(dirname "$2")"
     printf 'x\n' > "$1/$2"
