@@ -54,11 +54,13 @@ Restart Claude Code (or `/exit` and reopen) for the slash commands to register.
 | `/vault-context:refresh` | Re-scan the project and rewrite the sidecar. Use after vault changes + `/obsidian-wiki:index`. |
 | `/vault-context:status` | Read-only report: vault path, index date, sidecar age, match count, import status. |
 | `/vault-context:unlink` | Remove the sidecar and the delimited block from `CLAUDE.md`. Confirms first. |
-| `/vault-context:sync-rules` | Write, update and remove the generated stack rules (`vault-stack-*.md`) in the Claude rules folder from the vault's stack pages. `--check` writes nothing. Changes only files carrying the vault-context marker. |
+| `/vault-context:sync-rules` | Write, update and remove the generated stack copies (`vault-stack-*.md`) in `${CLAUDE_CONFIG_DIR:-~/.claude}/vault-stacks` from the vault's stack pages, and remove copies an older release left in the Claude rules folder. `--check` writes nothing. Changes only files carrying the vault-context marker. |
 
-## SessionStart hook
+## SessionStart hooks
 
-A `SessionStart` hook ships with the plugin. It checks five gates and exits silently unless **all** of them pass:
+Two `SessionStart` hooks ship with the plugin, both on `startup|resume|clear|compact`.
+`scripts/stack-context.py` adds the stack pages that apply to the project (see
+[Stack rules](#stack-rules)). `scripts/session-start.sh` nudges; it checks five gates and exits silently unless **all** of them pass:
 
 1. A vault is configured (env var, config file, or fallback)
 2. `<vault>/index.md` exists
@@ -75,10 +77,11 @@ When all five pass, the hook prints a one-line nudge:
 When the sidecar exists instead, the hook prints at most one other line, in this order:
 a refresh nudge when the sidecar is older than `<vault>/index.md` (off with
 `VAULT_CONTEXT_NO_STALENESS_NUDGE=1`, which silences that nudge only), else, when `<vault>/Portfolio/stacks/` exists and
-`sync-stack-rules.py --check` reports drift, "Stack rules are out of date with the
+`sync-stack-rules.py --check` reports drift (a copy `missing`, `stale`, `orphan`, or a
+`legacy` copy left in the Claude rules folder), "Stack rules are out of date with the
 vault. Run /vault-context:sync-rules."
 
-The hook **never modifies a file**. The user opts in by running the slash command.
+Neither hook **ever modifies a file**. The user opts in by running the slash command.
 
 ## Vault discovery
 
@@ -114,12 +117,23 @@ Matching is token overlap — no embeddings, no stemming. Swap in `match-index.p
 
 A stack page in the vault (`Portfolio/stacks/<slug>.md`) holds the owner's file-keyed
 facts for one stack, with `paths:` globs saying which files it is about.
-`/vault-context:sync-rules` turns each page into `vault-stack-<slug>.md` in
-`${CLAUDE_CONFIG_DIR:-~/.claude}/rules` (override: `$VAULT_CONTEXT_RULES_DIR`), a
-path-scoped rule Claude Code loads the first time a matching file is read, written or
-edited. Generated copies are real files, so they keep working when the vault is not
-mounted; they go stale when a page is edited, until the next sync. The SessionStart
-hook says so in one line; `/vault-context:status` reports `stack-*` findings. Each
+`/vault-context:sync-rules` copies each page to `vault-stack-<slug>.md` in
+`${CLAUDE_CONFIG_DIR:-~/.claude}/vault-stacks` (override: `--stacks-dir` or
+`$VAULT_CONTEXT_STACKS_DIR`): frontmatter holding only `paths`, a marker line, then the
+page body. At session start, resume, `/clear` and compaction, `scripts/stack-context.py`
+takes the project root (the git top level of the session's folder, else the folder),
+and adds every copy whose `paths` match a file the project holds to the session's
+context, whole, up to 9,500 characters in all (Claude Code caps one hook at 10,000); a
+copy that does not fit is named in one line with its path, to read. A project with no
+matching file gets nothing; the page arrives at the next session start or `/clear`
+after the first matching file is tracked. The hook reads only local files, never the
+vault, and prints nothing on any error.
+
+Generated copies are real files, so they keep working when the vault is not mounted;
+they go stale when a page is edited, until the next sync. vault-context 0.6 wrote the
+copies into `${CLAUDE_CONFIG_DIR:-~/.claude}/rules` instead, where Claude Code loads
+them only when the model touches a matching file; the sync removes a marked copy left
+there, since Claude Code would load it a second time. The nudge hook says so in one line; `/vault-context:status` reports `stack-*` findings. Each
 project's sidecar names the stacks that apply to it under `## Stack rules`. The flow
 is specified in `docs/workflows/WF-STACK-RULES.md`.
 
@@ -128,8 +142,8 @@ is specified in `docs/workflows/WF-STACK-RULES.md`.
 - **Vault is never written.** Only `obsidian-wiki` mutates the vault.
 - **Project `CLAUDE.md` is touched only inside delimited markers.** The plugin owns `<!-- vault-context:start --> ... <!-- vault-context:end -->`. Surrounding content is left byte-identical.
 - **Read-only by default.** `link`, `refresh`, `unlink` and `sync-rules` are the only commands that ever write. `status` is read-only.
-- **Generated stack rules only.** `sync-rules` writes and removes only `vault-stack-*.md` files that carry its marker, in `${CLAUDE_CONFIG_DIR:-~/.claude}/rules` (or `$VAULT_CONTEXT_RULES_DIR` when set). A same-named file without the marker stops the run untouched, and a missing or empty vault removes nothing.
-- **Hook never modifies files.** It only prints a prompt, and only in a directory `link` would actually accept.
+- **Generated stack copies only.** `sync-rules` writes and removes only `vault-stack-*.md` files that carry its marker, in `${CLAUDE_CONFIG_DIR:-~/.claude}/vault-stacks` (or `$VAULT_CONTEXT_STACKS_DIR` when set), and removes marked ones left in `${CLAUDE_CONFIG_DIR:-~/.claude}/rules`. A same-named file without the marker, in either folder, stops the run untouched, and a missing or empty vault removes nothing.
+- **Hooks never modify files.** The nudge hook only prints a prompt, and only in a directory `link` would actually accept; the stack hook only prints the applying stack copies.
 - **Area directories are refused.** A grouping folder that merely holds project repos never gets a sidecar (exit 4), and the refusal happens before anything is created — no `.claude/` directory, no partial file. A directory counts as a project when no other registered project lives beneath it *and* it is either a git repo or a `path:` in the registry (see vault-portfolio's configuration).
 - **No external services.** Everything runs locally; nothing leaves your machine.
 

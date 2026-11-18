@@ -128,8 +128,8 @@ OUT="$(run_hook "$P5" "$V5")"
 after="$(cd "$R5" && find . -type f -exec sha256sum {} + | sort | sha256sum)"
 case "$OUT" in *"$STACK_MSG"*) ;; *) fail "stack-rules nudge missing: $OUT" ;; esac
 [ "$(printf '%s\n' "$OUT" | grep -c systemMessage)" -eq 1 ] || fail "more than one nudge: $OUT"
-[ "$before" = "$after" ] || fail "the hook changed the rules folder"
-ok "page newer than its rule → one stack-rules nudge, rules folder byte-identical"
+[ "$before" = "$after" ] || fail "the hook changed the stacks folder"
+ok "page newer than its rule → one stack-rules nudge, stacks folder byte-identical"
 
 # 5c'. The staleness kill switch silences the refresh nudge only, not this one.
 touch -d '1 day ago' "$P5/.claude/vault-context.md"; touch "$V5/index.md"
@@ -163,7 +163,7 @@ before="$(cd "$C5" && find . -type f -exec sha256sum {} + | sort | sha256sum)"
 OUT="$(run_hook "$P5" "$V5")"
 after="$(cd "$C5" && find . -type f -exec sha256sum {} + | sort | sha256sum)"
 case "$OUT" in *"$STACK_MSG"*) ;; *) fail "legacy copy in the rules folder gave no nudge: $OUT" ;; esac
-[ "$before" = "$after" ] || fail "the hook changed the rules folder"
-ok "a marked copy left in the Claude rules folder → the stack-rules nudge, rules folder byte-identical"
+[ "$before" = "$after" ] || fail "the hook changed the config folder"
+ok "a marked copy left in the Claude rules folder → the stack-rules nudge, config folder byte-identical"
 
 echo "ALL OK"

@@ -119,8 +119,9 @@ with the matcher's JSON on stdin. The script:
    Absolute paths so Claude can `Read` them directly without cwd guesswork.
 4. Adds a `## Stack rules` block (`scripts/render-stacks.py`) naming each vault stack
    page whose `paths` match a file the project tracks — omitted when none applies.
-   Those rules load on their own from `~/.claude/rules`; `/vault-context:sync-rules`
-   keeps them in step with the vault.
+   vault-context's stack hook adds those pages at session start from
+   `${CLAUDE_CONFIG_DIR:-~/.claude}/vault-stacks`; `/vault-context:sync-rules` keeps the
+   copies there in step with the vault.
 5. Writes the result to `<cwd>/.claude/vault-context.md`, creating `.claude/` if missing.
 
 ## Update project CLAUDE.md
