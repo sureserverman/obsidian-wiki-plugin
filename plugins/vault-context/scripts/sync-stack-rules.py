@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""sync-stack-rules.py — turn the vault's stack pages into Claude Code rules.
+"""sync-stack-rules.py — copy the vault's stack pages to where Claude Code gets them.
 
 Each `<vault>/Portfolio/stacks/<slug>.md` becomes `vault-stack-<slug>.md` in the
-rules folder: frontmatter holding only `paths`, then a marker line, then the
-page body byte for byte. Claude Code loads the rule when a matching file is
-read, written or edited.
+stacks folder: frontmatter holding only `paths`, then a marker line, then the
+page body byte for byte. vault-context's session-start hook (stack-context.py)
+adds a copy to the session when the project holds a file matching its `paths`.
 
 The marker is an HTML comment, so a renderer shows nothing for it (Claude Code
 documents stripping block-level comments for CLAUDE.md files):
@@ -12,29 +12,37 @@ documents stripping block-level comments for CLAUDE.md files):
     <!-- vault-context:stack-rule source=<slug> sha256=<sha256 of the page file> -->
 
 The tool changes or removes only files that carry it. A `vault-stack-*.md`
-without it stops the run, named and untouched. Every other file in the rules
+without it stops the run, named and untouched. Every other file in the stacks
 folder is never read.
 
+vault-context 0.6 wrote these copies into the Claude rules folder
+(${CLAUDE_CONFIG_DIR:-~/.claude}/rules), where Claude Code would load them a
+second time. A marked `vault-stack-*.md` there is a legacy copy: a write run
+removes it (counted under `removed`) and `--check` reports it as drift
+`legacy`. A `vault-stack-*.md` there without the marker stops every mode, as in
+the stacks folder. Nothing else in the rules folder is read.
+
 Modes:
-  (default)   write, update and remove rules; print how many
-  --check     compare only; exit 1 on any drift (missing, stale, orphan rule),
-              a refused page or a foreign file
+  (default)   write, update and remove copies; print how many
+  --check     compare only; exit 1 on any drift (missing, stale, orphan or
+              legacy copy), a refused page or a foreign file
   --lint      validate pages only, including that every `sources` path exists
   --json      print the result as JSON
 
 Exit: 0 in sync; 1 drift, lint error or refusal; 2 usage, vault not reachable,
-or a file-system error (an unreadable rule, an unwritable rules folder).
-A missing vault never deletes a rule, and neither does a vault that shows no
+or a file-system error (an unreadable copy, an unwritable stacks folder).
+A missing vault never deletes a copy, and neither does a vault that shows no
 stack pages at all (a half-mounted or wrong vault looks exactly like that): a
-write run that would remove every rule it finds stops with exit 2 instead.
+write run that would remove every copy it finds stops with exit 2 instead.
 
 A foreign `vault-stack-*.md` fails every mode, `--only` and `--lint` included:
-it would shadow or be mistaken for a generated rule whichever page is synced.
+it would shadow or be mistaken for a generated copy whichever page is synced.
 
 Folders:
-  vault  --vault, else resolve-vault.sh
-  rules  --rules-dir, else $VAULT_CONTEXT_RULES_DIR, else
-         ${CLAUDE_CONFIG_DIR:-~/.claude}/rules
+  vault   --vault, else resolve-vault.sh
+  stacks  --stacks-dir, else $VAULT_CONTEXT_STACKS_DIR, else
+          ${CLAUDE_CONFIG_DIR:-~/.claude}/vault-stacks
+  rules   ${CLAUDE_CONFIG_DIR:-~/.claude}/rules (legacy copies only)
 
 vault-context never writes to the vault (W DEC-003); a page it cannot parse is
 refused, never guessed at (W DEC-002).
@@ -84,25 +92,34 @@ def resolve_vault(arg):
     return out.stdout.strip()
 
 
-def resolve_rules_dir(arg):
+def config_dir():
+    cfg = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+    return os.path.abspath(os.path.expanduser(cfg))
+
+
+def resolve_stacks_dir(arg=None):
+    """The folder the copies live in; stack-context.py reads the same one."""
     if arg:
         return os.path.abspath(os.path.expanduser(arg))
-    env = os.environ.get("VAULT_CONTEXT_RULES_DIR")
+    env = os.environ.get("VAULT_CONTEXT_STACKS_DIR")
     if env:
         return os.path.abspath(os.path.expanduser(env))
-    cfg = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
-    return os.path.join(cfg, "rules")
+    return os.path.join(config_dir(), "vault-stacks")
+
+
+def legacy_rules_dir():
+    return os.path.join(config_dir(), "rules")
 
 
 def rule_text(page, page_sha):
-    """The exact bytes a page's rule holds."""
+    """The exact bytes a page's copy holds."""
     marker = f"<!-- vault-context:stack-rule source={page.stack} sha256={page_sha} -->"
     paths = json.dumps(list(page.paths), ensure_ascii=False)
     return f"---\npaths: {paths}\n---\n{marker}\n{page.body}".encode("utf-8")
 
 
 def read_marker(path):
-    """(slug, sha) from a generated rule, or None when the file is not ours.
+    """(slug, sha) from a generated copy, or None when the file is not ours.
 
     A symlink, a non-regular file, or a file without the marker directly after
     its frontmatter is not ours.
@@ -131,15 +148,15 @@ def read_marker(path):
     return (m.group(1), m.group(2)) if m else None
 
 
-def scan_rules(rules_dir):
-    """Generated rules by slug, and foreign vault-stack-* files."""
+def scan_copies(folder):
+    """Generated copies by slug, and foreign vault-stack-* files."""
     ours, foreign = {}, []
-    if not os.path.isdir(rules_dir):
+    if not os.path.isdir(folder):
         return ours, foreign
-    for name in sorted(os.listdir(rules_dir)):
+    for name in sorted(os.listdir(folder)):
         if not (name.startswith(RULE_PREFIX) and name.endswith(RULE_SUFFIX)):
             continue
-        path = os.path.join(rules_dir, name)
+        path = os.path.join(folder, name)
         slug = name[len(RULE_PREFIX):-len(RULE_SUFFIX)]
         mk = read_marker(path)
         if mk is None or mk[0] != slug:
@@ -166,9 +183,10 @@ def write_atomic(path, data):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Generate Claude Code rules from vault stack pages.")
+    ap = argparse.ArgumentParser(description="Copy vault stack pages to the folder vault-context's "
+                                             "session-start hook reads.")
     ap.add_argument("--vault")
-    ap.add_argument("--rules-dir")
+    ap.add_argument("--stacks-dir")
     ap.add_argument("--host", default="claude")
     ap.add_argument("--only", metavar="SLUG")
     ap.add_argument("--check", action="store_true")
@@ -187,7 +205,8 @@ def main(argv=None):
     vault = resolve_vault(args.vault)
     if not os.path.isdir(vault):
         die(f"vault not reachable: {vault}")
-    rules_dir = resolve_rules_dir(args.rules_dir)
+    copies_dir = resolve_stacks_dir(args.stacks_dir)
+    legacy_dir = legacy_rules_dir()
     stacks_dir = os.path.join(vault, "Portfolio", "stacks")
     write_mode = not (args.check or args.lint)
 
@@ -217,15 +236,19 @@ def main(argv=None):
             if not os.path.exists(src):
                 sources_missing.append({"slug": page.stack, "path": src})
 
-    # --- rules -------------------------------------------------------------
-    ours, foreign = scan_rules(rules_dir)
+    # --- copies ------------------------------------------------------------
+    ours, foreign = scan_copies(copies_dir)
+    old, old_foreign = ({}, []) if legacy_dir == copies_dir else scan_copies(legacy_dir)
+    foreign = foreign + old_foreign
     if args.only is not None:
         ours = {s: p for s, p in ours.items() if s == args.only}
+        old = {s: p for s, p in old.items() if s == args.only}
     orphans = [{"slug": s, "rule": p} for s, p in sorted(ours.items()) if s not in present]
+    legacy = [{"slug": s, "rule": p} for s, p in sorted(old.items())]
 
     states = []
     for page, sha in pages:
-        rule = os.path.join(rules_dir, f"{RULE_PREFIX}{page.stack}{RULE_SUFFIX}")
+        rule = os.path.join(copies_dir, f"{RULE_PREFIX}{page.stack}{RULE_SUFFIX}")
         want = rule_text(page, sha)
         if page.stack not in ours:
             state = "missing"
@@ -236,9 +259,10 @@ def main(argv=None):
 
     result = {
         "vault": vault,
-        "rules_dir": rules_dir,
+        "stacks_dir": copies_dir,
         "pages": [{k: v for k, v in s.items() if k != "_want"} for s in states],
         "orphans": orphans,
+        "legacy": legacy,
         "foreign": foreign,
         "errors": errors,
         "sources_missing": sources_missing,
@@ -249,13 +273,13 @@ def main(argv=None):
     if write_mode:
         if foreign:
             rc = 1  # refuse the whole run: nothing is written or removed
-        elif orphans and not present:
-            # No page at all, yet generated rules exist: a missing, empty or
-            # half-mounted stacks folder. Removing every rule on that evidence
+        elif (orphans or legacy) and not present:
+            # No page at all, yet generated copies exist: a missing, empty or
+            # half-mounted stacks folder. Removing every copy on that evidence
             # is the one mistake this tool must not make.
             if not args.json:
                 print(f"sync-stack-rules: vault not reachable or empty: no stack pages in "
-                      f"{stacks_dir}, yet {len(orphans)} generated rule(s) exist; removing none. "
+                      f"{stacks_dir}, yet {len(orphans) + len(legacy)} generated copies exist; removing none. "
                       "Check that the vault is mounted. Only if every page was deleted on "
                       "purpose, remove the vault-stack-*.md files by hand",
                       file=sys.stderr)
@@ -263,7 +287,7 @@ def main(argv=None):
         else:
             pending = [s for s in states if s["state"] != "in-sync"]
             if pending:
-                os.makedirs(rules_dir, exist_ok=True)
+                os.makedirs(copies_dir, exist_ok=True)
             for s in states:
                 if s["state"] == "in-sync":
                     counts["unchanged"] += 1
@@ -279,12 +303,19 @@ def main(argv=None):
                 if mk and mk[0] == o["slug"]:
                     os.unlink(o["rule"])
                     counts["removed"] += 1
+            for o in legacy:
+                # Claude Code would load a copy left in its rules folder on top of
+                # the hook's; it goes, by the same marker re-check.
+                mk = read_marker(o["rule"])
+                if mk and mk[0] == o["slug"]:
+                    os.unlink(o["rule"])
+                    counts["removed"] += 1
             if errors:
                 rc = 1
         result["counts"] = counts
         result["pages"] = [{k: v for k, v in s.items() if k != "_want"} for s in states]
     else:
-        drift = any(s["state"] != "in-sync" for s in states) or orphans
+        drift = any(s["state"] != "in-sync" for s in states) or orphans or legacy
         if args.check and drift:
             rc = 1
         if foreign or errors:
@@ -310,7 +341,7 @@ def main(argv=None):
         if foreign:
             print("sync-stack-rules: nothing written", file=sys.stderr)
         elif rc != 2:
-            print(f"stack rules in {rules_dir}: wrote {counts['wrote']}, "
+            print(f"stack copies in {copies_dir}: wrote {counts['wrote']}, "
                   f"updated {counts['updated']}, removed {counts['removed']}, "
                   f"unchanged {counts['unchanged']}")
     elif args.check:
@@ -319,8 +350,11 @@ def main(argv=None):
                 print(f"{s['state']}: {s['slug']} ({s['rule']})")
         for o in orphans:
             print(f"orphan: {o['slug']} ({o['rule']}) — its page is gone")
+        for o in legacy:
+            print(f"legacy: {o['slug']} ({o['rule']}) — left by vault-context 0.6; "
+                  "a sync removes it")
         if rc == 0:
-            print(f"stack rules in sync: {len(states)} page(s)")
+            print(f"stack copies in sync: {len(states)} page(s)")
     elif rc == 0:
         print(f"stack pages lint clean: {len(pages)} page(s)")
     return rc
