@@ -93,6 +93,16 @@ out="$(run_lane)"
 printf '%s' "$out" | jq -e '[.findings[] | select(.rule=="stack-rule-stale" and (.path|test("vault-stack-alpha")) and (.message|test("gone")))] | length == 1' >/dev/null \
     || fail "orphan rule not reported as stack-rule-stale: $out"
 ok "a rule whose page is gone is reported as stack-rule-stale"
+
+# A marked copy left in the Claude rules folder would load the page a second time.
+mkdir -p "$WORK/cfg/rules"
+leg_src="$(ls "$R"/vault-stack-*.md | head -1)"
+cp "$leg_src" "$WORK/cfg/rules/$(basename "$leg_src")"
+out="$(run_lane)"
+printf '%s' "$out" | jq -e --arg p "$WORK/cfg/rules/$(basename "$leg_src")" '[.findings[] | select(.rule=="stack-rule-legacy" and .severity=="warn" and .path==$p)] | length == 1' >/dev/null \
+    || fail "a legacy copy in the rules folder is not reported as stack-rule-legacy: $out"
+rm "$WORK/cfg/rules/$(basename "$leg_src")"
+ok "a marked copy left in the Claude rules folder is reported as stack-rule-legacy"
 page alpha "paths: [\"**/*.rs\"]
 sources: [\"$WORK/src.txt\"]" "Alpha."
 printf -- '---\npaths: ["**/*.c"]\n---\nHand written.\n' > "$R/vault-stack-epsilon.md"

@@ -7,6 +7,8 @@
 #
 #   stack-rule-stale     (warn)  a rule differs from its page, or its page is gone
 #   stack-rule-missing   (warn)  a page has never been synced
+#   stack-rule-legacy    (warn)  a generated copy left in the Claude rules folder,
+#                                which would load the page a second time
 #   stack-source-missing (warn)  a page's `sources` names a path that no longer exists
 #   stack-page-invalid   (error) a page the sync tool refuses to parse
 #   stack-rule-foreign   (error) a vault-stack-*.md the tool did not write
@@ -50,6 +52,8 @@ done < <(printf '%s' "$out" | jq -r --arg fix "$FIX" '
       | ["warn","stack-rule-missing",.rule,"stack \(.slug) has no rule yet — \($fix)"] ),
   ( .orphans[]
       | ["warn","stack-rule-stale",.rule,"the page for stack \(.slug) is gone — \($fix) to remove its rule"] ),
+  ( (.legacy // [])[]
+      | ["warn","stack-rule-legacy",.rule,"stack \(.slug) has a copy left in the Claude rules folder, which loads the page a second time — \($fix) to remove it"] ),
   ( .sources_missing[]
       | ["warn","stack-source-missing",.path,"stack \(.slug) names a source that no longer exists; re-check the page against its sources"] ),
   ( .errors[]
