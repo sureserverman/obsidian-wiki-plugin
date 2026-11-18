@@ -58,7 +58,7 @@ Restart Claude Code (or `/exit` and reopen) for the slash commands to register.
 
 ## SessionStart hooks
 
-Two `SessionStart` hooks ship with the plugin, both on `startup|resume|clear|compact`.
+Two `SessionStart` hooks ship with the plugin, both on `startup|resume|clear|compact|fork`.
 `scripts/stack-context.py` adds the stack pages that apply to the project (see
 [Stack rules](#stack-rules)). `scripts/session-start.sh` nudges; it checks five gates and exits silently unless **all** of them pass:
 

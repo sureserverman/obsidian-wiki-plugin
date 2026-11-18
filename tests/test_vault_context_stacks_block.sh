@@ -31,7 +31,7 @@ WORK="$(cd "$WORK" && pwd -P)"
 
 START='<!-- vault-context:stacks:start -->'
 END='<!-- vault-context:stacks:end -->'
-FIRST_LINE='These load on their own when a matching file is read or edited. Open a page to read it sooner.'
+FIRST_LINE='Each one is added to a session at its start when the project holds a matching file. Open a page to read it.'
 
 # --- fixture vault -----------------------------------------------------------
 VAULT="$WORK/vault"

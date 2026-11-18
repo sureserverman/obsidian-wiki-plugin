@@ -150,9 +150,17 @@ after="$(snap "$WORK"; snap "$PLUGIN")"
 ok "the hook writes nothing (scratch folder and plugin tree unchanged)"
 
 # --- 8. hooks.json registers it -----------------------------------------------------
-jq -e '[.hooks.SessionStart[] | select(.matcher == "startup|resume|clear|compact")
+jq -e '[.hooks.SessionStart[] | select(.matcher == "startup|resume|clear|compact|fork")
         | .hooks[] | select(.command | test("scripts/stack-context\\.py"))] | length == 1' \
-    "$PLUGIN/hooks/hooks.json" >/dev/null || fail "hooks.json does not register stack-context.py on startup|resume|clear|compact"
-ok "hooks.json runs stack-context.py on SessionStart startup|resume|clear|compact"
+    "$PLUGIN/hooks/hooks.json" >/dev/null || fail "hooks.json does not register stack-context.py on startup|resume|clear|compact|fork"
+ok "hooks.json runs stack-context.py on SessionStart startup|resume|clear|compact|fork"
+
+# --- one unreadable copy does not silence the others --------------------------
+{ printf -- '---\npaths: ["**/*.rs"]\n---\n<!-- vault-context:stack-rule source=zbad sha256=0 -->\n'; printf 'bad \377\376 bytes\n'; } > "$S/vault-stack-zbad.md"
+out="$(hook "$RP")"; rc=$?
+[ "$rc" -eq 0 ] || fail "hook exit $rc with one undecodable copy"
+context "$out" | grep -qF '# Rust house rules' || fail "an undecodable copy silenced the rust page: $out"
+rm "$S/vault-stack-zbad.md"
+ok "a copy that is not valid UTF-8 is skipped; the other applying pages still arrive"
 
 echo "PASS: test_vault_context_stack_hook.sh"

@@ -22,7 +22,7 @@ session opened there, and names the applying stacks in each project's sidecar.
   `${CLAUDE_CONFIG_DIR:-~/.claude}/rules` by vault-context 0.6, which Claude Code would
   load a second time; `--check` reports one as drift `legacy`. It prints how many it
   wrote, updated, removed (legacy copies included) and left.
-- **WF-STACK-RULES-003 — The load.** At session start, resume, `/clear` and
+- **WF-STACK-RULES-003 — The load.** At session start, resume, fork, `/clear` and
   compaction, the SessionStart hook `scripts/stack-context.py` takes the project root
   (the git top level of the input `cwd`, else `cwd`) and, for each marked copy in the
   stacks folder in slug order, decides with `lib/stack_pages.py` (`project_files`,

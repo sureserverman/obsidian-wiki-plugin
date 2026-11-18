@@ -14,8 +14,9 @@ scripts/
 ├── lib/eligibility.sh   # the "is this directory a project?" rule — one definition, two callers
 ├── validate.sh          # orchestrator — discovers and runs every validate-*.sh, merges, prints a verdict
 ├── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
-├── validate-stacks.sh   # stack rules in step with the vault's stack pages (maps sync-stack-rules.py --check --lint --json)
-├── sync-stack-rules.py  # writes the generated stack rules; the one definition of stack-rule drift
+├── validate-stacks.sh   # stack copies in step with the vault's stack pages (maps sync-stack-rules.py --check --lint --json)
+├── sync-stack-rules.py  # writes the generated stack copies to the stacks folder; the one definition of stack-rule drift
+├── stack-context.py     # SessionStart hook: adds each applying stack copy to the session (read-only)
 ├── render-stacks.py     # the sidecar's `## Stack rules` block for one project (read-only)
 ├── refresh-all.sh       # re-runs the link pipeline for every registered project that has a sidecar
 └── lib/stack_pages.py   # parses a stack page, matches its globs, decides whether a stack applies
@@ -54,15 +55,16 @@ project has link state (a `.claude/vault-context.md` sidecar or a CLAUDE.md
 It holds no rule of its own: `sync-stack-rules.py --check --lint --json` decides
 drift, and the validator maps its JSON onto findings:
 
-- `stack-rule-stale` (warn) — a generated rule differs from its page (a hand edit counts), or its page is gone.
-- `stack-rule-missing` (warn) — a page has no rule yet.
+- `stack-rule-stale` (warn) — a generated copy differs from its page (a hand edit counts), or its page is gone.
+- `stack-rule-missing` (warn) — a page has no copy yet.
+- `stack-rule-legacy` (warn) — a generated copy is left in the Claude rules folder, where Claude Code would load it a second time.
 - `stack-source-missing` (warn) — a page's `sources` names a path that no longer exists.
 - `stack-page-invalid` (error) — the sync tool refuses the page.
 - `stack-rule-foreign` (error) — a `vault-stack-*.md` without the vault-context marker.
 - `stack-sync-error` (error) — the sync tool produced no JSON; the message carries its stderr.
 
-Stack rules are user-level, so this slice keys on the machine's vault and rules
-folder, not on the root it is given: on a machine whose vault holds
+Stack rules are user-level, so this slice keys on the machine's vault, stacks folder
+and rules folder, not on the root it is given: on a machine whose vault holds
 `Portfolio/stacks/`, it reports the same findings for every root, the plugin root
 included. Where no vault resolves (CI, a clean machine) it stays silent.
 

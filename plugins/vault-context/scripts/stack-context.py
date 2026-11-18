@@ -103,11 +103,14 @@ def build_context(cwd):
             continue
         slug = name[len(sync.RULE_PREFIX):-len(sync.RULE_SUFFIX)]
         path = os.path.join(stacks, name)
-        mk = sync.read_marker(path)
-        if mk is None or mk[0] != slug:
-            continue
-        with open(path, "rb") as f:
-            text = f.read().decode("utf-8")
+        try:
+            mk = sync.read_marker(path)
+            if mk is None or mk[0] != slug:
+                continue
+            with open(path, "rb") as f:
+                text = f.read().decode("utf-8")
+        except (OSError, UnicodeDecodeError, ValueError):
+            continue  # one unreadable copy must not silence the others
         paths = _copy_paths(text)
         if paths is None:
             continue

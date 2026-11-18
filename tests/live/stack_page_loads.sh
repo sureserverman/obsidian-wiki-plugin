@@ -47,7 +47,7 @@ prompt="Do not use any tools. Your context may hold a vault stack page added at 
 extra=()
 [ -n "$plugin_dir" ] && extra=(--plugin-dir "$plugin_dir")
 (cd "$proj" && claude -p "$prompt" --output-format stream-json --verbose --tools "" \
-    "${extra[@]}" </dev/null) > "$work/stream.jsonl" 2> "$work/claude.err" || true
+    ${extra[@]+"${extra[@]}"} </dev/null) > "$work/stream.jsonl" 2> "$work/claude.err" || true
 
 python3 - "$work/stream.jsonl" "$slug" "$work/claude.err" <<'EOF'
 import json, sys

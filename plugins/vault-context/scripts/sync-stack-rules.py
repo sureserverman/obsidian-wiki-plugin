@@ -303,9 +303,13 @@ def main(argv=None):
                 if mk and mk[0] == o["slug"]:
                     os.unlink(o["rule"])
                     counts["removed"] += 1
+            refused = {e["slug"] for e in errors}
             for o in legacy:
                 # Claude Code would load a copy left in its rules folder on top of
-                # the hook's; it goes, by the same marker re-check.
+                # the hook's; it goes, by the same marker re-check. A refused page
+                # keeps its old copy: nothing else would deliver it.
+                if o["slug"] in refused:
+                    continue
                 mk = read_marker(o["rule"])
                 if mk and mk[0] == o["slug"]:
                     os.unlink(o["rule"])

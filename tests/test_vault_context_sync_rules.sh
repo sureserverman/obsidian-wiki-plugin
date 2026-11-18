@@ -281,4 +281,17 @@ grep -q 'Fifth edit' "$R/vault-stack-alpha.md" && fail "a write run wrote despit
 rm "$L/vault-stack-go.md"
 ok "a foreign vault-stack-go.md in the rules folder stops every mode and stays byte-identical"
 
+# A refused page keeps its legacy copy: nothing else would deliver it.
+sync >/dev/null 2>&1
+cp "$R/vault-stack-alpha.md" "$L/vault-stack-alpha.md"
+ALPHA_PAGE="$(cat "$ST/alpha.md")"
+printf -- '---\nstack: alpha\nsources: ["%s"]\nchecked: 2026-11-17\n---\nNo paths.\n' "$WORK/alpha-src.txt" > "$ST/alpha.md"
+out="$(sync 2>&1)"; rc=$?
+[ "$rc" -eq 1 ] || fail "write run with a refused page exit $rc (want 1): $out"
+[ -f "$L/vault-stack-alpha.md" ] || fail "the legacy copy of a refused page was removed: $out"
+printf '%s' "$ALPHA_PAGE" > "$ST/alpha.md"
+sync >/dev/null 2>&1
+[ -e "$L/vault-stack-alpha.md" ] && fail "the legacy copy stayed after its page parsed again"
+ok "a refused page keeps its legacy copy; it goes once the page parses again"
+
 echo "PASS: test_vault_context_sync_rules.sh"
