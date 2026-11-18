@@ -5,8 +5,9 @@
 #   2. Fresh sidecar       → silent (no output)
 #   3. Stale sidecar       → emits the new "stale, run /vault-context:refresh" nudge
 #   4. Stale + kill switch → silent
-#   5. Stack rules older than their pages → "run /vault-context:sync-rules" nudge,
-#      only when no other nudge fired, and the hook writes no rule
+#   5. Stack copies older than their pages, or a copy left in the Claude rules
+#      folder → "run /vault-context:sync-rules" nudge, only when no other nudge
+#      fired, and the hook writes no file
 set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -98,9 +99,9 @@ rm -rf "$V4" "$P4"
 SYNC="$ROOT/plugins/vault-context/scripts/sync-stack-rules.py"
 STACK_MSG="Stack rules are out of date with the vault. Run /vault-context:sync-rules."
 ws5="$(setup_workspace)"; V5="${ws5%|*}"; P5="${ws5#*|}"
-R5="$(mktemp -d)"
-trap 'rm -rf "$V5" "$P5" "$R5"' EXIT
-export VAULT_CONTEXT_RULES_DIR="$R5"
+R5="$(mktemp -d)"; C5="$(mktemp -d)"
+trap 'rm -rf "$V5" "$P5" "$R5" "$C5"' EXIT
+export VAULT_CONTEXT_STACKS_DIR="$R5" CLAUDE_CONFIG_DIR="$C5"
 mkdir -p "$P5/.claude"
 touch -d '1 hour ago' "$V5/index.md"
 echo "fresh" > "$P5/.claude/vault-context.md"
@@ -114,7 +115,7 @@ ok "no stacks folder in the vault → silent"
 mkdir -p "$V5/Portfolio/stacks"
 printf -- '---\nstack: alpha\npaths: ["**/*.rs"]\nsources: ["%s"]\nchecked: 2026-11-17\n---\nAlpha.\n' "$V5" \
     > "$V5/Portfolio/stacks/alpha.md"
-python3 "$SYNC" --vault "$V5" --rules-dir "$R5" >/dev/null || fail "fixture sync"
+python3 "$SYNC" --vault "$V5" --stacks-dir "$R5" >/dev/null || fail "fixture sync"
 OUT="$(run_hook "$P5" "$V5")"
 [ -z "$OUT" ] || fail "in-sync rules should be silent, got: $OUT"
 ok "rules in step with their pages → silent"
@@ -127,8 +128,8 @@ OUT="$(run_hook "$P5" "$V5")"
 after="$(cd "$R5" && find . -type f -exec sha256sum {} + | sort | sha256sum)"
 case "$OUT" in *"$STACK_MSG"*) ;; *) fail "stack-rules nudge missing: $OUT" ;; esac
 [ "$(printf '%s\n' "$OUT" | grep -c systemMessage)" -eq 1 ] || fail "more than one nudge: $OUT"
-[ "$before" = "$after" ] || fail "the hook changed the rules folder"
-ok "page newer than its rule → one stack-rules nudge, rules folder byte-identical"
+[ "$before" = "$after" ] || fail "the hook changed the stacks folder"
+ok "page newer than its rule → one stack-rules nudge, stacks folder byte-identical"
 
 # 5c'. The staleness kill switch silences the refresh nudge only, not this one.
 touch -d '1 day ago' "$P5/.claude/vault-context.md"; touch "$V5/index.md"
@@ -150,5 +151,19 @@ OUT="$(run_hook "$P5" "$V5")"
 case "$OUT" in *"/vault-context:link"*) ;; *) fail "link nudge lost beside stale rules: $OUT" ;; esac
 [ "$(printf '%s\n' "$OUT" | grep -c systemMessage)" -eq 1 ] || fail "more than one nudge: $OUT"
 ok "no sidecar and stale rules → only the link nudge"
+
+# 5f. Copies in step, but a marked copy still sits in the Claude rules folder
+# (left by vault-context 0.6) → the same nudge, and no file changes.
+echo "fresh" > "$P5/.claude/vault-context.md"
+python3 "$SYNC" --vault "$V5" --stacks-dir "$R5" >/dev/null || fail "fixture re-sync"
+OUT="$(run_hook "$P5" "$V5")"
+[ -z "$OUT" ] || fail "in-sync copies should be silent before the legacy case, got: $OUT"
+mkdir -p "$C5/rules"; cp "$R5/vault-stack-alpha.md" "$C5/rules/"
+before="$(cd "$C5" && find . -type f -exec sha256sum {} + | sort | sha256sum)"
+OUT="$(run_hook "$P5" "$V5")"
+after="$(cd "$C5" && find . -type f -exec sha256sum {} + | sort | sha256sum)"
+case "$OUT" in *"$STACK_MSG"*) ;; *) fail "legacy copy in the rules folder gave no nudge: $OUT" ;; esac
+[ "$before" = "$after" ] || fail "the hook changed the config folder"
+ok "a marked copy left in the Claude rules folder → the stack-rules nudge, config folder byte-identical"
 
 echo "ALL OK"

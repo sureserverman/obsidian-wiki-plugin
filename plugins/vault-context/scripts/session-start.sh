@@ -11,8 +11,12 @@
 #    distributes per-project refresh whenever the user opens a project
 #    after the daily vault-index regen.
 #
-# C. Sidecar exists and is not stale, but the generated stack rules are out of
-#    step with their vault pages — print the "run /vault-context:sync-rules" nudge.
+# C. Sidecar exists and is not stale, but the generated stack copies are out of
+#    step with their vault pages, or one is left in the Claude rules folder —
+#    print the "run /vault-context:sync-rules" nudge.
+#
+# The stack pages themselves reach the session through the second SessionStart
+# hook, stack-context.py; this script only nudges.
 #
 # Common gates (must pass for every path):
 #   1. Vault is configured (resolve-vault.sh exits 0)
@@ -27,7 +31,8 @@
 #                     is not set (the switch silences only this path).
 #   Path C — neither A nor B fired, <vault>/Portfolio/stacks/ exists, and
 #            `sync-stack-rules.py --check` reports drift (a page newer than its
-#            rule, a page never synced, or a rule whose page is gone): print the
+#            copy, a page never synced, a copy whose page is gone, or a legacy
+#            copy in ${CLAUDE_CONFIG_DIR:-~/.claude}/rules): print the
 #            "run /vault-context:sync-rules" nudge. The check writes nothing.
 #
 # This script never modifies a file.
@@ -87,14 +92,14 @@ if [ -z "${VAULT_CONTEXT_NO_STALENESS_NUDGE:-}" ]; then
     fi
 fi
 
-# Path C — stack rules out of step with their pages. sync-stack-rules.py --check
+# Path C — stack copies out of step with their pages. sync-stack-rules.py --check
 # is the one definition of drift; it compares and never writes.
 if [ -d "$vault/Portfolio/stacks" ]; then
     drift="$(PYTHONDONTWRITEBYTECODE=1 python3 "$script_dir/sync-stack-rules.py" --vault "$vault" --check --json 2>/dev/null \
         | python3 -c 'import json,sys
 try: d=json.load(sys.stdin)
 except ValueError: sys.exit(0)
-print(1 if any(p.get("state")!="in-sync" for p in d.get("pages",[])) or d.get("orphans") else 0)' 2>/dev/null || true)"
+print(1 if any(p.get("state")!="in-sync" for p in d.get("pages",[])) or d.get("orphans") or d.get("legacy") else 0)' 2>/dev/null || true)"
     if [ "$drift" = 1 ]; then
         msg='[vault-context] Stack rules are out of date with the vault. Run /vault-context:sync-rules.'
         printf '{"systemMessage":"%s"}\n' "$msg"

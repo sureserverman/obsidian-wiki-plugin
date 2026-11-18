@@ -14,7 +14,7 @@
     },
     {
       "name": "vault-context",
-      "description": "Surface Obsidian-vault knowledge inside project repos: scan the current project, match against the vault's index, write a CLAUDE.md-loaded sidecar with relevant page references, and turn the vault's stack pages into path-scoped stack rules.",
+      "description": "Surface Obsidian-vault knowledge inside project repos: scan the current project, match against the vault's index, write a CLAUDE.md-loaded sidecar with relevant page references, and add the vault's stack pages to every session in a project holding a matching file.",
       "source": "./plugins/vault-context",
       "category": "productivity"
     },

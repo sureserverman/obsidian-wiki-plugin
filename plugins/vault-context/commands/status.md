@@ -36,7 +36,10 @@ file.
      longer exists; the page needs re-checking against its sources in the vault.
    - `stack-page-invalid` (error) — the sync tool refuses a stack page; report the
      page and the reason from the message.
-   - `stack-rule-foreign` (error) — a `vault-stack-*.md` in the rules folder was not
+   - `stack-rule-legacy` (warn) — a generated copy is left in the Claude rules folder,
+     where Claude Code would load the page a second time; suggest `/vault-context:sync-rules`.
+   - `stack-rule-foreign` (error) — a `vault-stack-*.md` in the stacks folder or the
+     Claude rules folder was not
      written by vault-context; the user renames or removes it.
 
    - `stack-sync-error` (error) — the sync tool itself failed; report its message.

@@ -3,8 +3,9 @@
 # --check --lint --json output into lane findings, and stays silent where no stack
 # page exists.
 #
-# The vault comes from OBSIDIAN_VAULT_PATH and the rules folder from
-# VAULT_CONTEXT_RULES_DIR, both fixtures, so nothing here reads the real machine.
+# The vault comes from OBSIDIAN_VAULT_PATH, the stacks folder from
+# VAULT_CONTEXT_STACKS_DIR and the Claude config folder from CLAUDE_CONFIG_DIR, all
+# fixtures, so nothing here reads the real machine.
 set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,10 +22,10 @@ ok()   { echo "  ok: $*"; }
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-V="$WORK/vault"; R="$WORK/rules"; P="$WORK/project"
-mkdir -p "$V" "$R" "$P/src"
+V="$WORK/vault"; R="$WORK/stacks"; P="$WORK/project"
+mkdir -p "$V" "$R" "$P/src" "$WORK/cfg"
 touch "$V/index.md" "$P/src/main.rs"
-export OBSIDIAN_VAULT_PATH="$V" VAULT_CONTEXT_RULES_DIR="$R"
+export OBSIDIAN_VAULT_PATH="$V" VAULT_CONTEXT_STACKS_DIR="$R" CLAUDE_CONFIG_DIR="$WORK/cfg"
 
 run_lane() { bash "$VAL" "$P" --json 2>/dev/null; }
 has() { # <json> <rule> <severity>
@@ -52,7 +53,7 @@ page alpha "paths: [\"**/*.rs\"]
 sources: [\"$WORK/src.txt\"]" "Alpha."
 page beta  "paths: [\"**/*.kt\"]
 sources: [\"$WORK/src.txt\"]" "Beta."
-python3 "$SYNC" --vault "$V" --rules-dir "$R" >/dev/null 2>&1 || fail "fixture sync"
+python3 "$SYNC" --vault "$V" --stacks-dir "$R" >/dev/null 2>&1 || fail "fixture sync"
 
 out="$(run_lane)"
 printf '%s' "$out" | jq -e '.verdict == "pass"' >/dev/null || fail "in-sync fixture not pass: $out"
@@ -65,7 +66,7 @@ page gamma "paths: [\"**/*.go\"]
 sources: [\"$WORK/src.txt\"]" "Gamma."
 page beta  "paths: [\"**/*.kt\"]
 sources: [\"$WORK/gone.txt\"]" "Beta."
-python3 "$SYNC" --vault "$V" --rules-dir "$R" --only beta >/dev/null 2>&1
+python3 "$SYNC" --vault "$V" --stacks-dir "$R" --only beta >/dev/null 2>&1
 # delta has no paths → invalid page
 printf -- '---\nstack: delta\nsources: ["%s"]\nchecked: 2026-11-17\n---\nNo paths.\n' "$WORK/src.txt" > "$ST/delta.md"
 # unmarked vault-stack file → foreign
@@ -86,12 +87,22 @@ ok "stale, missing, source-missing (warn) and page-invalid, rule-foreign (error)
 
 # A rule whose page is gone is reported stale.
 rm "$ST/gamma.md" "$ST/delta.md" "$R/vault-stack-epsilon.md"
-python3 "$SYNC" --vault "$V" --rules-dir "$R" >/dev/null 2>&1
+python3 "$SYNC" --vault "$V" --stacks-dir "$R" >/dev/null 2>&1
 rm "$ST/alpha.md"
 out="$(run_lane)"
 printf '%s' "$out" | jq -e '[.findings[] | select(.rule=="stack-rule-stale" and (.path|test("vault-stack-alpha")) and (.message|test("gone")))] | length == 1' >/dev/null \
     || fail "orphan rule not reported as stack-rule-stale: $out"
 ok "a rule whose page is gone is reported as stack-rule-stale"
+
+# A marked copy left in the Claude rules folder would load the page a second time.
+mkdir -p "$WORK/cfg/rules"
+leg_src="$(ls "$R"/vault-stack-*.md | head -1)"
+cp "$leg_src" "$WORK/cfg/rules/$(basename "$leg_src")"
+out="$(run_lane)"
+printf '%s' "$out" | jq -e --arg p "$WORK/cfg/rules/$(basename "$leg_src")" '[.findings[] | select(.rule=="stack-rule-legacy" and .severity=="warn" and .path==$p)] | length == 1' >/dev/null \
+    || fail "a legacy copy in the rules folder is not reported as stack-rule-legacy: $out"
+rm "$WORK/cfg/rules/$(basename "$leg_src")"
+ok "a marked copy left in the Claude rules folder is reported as stack-rule-legacy"
 page alpha "paths: [\"**/*.rs\"]
 sources: [\"$WORK/src.txt\"]" "Alpha."
 printf -- '---\npaths: ["**/*.c"]\n---\nHand written.\n' > "$R/vault-stack-epsilon.md"

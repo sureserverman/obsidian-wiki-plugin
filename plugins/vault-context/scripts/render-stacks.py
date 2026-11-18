@@ -11,7 +11,7 @@ pruned walk outside git). Prints the whole block, markers included, to stdout:
     <!-- vault-context:stacks:start -->
     ## Stack rules
 
-    These load on their own when a matching file is read or edited. Open a page to read it sooner.
+    Each one is added to a session at its start when the project holds a matching file. Open a page to read it.
 
     - **<slug>** — `<glob>`, … — `<absolute page path>` — related: [[<title>]], …
     <!-- vault-context:stacks:end -->
@@ -36,8 +36,8 @@ from stack_pages import StackPageError, applies, load_page, project_files  # noq
 START = "<!-- vault-context:stacks:start -->"
 END = "<!-- vault-context:stacks:end -->"
 HEADING = "## Stack rules"
-FIRST_LINE = ("These load on their own when a matching file is read or edited. "
-              "Open a page to read it sooner.")
+FIRST_LINE = ("Each one is added to a session at its start when the project holds a matching file. "
+              "Open a page to read it.")
 
 
 def warn(msg: str) -> None:
