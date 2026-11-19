@@ -31,7 +31,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
-from stack_pages import StackPageError, applies, load_page, project_files  # noqa: E402
+from stack_pages import StackPageError, applies, load_page, project_files, project_root  # noqa: E402
 
 START = "<!-- vault-context:stacks:start -->"
 END = "<!-- vault-context:stacks:end -->"
@@ -67,7 +67,7 @@ def main() -> int:
         return 0
 
     try:
-        files = project_files(root)
+        files = project_files(project_root(root))
     except OSError as e:
         warn(f"cannot list project files under {root}: {e}; no stack block rendered")
         return 0

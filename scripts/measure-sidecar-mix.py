@@ -47,7 +47,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(ROOT, "plugins", "vault-context", "scripts")
 sys.path.insert(0, os.path.join(SCRIPTS, "lib"))
 
-from stack_pages import StackPageError, applies, load_page, project_files  # noqa: E402
+from stack_pages import StackPageError, applies, load_page, project_files, project_root  # noqa: E402
 
 ASSERTS = {
     "plans-median-max": "plans_share_median",
@@ -221,7 +221,7 @@ def main():
             own_missing.append(name)
         if stacks and not has_block:
             try:
-                files = project_files(path)
+                files = project_files(project_root(path))
             except OSError:
                 files = []
             if any(applies(p, files) for p in stacks):

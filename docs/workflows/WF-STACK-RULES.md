@@ -37,7 +37,11 @@ session opened there, and names the applying stacks in each project's sidecar.
 - **WF-STACK-RULES-004 — The sidecar.** `/vault-context:link` and `:refresh` add a
   `## Stack rules` block between `vault-context:stacks:start` / `:end` comments,
   naming each stack whose `paths` match a file the project tracks, its globs, its
-  page and its related wiki pages. No stack applies → no block.
+  page and its related wiki pages. Files are matched from the same root the
+  session-start hook uses (the git top level of the project folder, else the
+  folder; `lib/stack_pages.py: project_root`), so the block lists what a session
+  there gets — also for a registered folder below its repo's top level. No stack
+  applies → no block.
 - **WF-STACK-RULES-005 — The nudge.** At session start, when neither the link nor
   the refresh nudge fired and `sync-stack-rules.py --check` reports drift (`missing`,
   `stale`, `orphan` or `legacy`), the nudge hook (`scripts/session-start.sh`)

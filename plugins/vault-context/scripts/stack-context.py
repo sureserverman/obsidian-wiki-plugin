@@ -3,10 +3,10 @@
 
 Claude Code runs it at session start, resume, /clear and compaction with the hook
 input as JSON on stdin. It takes the project root as the git top level of the
-input's `cwd` (else `cwd` itself), lists the project's files, and for each copy
+input's `cwd` (else `cwd` itself; lib/stack_pages.py: `project_root`, the same
+root the sidecar's stack block uses), lists the project's files, and for each copy
 `/vault-context:sync-rules` wrote to the stacks folder, in slug order, asks
-whether the copy's `paths` match one of them (lib/stack_pages.py: `project_files`,
-`applies`). It prints one JSON object
+whether the copy's `paths` match one of them (`project_files`, `applies`). It prints one JSON object
 
     {"hookSpecificOutput": {"hookEventName": "SessionStart",
                             "additionalContext": "<each applying copy, whole>"}}
@@ -34,7 +34,6 @@ import importlib.util  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
 import signal  # noqa: E402
-import subprocess  # noqa: E402
 
 BUDGET = 9500
 TIME_LIMIT = 10
@@ -53,16 +52,6 @@ def _load_sync():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
-
-
-def _project_root(cwd):
-    try:
-        out = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"],
-                             capture_output=True, text=True, timeout=5, check=False)
-    except (OSError, subprocess.TimeoutExpired):
-        return cwd
-    top = out.stdout.strip()
-    return top if out.returncode == 0 and top and os.path.isdir(top) else cwd
 
 
 def _copy_paths(text):
@@ -92,7 +81,7 @@ def _chars(s):
 
 def build_context(cwd):
     sync = _load_sync()
-    from stack_pages import StackPage, applies, project_files  # sync put lib/ on sys.path
+    from stack_pages import StackPage, applies, project_files, project_root  # sync put lib/ on sys.path
 
     stacks = sync.resolve_stacks_dir()
     if not os.path.isdir(stacks):
@@ -118,7 +107,7 @@ def build_context(cwd):
     if not copies:
         return None
 
-    files = project_files(_project_root(cwd))
+    files = project_files(project_root(cwd))
     parts, used = [], 0
     for slug, path, paths, text in copies:
         page = StackPage(path=path, stack=slug, paths=tuple(paths), sources=(),

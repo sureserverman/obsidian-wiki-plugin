@@ -265,6 +265,31 @@ if sorted(got) == want:
 else:
     bad(f"project_files(repo) = {sorted(got)}, want {want}")
 
+# --- project_root -------------------------------------------------------------
+# A registered project can sit below its git top level (one repo, several project
+# folders). The hook, the sidecar and the measure all decide "a stack applies"
+# against the same root: the git top level, else the folder itself.
+mono = os.path.join(WORK, "mono")
+for rel in ["other/src/lib.rs", "sub/notes.txt"]:
+    mk(mono, rel)
+subprocess.run(["git", "-C", mono, "init", "-q"], check=True, env=env)
+subprocess.run(["git", "-C", mono, "add", "-A"], check=True, env=env)
+sub = os.path.join(mono, "sub")
+got = sp.project_root(sub)
+if os.path.realpath(got) == os.path.realpath(mono):
+    ok("project_root: a folder inside a git work tree resolves to the git top level")
+else:
+    bad(f"project_root(mono/sub) = {got}, want {mono}")
+got = sp.project_root(plain)
+if os.path.realpath(got) == os.path.realpath(plain):
+    ok("project_root: a folder outside git is its own root")
+else:
+    bad(f"project_root(plain) = {got}, want {plain}")
+if "other/src/lib.rs" in sp.project_files(sp.project_root(sub)):
+    ok("project_files(project_root(sub)) sees a sibling folder's tracked file")
+else:
+    bad("project_files(project_root(sub)) misses other/src/lib.rs")
+
 sys.exit(1 if failures else 0)
 EOF
 

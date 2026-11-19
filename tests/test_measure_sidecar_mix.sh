@@ -125,4 +125,21 @@ err="$(python3 "$TOOL" --registry "$WORK/empty-registry.yaml" --vault "$V" --ass
 echo "$err" | grep -q 'no project measured' || fail "nothing measured is not said: $err"
 ok "a registry reaching no sidecar fails rather than passing every bound"
 
+# --- a project folder below its git top level ---------------------------------
+# The repo tracks other/src/main.rs; the registered folder mono/sub holds no .rs
+# file and its sidecar has no stack block. The hook gives its sessions the rust
+# page (git top level), so the measure counts the missing block.
+M="$WORK/mono"; mkdir -p "$M/other/src" "$M/sub/.claude"
+echo 'fn main(){}' > "$M/other/src/main.rs"; echo n > "$M/sub/notes.txt"
+git -C "$M" init -q; git -C "$M" add other sub/notes.txt
+printf '%s\n' '# Vault context for sub' '' '<!-- vault-context:body:start -->' '' '## Plans/' '' \
+    '- [[P1]] — `x` — s' '' '<!-- vault-context:body:end -->' '' '---' '*footer*' > "$M/sub/.claude/vault-context.md"
+printf 'version: 1\nprojects:\n  - path: %s\n    name: sub\n    area: test\n    enabled: true\n' "$M/sub" \
+    > "$WORK/mono-registry.yaml"
+out="$(python3 "$TOOL" --registry "$WORK/mono-registry.yaml" --vault "$V")"; rc=$?
+[ "$rc" -eq 0 ] || fail "nested project run exit $rc: $out"
+printf '%s' "$out" | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin)["stack_block_missing"]==1 else 1)' \
+    || fail "a nested project whose repo matches rust is not counted as missing its block: $out"
+ok "a project folder below its git top level is matched against the repo"
+
 echo "PASS: test_measure_sidecar_mix.sh"
