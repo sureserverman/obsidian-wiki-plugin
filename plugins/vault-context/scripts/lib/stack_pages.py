@@ -31,6 +31,7 @@ Public API:
   load_page(path) -> StackPage        raises StackPageError
   glob_match(pattern, relpath) -> bool raises ValueError on an unsupported pattern
   applies(page, files) -> bool
+  project_root(path) -> str
   project_files(root) -> list[str]
 
 Stdlib only.
@@ -466,6 +467,25 @@ def _walk_files(root: str) -> List[str]:
             rel = name if rel_dir == "." else os.path.join(rel_dir, name)
             out.append(rel.replace(os.sep, "/"))
     return out
+
+
+def project_root(path) -> str:
+    """The root a project's stacks are matched against: the git top level of
+    path when it is inside a git work tree, else path itself.
+
+    One rule for every caller that decides whether a stack applies — the
+    session-start hook, the sidecar's stack block and the sidecar measure — so
+    a sidecar lists exactly what the hook adds to a session in that folder,
+    including a registered project folder that sits below its repo's top level.
+    """
+    path = os.fspath(path)
+    try:
+        out = subprocess.run(["git", "-C", path, "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=5, check=False)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return path
+    top = out.stdout.strip()
+    return top if out.returncode == 0 and top and os.path.isdir(top) else path
 
 
 def project_files(root) -> List[str]:

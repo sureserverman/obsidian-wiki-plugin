@@ -175,4 +175,20 @@ printf '%s\n' "$block" | grep -qF "$STACKS/alpha.md" || fail "bad page: alpha dr
 printf '%s\n' "$block" | grep -q 'gamma' && fail "bad page: gamma listed despite failing to parse"
 ok "unparseable page → warning on stderr, skipped, sidecar still written with alpha"
 
+# --- Test 7: a project folder below its git top level ------------------------
+# The session-start hook matches against the git top level; the sidecar must list
+# what the session gets, so it matches against the same root.
+MONO="$WORK/mono"
+mkdir -p "$MONO/other/src" "$MONO/sub"
+printf 'x\n' > "$MONO/other/src/lib.rs"; printf 'x\n' > "$MONO/sub/notes.txt"
+git -C "$MONO" init -q; git -C "$MONO" add -A
+# A folder that is not a git root is a project only when the registry lists it.
+printf 'version: 1\nprojects:\n  - path: %s\n    name: sub\n    enabled: true\n' "$MONO/sub" > "$REGISTRY"
+rc="$(run_write "$MONO/sub" "$VAULT" NO_MATCHES)"
+: > "$REGISTRY"
+[ "$rc" = "0" ] || fail "nested project: write-context exit $rc: $(cat "$WORK/err")"
+block_of "$MONO/sub/.claude/vault-context.md" | grep -qF "$STACKS/alpha.md" \
+    || fail "nested project: alpha not listed, though the repo's other/src/lib.rs matches it"
+ok "a project folder below its git top level lists the stacks the repo matches"
+
 echo "PASS: test_vault_context_stacks_block.sh"

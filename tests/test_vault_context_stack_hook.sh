@@ -163,4 +163,15 @@ context "$out" | grep -qF '# Rust house rules' || fail "an undecodable copy sile
 rm "$S/vault-stack-zbad.md"
 ok "a copy that is not valid UTF-8 is skipped; the other applying pages still arrive"
 
+# --- a session in a folder below its repo's top level ---------------------------
+# The hook, the sidecar and the measure match from one root (stack_pages.project_root):
+# a session opened in mono/sub gets the page the repo's other/src/lib.rs matches.
+MONO="$WORK/mono"; mkdir -p "$MONO/other/src" "$MONO/sub"
+echo 'fn main() {}' > "$MONO/other/src/lib.rs"; echo n > "$MONO/sub/notes.txt"
+git -C "$MONO" init -q && git -C "$MONO" add -A
+out="$(hook "$MONO/sub")"; rc=$?
+[ "$rc" -eq 0 ] || fail "hook exit $rc in a nested folder"
+context "$out" | grep -qF '# Rust house rules' || fail "a session below the repo top level misses the repo's rust page: $out"
+ok "a session in a folder below its repo's top level gets the pages the repo matches"
+
 echo "PASS: test_vault_context_stack_hook.sh"
