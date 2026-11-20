@@ -1,7 +1,7 @@
 {
   "name": "vault-context",
   "description": "Surface Obsidian-vault knowledge inside project repos: scan the current project, match against the vault's index, write a CLAUDE.md-loaded sidecar with relevant page references, add the vault's stack pages to every session in a project holding a matching file, and nudge the user when the sidecar or the stack copies fall behind the vault.",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "author": {
     "name": "Sure Serverman"
   },
