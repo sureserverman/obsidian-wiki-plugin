@@ -17,8 +17,9 @@
 # note or a read of AGENTS.md that merely repeats the pointer line does not count;
 # neither does a read that failed or never finished. Otherwise nothing goes to
 # stdout, the reason goes to stderr, the scratch folder (with the transcript) is
-# kept and named, and the exit is 1. Exit 2 on usage, a missing program or copy, or
-# a stream that cannot be read.
+# kept and named, and the exit is 1. Exit 2 on usage, a missing program or copy, a
+# stream that cannot be read, or one holding no Codex run (no `thread.started`
+# event): a run that never started is not a pointer ignored.
 #
 # --parse decides from a saved stream, with no model call (tests/test_vault_context_live_parsers.sh).
 set -u
@@ -35,11 +36,14 @@ import json, re, sys
 slug, stream = sys.argv[1], sys.argv[2]
 copy = re.compile(r"vault-stacks/" + re.escape(slug) + r"\.md(?![A-Za-z0-9._-])")
 named = 0
+started = followed = False
 for line in open(stream, errors="replace").read().splitlines():
     try:
         ev = json.loads(line)
     except ValueError:
         continue
+    if isinstance(ev, dict) and ev.get("type") == "thread.started":
+        started = True
     if not isinstance(ev, dict) or ev.get("type") != "item.completed":
         continue
     item = ev.get("item")
@@ -49,8 +53,16 @@ for line in open(stream, errors="replace").read().splitlines():
         continue
     named += 1
     if item.get("status") == "completed" and item.get("exit_code") == 0:
-        print(f"{slug} FOLLOWED")
-        sys.exit(0)
+        followed = True
+if not started:
+    # Not a Codex run (empty, crashed before starting, or another tool's shape): a
+    # miss here would be read as Codex ignoring the pointer, so refuse instead.
+    print("codex_pointer_followed: the stream holds no Codex run (no thread.started event)",
+          file=sys.stderr)
+    sys.exit(2)
+if followed:
+    print(f"{slug} FOLLOWED")
+    sys.exit(0)
 if named:
     print(f"codex_pointer_followed: {named} command(s) named vault-stacks/{slug}.md "
           f"but none completed with exit 0", file=sys.stderr)
@@ -91,9 +103,10 @@ prompt="Add a one-line comment at the top of $sample saying what the file is for
 codex exec --json --skip-git-repo-check --sandbox workspace-write -C "$proj" "$prompt" \
     </dev/null > "$work/stream.jsonl" 2> "$work/codex.err" || true
 
-if decide "$slug" "$work/stream.jsonl"; then
+decide "$slug" "$work/stream.jsonl"; rc=$?
+if [ "$rc" = 0 ]; then
     rm -rf "$work"
     exit 0
 fi
 echo "codex_pointer_followed: transcript kept: $work/stream.jsonl (stderr: $work/codex.err)" >&2
-exit 1
+exit "$rc"

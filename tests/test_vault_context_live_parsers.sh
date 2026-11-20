@@ -30,12 +30,21 @@ out="$(bash "$CODEX" --parse rust "$FX/codex-followed.jsonl" 2>/dev/null)"; rc=$
 [ "$out" = "rust FOLLOWED" ] || fail "codex: a completed read of the copy printed '$out'"
 ok "codex: a completed read of vault-stacks/rust.md prints 'rust FOLLOWED'"
 
-for case in quoted failed-read started-only other-copy; do
-    out="$(bash "$CODEX" --parse rust "$FX/codex-$case.jsonl" 2>/dev/null)"; rc=$?
-    [ "$rc" = 1 ] || fail "codex: $case exited $rc, want 1"
-    [ -z "$out" ] || fail "codex: $case printed '$out' on stdout, want nothing"
+for name in quoted failed-read started-only other-copy; do
+    out="$(bash "$CODEX" --parse rust "$FX/codex-$name.jsonl" 2>/dev/null)"; rc=$?
+    [ "$rc" = 1 ] || fail "codex: $name exited $rc, want 1"
+    [ -z "$out" ] || fail "codex: $name printed '$out' on stdout, want nothing"
+    all="$(bash "$CODEX" --parse rust "$FX/codex-$name.jsonl" 2>&1)"
+    printf '%s' "$all" | grep -q 'rust FOLLOWED' && fail "codex: $name printed 'rust FOLLOWED' (stdout+stderr): $all"
 done
-ok "codex: quoting the pointer, a failed read, an unfinished read and another file print nothing and exit 1"
+ok "codex: quoting the pointer, a failed read, an unfinished read and another file print nothing, exit 1, and never print 'rust FOLLOWED' even on stderr"
+
+for name in empty not-started; do
+    out="$(bash "$CODEX" --parse rust "$FX/codex-$name.jsonl" 2>/dev/null)"; rc=$?
+    [ "$rc" = 2 ] || fail "codex: $name exited $rc, want 2 (not a Codex run, so not a miss)"
+    [ -z "$out" ] || fail "codex: $name printed '$out' on stdout, want nothing"
+done
+ok "codex: an empty stream, or one with no thread.started (even naming the copy), is refused with exit 2, not counted as a miss or a follow"
 
 out="$(bash "$CODEX" --parse android-build "$FX/codex-other-copy.jsonl" 2>/dev/null)"; rc=$?
 [ "$rc" = 0 ] && [ "$out" = "android-build FOLLOWED" ] \
@@ -54,12 +63,19 @@ out="$(bash "$CURSOR" --parse "$CANARY" "$FX/cursor-loaded.jsonl" 2>/dev/null)";
 [ "$out" = "LOADED cursor_rule" ] || fail "cursor: canary in the answer printed '$out'"
 ok "cursor: the canary in the answer, through no tool, prints 'LOADED cursor_rule'"
 
-for case in via-tool absent; do
-    out="$(bash "$CURSOR" --parse "$CANARY" "$FX/cursor-$case.jsonl" 2>/dev/null)"; rc=$?
-    [ "$rc" = 1 ] || fail "cursor: $case exited $rc, want 1"
-    printf '%s' "$out" | grep -q LOADED && fail "cursor: $case printed '$out', which a grep for LOADED would pass"
+for name in via-tool absent says-loaded; do
+    out="$(bash "$CURSOR" --parse "$CANARY" "$FX/cursor-$name.jsonl" 2>&1)"; rc=$?
+    [ "$rc" = 1 ] || fail "cursor: $name exited $rc, want 1"
+    printf '%s' "$out" | grep -q LOADED && fail "cursor: $name printed '$out' (stdout+stderr), which a grep for LOADED would pass"
 done
-ok "cursor: a canary that came through a tool, or no canary, exits 1 and never prints LOADED"
+ok "cursor: a canary through a tool, no canary, or an answer that itself says LOADED exits 1, and nothing printed (stdout+stderr) carries LOADED"
+
+for name in no-read no-answer errored; do
+    out="$(bash "$CURSOR" --parse "$CANARY" "$FX/cursor-$name.jsonl" 2>&1)"; rc=$?
+    [ "$rc" = 2 ] || fail "cursor: $name exited $rc, want 2 (the run proves nothing)"
+    printf '%s' "$out" | grep -q LOADED && fail "cursor: $name printed '$out', which a grep for LOADED would pass"
+done
+ok "cursor: a run that never read the sample, gave no answer, or errored exits 2, so a negative control cannot pass on it"
 
 bash "$CURSOR" --parse "" "$FX/cursor-loaded.jsonl" >/dev/null 2>&1; rc=$?
 [ "$rc" = 2 ] || fail "cursor: an empty canary exited $rc, want 2"

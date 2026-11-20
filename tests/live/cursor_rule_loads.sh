@@ -13,14 +13,17 @@
 # project asks for a summary of the sample file. Nothing outside the scratch folder
 # is written.
 #
-# Prints `LOADED cursor_rule` and exits 0 only when the final answer carries the
-# canary and no tool call carried it: a tool that read or grepped the rule file
-# itself is not the rule attaching. Otherwise it prints the reason to stderr (never
-# the word the success line uses) and exits 1. Exit 2 on usage, a missing program,
-# a failed sync, or a run that produced no answer.
+# Prints `LOADED cursor_rule` and exits 0 only when the agent read notes.zzlive and
+# the final answer carries the canary, and no tool call carried it: a tool that read
+# or grepped the rule file itself is not the rule attaching. Otherwise it prints the
+# reason to stderr and exits 1. No failure line carries the success word or any of
+# the model's text, so a log taken with 2>&1 cannot pass a grep for it. Exit 2 on
+# usage, a missing program, a failed sync, a run that produced no answer, or a run
+# whose agent never read notes.zzlive (then the rule could not attach either way).
 #
 # --without-rule deletes the generated rule before the run, so the same check must
-# exit 1: the canary can only have come from the rule.
+# exit exactly 1: the canary can only have come from the rule. A caller testing the
+# negative control tests for 1, not for non-zero: 2 means the run proved nothing.
 # --parse decides from a saved stream, with no model call (tests/test_vault_context_live_parsers.sh).
 set -u
 
@@ -30,6 +33,7 @@ decide() { # <canary> <stream.jsonl>
     python3 - "$1" "$2" <<'EOF'
 import json, sys
 canary, stream = sys.argv[1], sys.argv[2]
+SAMPLE = "notes.zzlive"
 events = []
 for line in open(stream, errors="replace").read().splitlines():
     try:
@@ -49,8 +53,24 @@ if via_tool:
     print(f"ABSENT: the canary reached the agent through a tool call "
           f"({len(via_tool)} event(s)), not through the rule", file=sys.stderr)
     sys.exit(1)
+
+def read_path(ev):
+    call = ev.get("tool_call")
+    read = call.get("readToolCall") if isinstance(call, dict) else None
+    args = read.get("args") if isinstance(read, dict) else None
+    return str(args.get("path") or "") if isinstance(args, dict) else ""
+
+# The glob rule can only attach once the agent reads a matching file, so a run
+# that never read the sample proves nothing either way.
+if not any(ev.get("type") == "tool_call" and ev.get("subtype") == "completed"
+           and read_path(ev).rsplit("/", 1)[-1] == SAMPLE for ev in events):
+    print(f"cursor_rule_loads: the agent never read {SAMPLE}; the run proves nothing",
+          file=sys.stderr)
+    sys.exit(2)
 if canary not in answer:
-    print(f"ABSENT: the answer lacks the canary; answer: {answer[:300]!r}", file=sys.stderr)
+    # The answer is the model's text: it never reaches the log, which a grep for
+    # the success word reads.
+    print(f"ABSENT: the answer ({len(answer)} characters) lacks the canary", file=sys.stderr)
     sys.exit(1)
 print("LOADED cursor_rule")
 EOF
@@ -102,6 +122,6 @@ prompt="Read notes.zzlive and summarize it in one sentence. Do not open, list or
 
 decide "$canary" "$work/stream.jsonl"; rc=$?
 if [ "$rc" = 2 ] && [ -s "$work/cursor.err" ]; then
-    echo "cursor-agent stderr (tail): $(tail -c 400 "$work/cursor.err" | tr '\n' ' ')" >&2
+    echo "cursor-agent stderr (tail): $(tail -c 400 "$work/cursor.err" | tr '\n' ' ' | sed 's/LOADED/L-O-A-D-E-D/g')" >&2
 fi
 exit "$rc"
