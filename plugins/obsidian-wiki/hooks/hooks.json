@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/publish-vault-path.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/publish-vault-path.sh\""
           }
         ]
       },
@@ -15,19 +15,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-update.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/check-update.sh\""
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/daily-cursor-codex.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/daily-cursor-codex.sh\""
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/daily-index.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/daily-index.sh\""
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/drain-queue.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/drain-queue.sh\""
           }
         ]
       },
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/index-sessions.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/index-sessions.sh\""
           }
         ]
       }
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/capture-session.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/capture-session.sh\""
           }
         ]
       }
