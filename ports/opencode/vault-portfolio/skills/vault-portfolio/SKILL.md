@@ -109,7 +109,7 @@ The command runs `scripts/portfolio-integrate.py`, which rolls every project's `
 
 ### `rebuild` — regenerate the global roll-ups and the sidecar blocks
 
-The command runs `scripts/portfolio-rebuild.py`. It regenerates `global-backlog.md`, `global-decisions.md`, `global-maturity.md`, the security dashboard and, when a scanner is configured, the business dashboard, and refreshes every enabled project's `PORTFOLIO-STATUS` sidecar block. It refuses when the vault is unset or unreachable. Three rules bind it whatever else changes:
+The command runs `scripts/portfolio-rebuild.py`. It regenerates `global-backlog.md`, `global-decisions.md`, `global-maturity.md`, the security dashboard and, when a scanner is configured, the business dashboard, and refreshes every enabled project's `PORTFOLIO-STATUS` sidecar block. A project whose folder is gone is unregistered first, never recreated. It refuses when the vault is unset or unreachable. Three rules bind it whatever else changes:
 - the hand-curated `<!-- BEGIN PRESERVE -->` block survives **byte-for-byte**, and an ambiguous one is refused rather than rewritten;
 - a missing or failed business or security layer degrades to one status line and **never truncates an existing roll-up**;
 - an unrecorded security count renders `?` and **never `0`**: unmeasured is not clean.

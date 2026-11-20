@@ -860,6 +860,56 @@ def write_sidecar(repo, home, vd, write):
     return False
 
 
+def gone_folder(path):
+    """Why a registered project counts as gone, or None while it may still be there.
+
+    Gone means nothing at all is at the path, not even a dangling symlink. An absent
+    path whose nearest existing ancestor is an empty directory is NOT gone: that is
+    what an unmounted mount point looks like, and the project may be behind it."""
+    p = Path(path).expanduser()
+    if os.path.lexists(p):
+        return None
+    for up in p.parents:
+        if os.path.lexists(up):
+            try:
+                if up.is_dir() and not any(os.scandir(up)):
+                    return None
+            except OSError:
+                return None
+            return "folder gone"
+    return None
+
+
+def unregister_gone(projects, write):
+    """Take every registered project whose folder is gone out of the registry.
+
+    Each is removed with portfolio-scan's single-entry removal (`scan --remove`),
+    under the registry lock, every other byte kept. A dry run names what it would
+    remove. A refused removal is a warning, not a stop. Either way the run writes no
+    sidecar for it: writing one would create the folder and hide the stale entry.
+    Returns the paths taken out of this run."""
+    gone = [p for p in projects if gone_folder(p["path"])]
+    if not gone:
+        return set()
+    # A sibling, by file: every host keeps scan beside rebuild, whatever it names the
+    # skill folder.
+    spec = importlib.util.spec_from_file_location(
+        "_vault_portfolio_portfolio_scan", Path(__file__).resolve().parent / "portfolio-scan.py")
+    scan = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(scan)
+    registry = registry_file()
+    for p in gone:
+        try:
+            scan._remove(scan.pr, scan.rh, registry, p["path"], write)
+            print(f"{'unregistered' if write else 'would unregister'} {p['path']} "
+                  f"({p['area']}/{p['name']}): folder gone")
+        except (scan.Refused, OSError) as e:
+            print(f"warning: {p['path']} ({p['area']}/{p['name']}): folder gone, but its "
+                  f"registry entry could not be removed: {e}. No sidecar written for it.",
+                  file=sys.stderr)
+    return {p["path"] for p in gone}
+
+
 PRESERVE_BEGIN = "<!-- BEGIN PRESERVE — content below this line is preserved across rebuilds -->"
 PRESERVE_END = "<!-- END PRESERVE -->"
 
@@ -1261,9 +1311,10 @@ def main():
                          "holds the vault's maintenance window)")
     args = ap.parse_args()
     vd = vault_dir()
+    enabled = load_projects()
     # An entry that keeps its records in its repo has no vault home: no sidecar
     # block names one, and no roll-up reads a vault folder as its state.
-    projects = [p for p in load_projects() if not records_in_repo(p)]
+    projects = [p for p in enabled if not records_in_repo(p)]
     if args.write:
         require_write(vd)
     # Every sidecar's edge lines come from its project's integration.md; one that
@@ -1272,9 +1323,19 @@ def main():
                        if (f := integration_path(vd / "Portfolio" / p["area"] / p["name"]))
                        .exists()], "portfolio-rebuild")
 
+    gone = unregister_gone(enabled, args.write)
+    projects = [p for p in projects if p["path"] not in gone]
+
     enriched = 0
     skipped_gone = 0
     for p in projects:
+        # A folder that is not there gets no sidecar: writing one would create it.
+        # Still registered here means it may be behind an unmounted mount point.
+        if not Path(p["path"]).expanduser().is_dir():
+            print(f"warning: {p['path']} ({p['area']}/{p['name']}) is not a folder "
+                  f"(an unmounted mount point?) — no sidecar written, entry kept",
+                  file=sys.stderr)
+            continue
         # The sentinel is re-checked at the WRITE boundary, once per project.
         # require_vault() ran in main() and the writes follow it; a mount that drops in
         # between would let every downstream mkdir rebuild the chain from nothing. Per
