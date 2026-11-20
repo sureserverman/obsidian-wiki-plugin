@@ -22,12 +22,22 @@ Operation:
    `<home>/integration.md`, when present, is read next: one that cannot be read as a
    declaration (`integration-format.md` § Hard rules) refuses the whole run before its first
    write, dry run included, naming each file and why.
-2. **Sidecars.** For every enabled project, write the `PORTFOLIO-STATUS` block into
+2. **Gone projects.** An enabled project whose folder is gone is taken out of the registry,
+   with `scan --remove`'s single-entry removal (every other byte kept, under the registry
+   lock); a dry run says `would unregister <path>`. Gone means nothing at all is at the path,
+   while its nearest existing ancestor holds something. A path under an **empty** directory
+   (what an unmounted mount point looks like) or a dangling symlink stays registered, with a
+   warning. A removal scan refuses (the registry's only entry) is a warning, not a stop. No
+   sidecar is written for any of them, and the run never creates a project's folder:
+   writing one would hide the stale entry from `scan`'s "registered but missing on disk".
+   Unregistered projects drop out of this run's roll-ups; their vault homes are left as they
+   are.
+3. **Sidecars.** For every enabled project whose folder is there, write the `PORTFOLIO-STATUS` block into
    `<repo>/.claude/vault-context.md` per `sidecar-format.md`, creating the file if absent. The
    vault's `Portfolio/` is re-checked before each project; if it has gone, the remaining
    projects are skipped with a warning rather than writing into a vanished vault. A sidecar
    that cannot be decoded as UTF-8 is skipped, never overwritten.
-3. **`global-backlog.md`** per `global-formats.md`: a `### <area>/[[<name>]] — N open` section per
+4. **`global-backlog.md`** per `global-formats.md`: a `### <area>/[[<name>]] — N open` section per
    project whose home has a `backlog.md` with entries, with the backlog's path and its three
    first entry titles. The `<!-- BEGIN PRESERVE -->` … `<!-- END PRESERVE -->` body (the
    hand-curated `## Cross-project items`) is carried over **byte-for-byte**. If that block is
@@ -35,16 +45,16 @@ Operation:
    not valid UTF-8) the write is REFUSED, the file is left untouched, and the report says
    `SKIPPED (ambiguous PRESERVE)`; the other roll-ups still write. Resolve it by hand and
    re-run.
-4. **`global-decisions.md`** per `decisions-format.md`: a by-domain index of every
+5. **`global-decisions.md`** per `decisions-format.md`: a by-domain index of every
    `Portfolio/decisions/<domain>.md`, a per-project count table (decisions / accepted /
    superseded / domains) from each home's `decisions.md`, and three review sections:
    `Malformed entries (review)`, `Asymmetries (review)`, `Unresolved targets`. A link between a
    project's `Global:` and a domain's `Applies to:` that is one-sided is **reported, never
    auto-fixed**: repairing one side would assert an edge about a project the run has not read.
    A project with no register contributes nothing and is not an error.
-5. **`global-maturity.md`**: a row per project that has a `MATURITY.md` in its home, names as
+6. **`global-maturity.md`**: a row per project that has a `MATURITY.md` in its home, names as
    `[[wikilinks]]`, a cell per axis and a ship-ready verdict (`global-formats.md`).
-6. **Business layer (optional, additive).** It runs only when a scanner is configured:
+7. **Business layer (optional, additive).** It runs only when a scanner is configured:
    `$BUSINESS_SCAN_PATH` (a script, run with the same Python), else the `business_scan` argv in
    `~/.config/obsidian-wiki/config.json`. No other plugin is assumed to be installed.
    - The scanner's JSON is piped into `business-rollup.py`, found **beside the scanner's real
@@ -62,7 +72,7 @@ Operation:
      `last_reviewed_age_days`, `research` / `plan` (`exists`, `age_days`) and `metrics`; an
      entry with `group: true` applies to the `<area>/<name>` keys in its `members`. Compass
      ignores anything it cannot read, so a broken scanner only switches the layer off.
-7. **Security layer (additive).** `../scripts/security-scan.py | ../scripts/security-rollup.py`
+8. **Security layer (additive).** `../scripts/security-scan.py | ../scripts/security-rollup.py`
    sweeps each enabled project's `<home>/security/history.jsonl` into `global-security.md`:
    open CRITICAL and HIGH, trend, days since the last audit, and the projects never audited.
    Format and input contract: `global-security-format.md`. Three rules it must not break:
@@ -76,7 +86,7 @@ Operation:
    If one fails, times out, or prints no `# Global security` heading, the status is
    `security layer: failed (global-security.md left untouched)`, any existing file stays
    **intact**, and every other output is byte-identical (`../tests/test-security-degradation.py`).
-8. **Report**, one line:
+9. **Report**, one line:
    `sidecars enriched: K | global-backlog written: … | global-maturity written: … | global-decisions written: … | <business status> | <security status> | WRITE|DRY-RUN`.
    Each roll-up is written only when its content, ignoring the `**Last rebuilt:**` line (and a
    first `Generated:` line), changed, so a run with no upstream change writes nothing.
