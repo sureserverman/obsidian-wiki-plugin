@@ -42,6 +42,18 @@ file.
      Claude rules folder was not
      written by vault-context; the user renames or removes it.
 
+   - `stack-cursor-rule-stale` (warn) — this project's Cursor rule is missing, differs
+     from its page, or its stack no longer applies; suggest
+     `/vault-context:sync-rules --host cursor --project <this project>`. Checked only when
+     the project already holds a generated `.cursor/rules/vault-stack-*.mdc`.
+   - `stack-cursor-refused` (warn) — git would commit this project's Cursor rules
+     (`.cursor/` is not ignored, or is tracked); the user adds `.cursor/` to `.gitignore`.
+   - `stack-codex-copy-stale` / `stack-codex-block-stale` (warn) — a Codex copy, or the
+     pointer block in the Codex AGENTS file, is out of step; suggest
+     `/vault-context:sync-rules --host codex`. Checked only when the Codex home holds
+     `vault-stacks/`.
+   - `stack-codex-refused` (error) — the sync refuses a Codex file (a broken block
+     marker pair, an unmarked copy); report the path and reason; the user fixes it.
    - `stack-sync-error` (error) — the sync tool itself failed; report its message.
 
    The `stack-*` findings come only when the vault holds `Portfolio/stacks/`.

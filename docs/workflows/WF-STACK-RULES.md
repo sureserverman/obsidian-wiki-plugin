@@ -1,4 +1,4 @@
-# WF-STACK-RULES — Vault stack pages reach Claude Code at session start
+# WF-STACK-RULES — Vault stack pages reach Claude Code, Cursor and Codex
 
 An owner keeps one copy of a file-keyed fact (how this stack's files are laid out,
 which command validates them) as a stack page in the vault. vault-context copies each
@@ -21,7 +21,10 @@ session opened there, and names the applying stacks in each project's sidecar.
   gone. It also removes a marked `vault-stack-*.md` left in
   `${CLAUDE_CONFIG_DIR:-~/.claude}/rules` by vault-context 0.6, which Claude Code would
   load a second time; `--check` reports one as drift `legacy`. It prints how many it
-  wrote, updated, removed (legacy copies included) and left.
+  wrote, updated, removed (legacy copies included) and left. `--host claude` is the
+  default and does exactly this; `--host cursor` (007), `--host codex` (008) and
+  `--host all` (the three) add the other hosts, printing each line under a `claude: `,
+  `cursor: ` or `codex: ` prefix. `--only` works with `--host claude` only.
 - **WF-STACK-RULES-003 — The load.** At session start, resume, fork, `/clear` and
   compaction, the SessionStart hook `scripts/stack-context.py` takes the project root
   (the git top level of the input `cwd`, else `cwd`) and, for each marked copy in the
@@ -51,7 +54,31 @@ session opened there, and names the applying stacks in each project's sidecar.
 - **WF-STACK-RULES-006 — The lane.** `validate-stacks.sh` reports `stack-rule-stale`,
   `stack-rule-missing`, `stack-source-missing` (warn), `stack-page-invalid` and
   `stack-rule-foreign` (error) from the same `--check --lint --json` output, and
-  `stack-sync-error` (error) when that output is not JSON.
+  `stack-sync-error` (error) when that output is not JSON. For a host the owner uses
+  here it adds: `stack-cursor-rule-stale` and `stack-cursor-refused` (warn) when the
+  project's `.cursor/rules/` already holds a generated rule; `stack-codex-copy-stale`,
+  `stack-codex-block-stale` (warn) and `stack-codex-refused` (error) when the Codex
+  home holds `vault-stacks/`. A host not in use is never reported.
+- **WF-STACK-RULES-007 — Cursor.** `sync-stack-rules.py --host cursor` with
+  `--project <dir>` or `--all-projects` (every registry `path:`) writes
+  `vault-stack-<slug>.mdc` into `.cursor/rules/` at the project root (the git top
+  level, as in 003) for each stack that applies there: frontmatter `description`,
+  `globs` (the page's paths, comma-joined; a pattern with no slash gains `**/`, a
+  `{a,b}` group is expanded) and `alwaysApply: false`, then the marker, then the page
+  body. It removes a rule whose stack no longer applies or whose page is gone. A
+  project whose git would commit the rule (`git check-ignore` does not ignore it, or
+  `.cursor` is tracked) is refused with "would be committed" and gets nothing; an
+  area directory (`lib/eligibility.sh`) or a missing folder is skipped with a line;
+  the other projects go on. `tests/live/cursor_rule_loads.sh` proves a rule loads.
+- **WF-STACK-RULES-008 — Codex.** `sync-stack-rules.py --host codex` writes
+  `<codex-home>/vault-stacks/<slug>.md` (the marker, then the page body) and keeps one
+  block between `vault-context:stacks:start` / `:end` comments in the AGENTS file
+  Codex reads at its home (`AGENTS.override.md` when non-empty, else `AGENTS.md`):
+  `## Stack rules`, one instruction line, and per page its patterns and the copy's
+  path. Text outside the block is kept. A start marker without an end, or two blocks,
+  is refused and the file left unchanged. With no pages the block goes, and an
+  `AGENTS.md` left empty is deleted. Codex home: `--codex-home`, else `$CODEX_HOME`,
+  else `~/.codex`. `tests/live/codex_pointer_followed.sh` proves Codex reads the copy.
 
 ## Invariants
 
@@ -64,7 +91,7 @@ session opened there, and names the applying stacks in each project's sidecar.
   written, and is left untouched. The stack hook adds only marked copies.
 - **WF-STACK-RULES-INV-3 — A missing vault removes nothing.** No vault → exit 2.
   A vault showing no stack pages while generated or legacy copies exist → exit 2,
-  nothing removed.
+  nothing removed — on every host: a Cursor rule and a Codex copy or block stay too.
 - **WF-STACK-RULES-INV-4 — A page that cannot be parsed is refused, never guessed at**
   (W DEC-002): named with its reason; no copy is written or updated for it.
 - **WF-STACK-RULES-INV-5 — Neither hook modifies a file.**
