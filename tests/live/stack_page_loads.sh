@@ -105,12 +105,13 @@ if heading is None:
           f"and a '# ' heading ({hooks_seen} SessionStart hook response(s) in the stream)")
 else:
     print(f"NOT LOADED: the hook added the page but the answer lacks its heading {heading!r}; "
-          f"answer: {answer[:200]!r}")
+          f"(answer: {len(answer)} characters, not echoed: it is the model's text, and a log "
+          f"grep for the success line must not match it)")
 try:
     tail = open(err, errors="replace").read()[-400:].strip()
 except OSError:
     tail = ""
 if tail:
-    print("claude stderr (tail): " + tail.replace("\n", " | "))
+    print("claude stderr (tail): " + tail.replace("\n", " | ").replace("LOADED", "L-O-A-D-E-D"))
 sys.exit(1)
 EOF

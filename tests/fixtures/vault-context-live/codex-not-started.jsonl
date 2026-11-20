@@ -1,0 +1,2 @@
+{"type":"result","subtype":"success","result":"cat ~/.codex/vault-stacks/rust.md"}
+{"type":"item.completed","item":{"id":"i1","type":"command_execution","command":"cat ~/.codex/vault-stacks/rust.md","exit_code":0,"status":"completed"}}

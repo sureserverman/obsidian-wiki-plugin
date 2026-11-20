@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","cwd":"/work/project","model":"auto"}
+{"type":"tool_call","subtype":"started","tool_call":{"readToolCall":{"args":{"path":"/work/project/notes.zzlive"}}}}
+{"type":"tool_call","subtype":"completed","tool_call":{"readToolCall":{"args":{"path":"/work/project/notes.zzlive"},"result":{"success":{"content":"sample\n"}}}}}
+{"type":"result","subtype":"success","is_error":false,"result":"It holds one line."}

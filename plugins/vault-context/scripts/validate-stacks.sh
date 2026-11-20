@@ -11,11 +11,26 @@
 #                                which would load the page a second time
 #   stack-source-missing (warn)  a page's `sources` names a path that no longer exists
 #   stack-page-invalid   (error) a page the sync tool refuses to parse
-#   stack-rule-foreign   (error) a vault-stack-*.md the tool did not write
+#   stack-rule-foreign   (error) a vault-stack-*.md (or .mdc) the tool did not write
+#
+# For the other two hosts, only when the owner uses them here:
+#   stack-cursor-rule-stale  (warn)  this project's Cursor rule is missing, differs from
+#                                    its page, or its stack no longer applies — checked
+#                                    when the project's .cursor/rules/ (at its git top
+#                                    level) already holds a generated vault-stack-*.mdc
+#   stack-cursor-refused     (warn)  git would commit this project's Cursor rules
+#   stack-codex-copy-stale   (warn)  a Codex copy is missing, stale or orphaned
+#   stack-codex-block-stale  (warn)  the pointer block in the Codex AGENTS file is
+#                                    missing, stale, misplaced or left over
+#   stack-codex-refused      (error) the Codex AGENTS file or copies folder holds a shape
+#                                    the sync refuses (a broken marker pair, an
+#                                    unmarked copy); both checked when
+#                                    ${CODEX_HOME:-~/.codex}/vault-stacks/ exists
 #
 # Activates only when the vault resolves and holds Portfolio/stacks/; anywhere else
-# (CI, a machine without the vault) the lane is clean. Stack rules are user-level,
-# so the project root is the report's target, not a filter.
+# (CI, a machine without the vault) the lane is clean. Claude Code's copies and the
+# Codex home are user-level, so for them the project root is the report's target,
+# not a filter; the Cursor check reads this project's rules.
 set -eu
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$DIR/lib/findings.sh"
@@ -61,5 +76,51 @@ done < <(printf '%s' "$out" | jq -r --arg fix "$FIX" '
   ( .foreign[]
       | ["error","stack-rule-foreign",.,"named like a generated stack rule but has no vault-context marker; the sync leaves it alone and stops — rename or remove it"] )
   | map(gsub("[\t\n]"; " ")) | @tsv')
+
+
+# --- Codex: only when its copies folder exists ----------------------------------
+codex_home="${CODEX_HOME:-$HOME/.codex}"
+if [ -d "$codex_home/vault-stacks" ]; then
+  cout="$(python3 "$DIR/sync-stack-rules.py" --vault "$vault" --host codex --check --json 2>"$errf" || true)"
+  if printf '%s' "$cout" | jq -e '.codex' >/dev/null 2>&1; then
+    while IFS=$'\t' read -r sev rule path msg; do
+      [ -n "$rule" ] || continue
+      add_finding "$sev" "$rule" stacks "$path" 0 "$msg"
+    done < <(printf '%s' "$cout" | jq -r --arg fix "$FIX" '
+      ( (.codex.findings // [])[]
+          | ["warn", .code, .path,
+             (if .slug then "Codex copy of stack \(.slug) is \(.state) — \($fix) --host codex"
+              else "the stack pointer block in \(.path) is \(.state) — \($fix) --host codex" end)] ),
+      ( (.codex.refused // [])[]
+          | ["error","stack-codex-refused",.path,"the sync refuses this Codex file: \(.reason)"] )
+      | map(gsub("[\t\n]"; " ")) | @tsv')
+  else
+    add_finding error stack-sync-error stacks "scripts/sync-stack-rules.py" 0 \
+      "sync-stack-rules.py --host codex --check --json produced no valid JSON: $(tail -c 300 "$errf" | tr '\n' ' ')"
+  fi
+fi
+
+# --- Cursor: only when this project already holds a generated rule --------------
+top="$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$ROOT")"
+if compgen -G "$top/.cursor/rules/vault-stack-*.mdc" >/dev/null; then
+  kout="$(python3 "$DIR/sync-stack-rules.py" --vault "$vault" --host cursor --project "$ROOT" --check --json 2>"$errf" || true)"
+  if printf '%s' "$kout" | jq -e '.cursor' >/dev/null 2>&1; then
+    while IFS=$'\t' read -r sev rule path msg; do
+      [ -n "$rule" ] || continue
+      add_finding "$sev" "$rule" stacks "$path" 0 "$msg"
+    done < <(printf '%s' "$kout" | jq -r --arg fix "$FIX" '
+      .cursor[] |
+      ( ((.drift // [])[]
+          | ["warn","stack-cursor-rule-stale",.rule,"Cursor rule for stack \(.slug) is \(.state) — \($fix) --host cursor --project <this project>"] ),
+        ((.foreign // [])[]
+          | ["error","stack-rule-foreign",.,"named like a generated stack rule but has no vault-context marker; the sync leaves it alone and stops — rename or remove it"] ),
+        (select(.status == "refused" and ((.foreign // []) | length) == 0)
+          | ["warn","stack-cursor-refused",(.rules_dir // .project),(.messages | join("; "))] ) )
+      | map(gsub("[\t\n]"; " ")) | @tsv')
+  else
+    add_finding error stack-sync-error stacks "scripts/sync-stack-rules.py" 0 \
+      "sync-stack-rules.py --host cursor --check --json produced no valid JSON: $(tail -c 300 "$errf" | tr '\n' ' ')"
+  fi
+fi
 
 render_findings "validate-stacks.sh" "$ROOT"; exit $?

@@ -137,12 +137,22 @@ there, since Claude Code would load it a second time. The nudge hook says so in 
 project's sidecar names the stacks that apply to it under `## Stack rules`. The flow
 is specified in `docs/workflows/WF-STACK-RULES.md`.
 
+The same pages reach Cursor and Codex with `--host cursor|codex|all`:
+
+| Host | What it gets | Why |
+|---|---|---|
+| Claude Code | `vault-stack-<slug>.md` in the stacks folder, added at session start by the hook | the hook decides per project which copies apply |
+| Cursor | `<project>/.cursor/rules/vault-stack-<slug>.mdc` (`globs` = the page's paths, `alwaysApply: false`), only where the stack applies | Cursor attaches a rule when a matching file is in play, but reads no global rules folder, so each project gets its own; a project whose git would commit the rule is refused |
+| Codex | copies in `${CODEX_HOME:-~/.codex}/vault-stacks/` and one pointer block in the home AGENTS file Codex reads (`AGENTS.override.md` when non-empty, else `AGENTS.md`) | Codex has no glob scoping and stops reading instructions at 32 KiB; eight pages inlined would pass that, so it gets one line per page naming the copy to read before touching a matching file |
+
+Nothing is written under `~/.agents/` or into any project's own `AGENTS.md`.
+
 ## Safety guarantees
 
 - **Vault is never written.** Only `obsidian-wiki` mutates the vault.
 - **Project `CLAUDE.md` is touched only inside delimited markers.** The plugin owns `<!-- vault-context:start --> ... <!-- vault-context:end -->`. Surrounding content is left byte-identical.
 - **Read-only by default.** `link`, `refresh`, `unlink` and `sync-rules` are the only commands that ever write. `status` is read-only.
-- **Generated stack copies only.** `sync-rules` writes and removes only `vault-stack-*.md` files that carry its marker, in `${CLAUDE_CONFIG_DIR:-~/.claude}/vault-stacks` (or `$VAULT_CONTEXT_STACKS_DIR` when set), and removes marked ones left in `${CLAUDE_CONFIG_DIR:-~/.claude}/rules`. A same-named file without the marker, in either folder, stops the run untouched, and a missing or empty vault removes nothing.
+- **Generated stack copies only.** `sync-rules` writes and removes only `vault-stack-*.md` files that carry its marker, in `${CLAUDE_CONFIG_DIR:-~/.claude}/vault-stacks` (or `$VAULT_CONTEXT_STACKS_DIR` when set), and removes marked ones left in `${CLAUDE_CONFIG_DIR:-~/.claude}/rules`. A same-named file without the marker, in either folder, stops the run untouched, and a missing or empty vault removes nothing. The Cursor and Codex hosts follow the same rule for `.cursor/rules/vault-stack-*.mdc` and `vault-stacks/*.md`, and change the Codex AGENTS file only between its `vault-context:stacks` markers. The sync may create `AGENTS.md` in the Codex home when none exists (recorded in `vault-stacks/.agents-md-created`) and deletes it only with that record; an owner's own AGENTS file is never deleted.
 - **Hooks never modify files.** The nudge hook only prints a prompt, and only in a directory `link` would actually accept; the stack hook only prints the applying stack copies.
 - **Area directories are refused.** A grouping folder that merely holds project repos never gets a sidecar (exit 4), and the refusal happens before anything is created — no `.claude/` directory, no partial file. A directory counts as a project when no other registered project lives beneath it *and* it is either a git repo or a `path:` in the registry (see vault-portfolio's configuration).
 - **No external services.** Everything runs locally; nothing leaves your machine.

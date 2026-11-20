@@ -4,8 +4,9 @@
 # page exists.
 #
 # The vault comes from OBSIDIAN_VAULT_PATH, the stacks folder from
-# VAULT_CONTEXT_STACKS_DIR and the Claude config folder from CLAUDE_CONFIG_DIR, all
-# fixtures, so nothing here reads the real machine.
+# VAULT_CONTEXT_STACKS_DIR, the Claude config folder from CLAUDE_CONFIG_DIR and the
+# Codex home from CODEX_HOME (an absent folder, so the lane's Codex check stays off),
+# all fixtures, so nothing here reads the real machine.
 set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,6 +27,7 @@ V="$WORK/vault"; R="$WORK/stacks"; P="$WORK/project"
 mkdir -p "$V" "$R" "$P/src" "$WORK/cfg"
 touch "$V/index.md" "$P/src/main.rs"
 export OBSIDIAN_VAULT_PATH="$V" VAULT_CONTEXT_STACKS_DIR="$R" CLAUDE_CONFIG_DIR="$WORK/cfg"
+export CODEX_HOME="$WORK/codex-home"
 
 run_lane() { bash "$VAL" "$P" --json 2>/dev/null; }
 has() { # <json> <rule> <severity>

@@ -15,10 +15,12 @@ scripts/
 ├── validate.sh          # orchestrator — discovers and runs every validate-*.sh, merges, prints a verdict
 ├── validate-link.sh     # a project's vault-context link state: sidecar, CLAUDE.md import, drift, freshness
 ├── validate-stacks.sh   # stack copies in step with the vault's stack pages (maps sync-stack-rules.py --check --lint --json)
-├── sync-stack-rules.py  # writes the generated stack copies to the stacks folder; the one definition of stack-rule drift
+├── sync-stack-rules.py  # writes the generated stack copies for Claude Code, Cursor and Codex; the one definition of stack-rule drift
 ├── stack-context.py     # SessionStart hook: adds each applying stack copy to the session (read-only)
 ├── render-stacks.py     # the sidecar's `## Stack rules` block for one project (read-only)
 ├── refresh-all.sh       # re-runs the link pipeline for every registered project that has a sidecar
+├── lib/stack_target_cursor.py  # the Cursor host: a per-project .cursor/rules/vault-stack-<slug>.mdc
+├── lib/stack_target_codex.py   # the Codex host: copies plus one pointer block in the Codex AGENTS file
 └── lib/stack_pages.py   # parses a stack page, matches its globs, decides whether a stack applies
 ```
 
@@ -58,6 +60,8 @@ drift, and the validator maps its JSON onto findings:
 - `stack-rule-stale` (warn) — a generated copy differs from its page (a hand edit counts), or its page is gone.
 - `stack-rule-missing` (warn) — a page has no copy yet.
 - `stack-rule-legacy` (warn) — a generated copy is left in the Claude rules folder, where Claude Code would load it a second time.
+- `stack-cursor-rule-stale` / `stack-cursor-refused` (warn) — this project's Cursor rule is out of step, or git would commit it; checked only when the project already holds a generated rule (`--host cursor --project <root> --check --json`).
+- `stack-codex-copy-stale` / `stack-codex-block-stale` (warn), `stack-codex-refused` (error) — the Codex copies or pointer block are out of step, or a Codex file has a shape the sync refuses; checked only when the Codex home holds `vault-stacks/` (`--host codex --check --json`).
 - `stack-source-missing` (warn) — a page's `sources` names a path that no longer exists.
 - `stack-page-invalid` (error) — the sync tool refuses the page.
 - `stack-rule-foreign` (error) — a `vault-stack-*.md` without the vault-context marker.
