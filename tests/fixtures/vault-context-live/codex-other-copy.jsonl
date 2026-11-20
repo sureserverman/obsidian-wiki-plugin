@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"t5"}
+{"type":"item.completed","item":{"id":"i1","type":"command_execution","command":"/bin/bash -lc 'cat ~/.codex/vault-stacks/android-build.md'","aggregated_output":"# Android\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"i2","type":"command_execution","command":"/bin/bash -lc 'cat ~/.codex/vault-stacks/rust.md.bak'","aggregated_output":"old\n","exit_code":0,"status":"completed"}}
+{"type":"turn.completed","usage":{}}

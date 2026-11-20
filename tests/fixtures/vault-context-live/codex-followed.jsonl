@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"t1"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"i1","type":"command_execution","command":"/bin/bash -lc 'cat ~/.codex/vault-stacks/rust.md'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"i1","type":"command_execution","command":"/bin/bash -lc 'cat ~/.codex/vault-stacks/rust.md'","aggregated_output":"<!-- vault-context:stack-rule source=rust -->\n# Rust\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"i2","type":"file_change","changes":[{"path":"src/lib.rs","kind":"update"}],"status":"completed"}}
+{"type":"turn.completed","usage":{}}

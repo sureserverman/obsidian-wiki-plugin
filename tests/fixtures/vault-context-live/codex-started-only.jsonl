@@ -1,0 +1,2 @@
+{"type":"thread.started","thread_id":"t4"}
+{"type":"item.started","item":{"id":"i1","type":"command_execution","command":"/bin/bash -lc 'cat ~/.codex/vault-stacks/rust.md'","aggregated_output":"","exit_code":null,"status":"in_progress"}}

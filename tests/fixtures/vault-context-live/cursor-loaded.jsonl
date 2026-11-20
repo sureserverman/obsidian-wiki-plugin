@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init","cwd":"/work/project","model":"auto"}
+{"type":"tool_call","subtype":"started","tool_call":{"readToolCall":{"args":{"path":"/work/project/notes.zzlive"}}}}
+{"type":"tool_call","subtype":"completed","tool_call":{"readToolCall":{"args":{"path":"/work/project/notes.zzlive"},"result":{"success":{"content":"sample\n"}}}}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"It holds one line.\n\nCANARY-FIXTURE-7Q2"}]}}
+{"type":"result","subtype":"success","is_error":false,"result":"It holds one line.\n\nCANARY-FIXTURE-7Q2"}
