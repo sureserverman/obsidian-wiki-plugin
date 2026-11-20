@@ -24,9 +24,11 @@ Codex gets a pointer, not the pages:
 The block goes into AGENTS.override.md when that file exists and is not empty
 (after stripping whitespace), else into AGENTS.md: Codex reads only the first
 non-empty one of the two at the home level. A block found in the other file is
-moved. Every byte outside the block is kept. Inserting into a file that does
-not end in a newline adds one newline before the start marker; that is the
-only byte the tool ever adds outside the block.
+moved. Every byte outside the block is kept: the block goes at the end of a
+file that ends in a newline (or is empty), and at the start of one that does
+not, so its removal gives back the owner's exact bytes. Exact marker lines the
+owner quotes on lines of their own count as the block; a marker sharing a line
+with other text is refused.
 
 This module writes only inside the Codex home: never a project's AGENTS file,
 never anything under ~/.agents/.
@@ -43,10 +45,12 @@ why, before anything is written:
   - a page pattern holding a backtick (it would break the pointer line)
 
 Removal. With no pages the block is removed from both files and every marked
-copy goes. An AGENTS.md left holding zero bytes once the block is out is one
-this tool created (it writes a new AGENTS.md as the block and its newline,
-nothing else), so it is deleted. Any byte left — owner text, even a blank
-line — keeps the file. AGENTS.override.md is never created, so never deleted.
+copy goes. When the tool creates AGENTS.md (it did not exist), it records that
+in `vault-stacks/.agents-md-created`; an AGENTS.md left holding zero bytes once
+the block is out is deleted only with that record, which then goes too. An
+owner's own AGENTS.md, empty or not, is never deleted, and any byte left keeps
+the file. AGENTS.override.md is never created, so never deleted. An AGENTS file
+that cannot be read is refused.
 Guarding against a half-mounted vault that shows no pages is the caller's job
 (sync-stack-rules.py stops before it would remove every copy).
 
@@ -87,6 +91,7 @@ from typing import List, Optional
 sys.dont_write_bytecode = True
 
 COPIES_DIRNAME = "vault-stacks"
+CREATED_RECORD = ".agents-md-created"
 AGENTS = "AGENTS.md"
 AGENTS_OVERRIDE = "AGENTS.override.md"
 START = "<!-- vault-context:stacks:start -->"
@@ -200,8 +205,12 @@ def _read_agents(path, problems):
     if not stat.S_ISREG(st.st_mode):
         problems.append((path, "is not a regular file"))
         return None
-    with open(path, "rb") as f:
-        return f.read()
+    try:
+        with open(path, "rb") as f:
+            return f.read()
+    except OSError as e:
+        problems.append((path, f"cannot be read ({e.strerror or e}); it was not edited"))
+        return None
 
 
 def find_block(path, data):
@@ -250,10 +259,11 @@ def _replace(data, span, block):
 
 
 def _insert(data, block):
-    if not data:
-        return block + b"\n"
-    sep = b"" if data.endswith(b"\n") else b"\n"
-    return data + sep + block + b"\n"
+    # At the end of a file that ends in a newline; at the start of one that does
+    # not, so that _remove gives back exactly the owner's bytes either way.
+    if not data or data.endswith(b"\n"):
+        return data + block + b"\n"
+    return block + b"\n" + data
 
 
 def _remove(data, span):
@@ -331,6 +341,7 @@ def plan(codex_home, pages):
         raise CodexTargetError(problems)
 
     over_data = files[0][1]
+    created = os.path.isfile(os.path.join(copies_dir, CREATED_RECORD))
     target = over if over_data is not None and over_data.strip() else base
 
     p = CodexPlan(codex_home=home, copies_dir=copies_dir, agents_file=target)
@@ -361,8 +372,8 @@ def plan(codex_home, pages):
             else:
                 after = _remove(data, span)
                 state = "misplaced" if block is not None else "orphan"
-                if path == base and after == b"":
-                    after = None  # created by this tool: nothing but the block was in it
+                if path == base and after == b"" and created:
+                    after = None  # this tool created it, and nothing but the block was in it
         elif here:
             after, state = _insert(data, block), "missing"
         if state is not None:
@@ -405,7 +416,9 @@ def _write_atomic(path, data):
     try:
         mode = stat.S_IMODE(os.stat(path).st_mode)
     except FileNotFoundError:
-        mode = 0o644
+        um = os.umask(0)
+        os.umask(um)
+        mode = 0o666 & ~um
     d = os.path.dirname(path)
     fd, tmp = tempfile.mkstemp(prefix=".vault-context-", dir=d)
     try:
@@ -446,6 +459,8 @@ def apply(p):
         counts["wrote" if c["state"] == "missing" else "updated"] += 1
 
     actions = []
+    record = os.path.join(p.copies_dir, CREATED_RECORD)
+    base = os.path.join(p.codex_home, AGENTS)
     for a in p.agents:
         if a["after"] is None:
             os.unlink(a["path"])
@@ -454,6 +469,17 @@ def apply(p):
             os.makedirs(os.path.dirname(a["path"]), exist_ok=True)
             _write_atomic(a["path"], a["after"])
             action = {"missing": "wrote", "stale": "updated"}.get(a["state"], "removed")
+        if a["path"] == base:
+            if a["before"] is None:
+                # This run created AGENTS.md: record it, so only its removal deletes it.
+                os.makedirs(p.copies_dir, exist_ok=True)
+                with open(record, "wb"):
+                    pass
+            elif action in ("deleted", "removed"):
+                try:
+                    os.unlink(record)
+                except FileNotFoundError:
+                    pass
         actions.append({"path": a["path"], "action": action})
 
     for o in p.orphans:

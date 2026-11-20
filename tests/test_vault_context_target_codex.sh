@@ -278,4 +278,77 @@ assert T.resolve_codex_home(None) == os.path.join(home, ".codex")
 EOF
 ok "the Codex home is the argument, else \$CODEX_HOME, else ~/.codex"
 
+# --- 11. Tier-1 review cases (6d30bcf): outside bytes, owner files, refusals ---
+NEWH() { local h="$WORK/r-$1"; rm -rf "$h"; mkdir -p "$h"; printf '%s' "$h"; }
+page alpha '["**/*.rs"]' $'# Alpha\n\nUse the alpha way.\n'
+for s in "$ST"/*.md; do [ "$(basename "$s")" = alpha.md ] || rm "$s"; done
+STASH="$WORK/stash"; mkdir -p "$STASH"
+
+# An owner file without a final newline: write, update, remove → byte-identical.
+H="$(NEWH nonl)"; printf 'owner text, no newline' > "$H/AGENTS.md"; ORIG="$(sum "$H/AGENTS.md")"
+run write "$H" >/dev/null 2>&1 || fail "write into an AGENTS.md without a final newline"
+page alpha '["**/*.rs", "**/build.rs"]' $'# Alpha\n\nUse the alpha way.\n'
+run write "$H" >/dev/null 2>&1 || fail "update with no final newline"
+mv "$ST/alpha.md" "$STASH/"; run write "$H" >/dev/null 2>&1 || fail "removal with no final newline"; mv "$STASH/alpha.md" "$ST/"
+[ "$(sum "$H/AGENTS.md")" = "$ORIG" ] || fail "an owner file without a final newline is not byte-identical after write, update and removal: $(od -c "$H/AGENTS.md" | head -3)"
+ok "an owner AGENTS.md without a final newline is byte-identical after a write, an update and a removal"
+
+# An owner's own empty AGENTS.md (touched) is never deleted.
+H="$(NEWH touched)"; : > "$H/AGENTS.md"
+run write "$H" >/dev/null 2>&1 || fail "write into an empty owner AGENTS.md"
+mv "$ST/alpha.md" "$STASH/"; run write "$H" >/dev/null 2>&1 || fail "removal from a touched AGENTS.md"; mv "$STASH/alpha.md" "$ST/"
+[ -f "$H/AGENTS.md" ] && [ ! -s "$H/AGENTS.md" ] || fail "an owner's empty AGENTS.md was deleted or not emptied"
+ok "an owner's own empty AGENTS.md survives the block's removal"
+
+# A leftover blank line keeps an AGENTS.md the tool created.
+H="$(NEWH blank)"
+run write "$H" >/dev/null 2>&1 || fail "create AGENTS.md"
+printf '\n' >> "$H/AGENTS.md"
+mv "$ST/alpha.md" "$STASH/"; run write "$H" >/dev/null 2>&1 || fail "removal with a blank line left"; mv "$STASH/alpha.md" "$ST/"
+[ "$(cat "$H/AGENTS.md"; echo x)" = $'\nx' ] || fail "a blank line the owner added did not survive: $(od -c "$H/AGENTS.md")"
+ok "an AGENTS.md the tool created keeps a blank line the owner added"
+
+# Marker-shape refusals leave the file unchanged: CRLF, trailing text, a symlink.
+for shape in crlf trailing; do
+    H="$(NEWH "$shape")"
+    if [ "$shape" = crlf ]; then printf 'x\n%s\r\nbody\n%s\r\n' "$START" "$END" > "$H/AGENTS.md"
+    else printf 'x\n%s keep\nbody\n%s\n' "$START" "$END" > "$H/AGENTS.md"; fi
+    S0="$(sum "$H/AGENTS.md")"
+    run write "$H" >/dev/null 2>&1 && fail "a $shape marker line was not refused"
+    [ "$(sum "$H/AGENTS.md")" = "$S0" ] || fail "a refused $shape AGENTS.md was changed"
+    [ ! -e "$H/vault-stacks" ] || fail "a $shape refusal still wrote copies"
+done
+H="$(NEWH link)"; printf 'real\n' > "$WORK/real-agents.md"; ln -s "$WORK/real-agents.md" "$H/AGENTS.md"
+run write "$H" >/dev/null 2>&1 && fail "a symlinked AGENTS.md was not refused"
+[ -L "$H/AGENTS.md" ] && [ "$(cat "$WORK/real-agents.md")" = real ] || fail "a refused symlinked AGENTS.md was changed"
+ok "CRLF and trailing-text marker lines and a symlinked AGENTS.md are refused, nothing written"
+
+# A mismatched copy marker is refused and the copy left unchanged.
+H="$(NEWH mism)"; mkdir -p "$H/vault-stacks"
+printf '<!-- vault-context:stack-rule source=beta sha256=%064d -->\nx\n' 0 > "$H/vault-stacks/alpha.md"
+S0="$(sum "$H/vault-stacks/alpha.md")"
+run write "$H" >/dev/null 2>&1 && fail "a copy whose marker names another slug was not refused"
+[ "$(sum "$H/vault-stacks/alpha.md")" = "$S0" ] || fail "a refused copy was changed"
+ok "a copy whose marker names another slug is refused and left unchanged"
+
+# Base → override move, then removal from the override: owner bytes survive in both.
+H="$(NEWH move)"; printf 'base owner\n' > "$H/AGENTS.md"
+run write "$H" >/dev/null 2>&1 || fail "write into AGENTS.md"
+printf 'override owner\n' > "$H/AGENTS.override.md"
+run write "$H" >/dev/null 2>&1 || fail "move to the override"
+[ "$(cat "$H/AGENTS.md")" = "base owner" ] || fail "the block was not moved out of AGENTS.md cleanly"
+grep -q "$START" "$H/AGENTS.override.md" || fail "the block did not land in the override"
+mv "$ST/alpha.md" "$STASH/"; run write "$H" >/dev/null 2>&1 || fail "removal from the override"; mv "$STASH/alpha.md" "$ST/"
+[ "$(cat "$H/AGENTS.override.md")" = "override owner" ] || fail "removal from the override changed owner text"
+[ -f "$H/AGENTS.md" ] || fail "AGENTS.md with owner text was deleted"
+ok "a block moves from AGENTS.md to a new non-empty override and is removed from it, owner bytes intact in both"
+
+# An unreadable AGENTS file is a refusal, not a crash.
+if [ "$(id -u)" != 0 ]; then
+    H="$(NEWH unread)"; printf 'secret\n' > "$H/AGENTS.md"; chmod 000 "$H/AGENTS.md"
+    out="$(run write "$H" 2>&1)"; rc=$?; chmod 644 "$H/AGENTS.md"
+    [ "$rc" = 1 ] && printf '%s' "$out" | grep -q 'refused' || fail "an unreadable AGENTS.md is not a refusal (rc $rc): $out"
+    ok "an unreadable AGENTS.md is refused"
+fi
+
 echo "PASS: test_vault_context_target_codex.sh"
