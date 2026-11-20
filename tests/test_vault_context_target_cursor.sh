@@ -225,4 +225,17 @@ else:
 EOF
 ok "braces expand into separate globs; a top-level-only pattern is refused"
 
+# --- review: a comma outside braces has no Cursor form -------------------------
+ROOT_DIR="$ROOT" python3 - <<'EOF' || fail "a comma glob was not refused"
+import os, sys
+sys.path.insert(0, os.path.join(os.environ.get("ROOT_DIR", "."), "plugins/vault-context/scripts/lib"))
+import stack_target_cursor as T
+try:
+    T.cursor_globs(["**/a,b.rs"])
+except ValueError:
+    sys.exit(0)
+sys.exit(1)
+EOF
+ok "a pattern holding a comma outside braces is refused for Cursor"
+
 echo "PASS: test_vault_context_target_cursor"

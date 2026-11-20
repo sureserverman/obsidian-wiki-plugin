@@ -171,4 +171,77 @@ out="$(sync --host codex 2>&1)"; rc=$?
 [ "$(sha256sum "$C/AGENTS.md")" = "$sum" ] || fail "a refused AGENTS.md was changed"
 ok "a Codex AGENTS file with a start marker and no end is refused and left unchanged"
 
+# --- 8. Stage 1 review cases ------------------------------------------------------
+# Restore a clean Codex home and a clean sync.
+rm -rf "$C"; mkdir -p "$C"
+sync --host all --all-projects >/dev/null 2>&1 || fail "clean re-sync failed"
+
+# Per-file lines: a write names each rule and copy it changed.
+page beta '["**/*.kt"]' $'# Beta\n\nBeta facts, edited.\n'
+out="$(sync --host all --all-projects 2>&1)" || fail "sync after a beta edit failed: $out"
+printf '%s\n' "$out" | grep -qx "cursor: updated $P2/.cursor/rules/vault-stack-beta.mdc" \
+    || fail "no per-file cursor line for the updated rule: $out"
+printf '%s\n' "$out" | grep -qx "codex: updated $C/vault-stacks/beta.md" \
+    || fail "no per-file codex line for the updated copy: $out"
+ok "a write prints one cursor:/codex: line per rule or copy it changed"
+
+# Two registered folders in one repo, in both orders: one skip line or one
+# same-folder line each, never silence, and the repo gets its rule once.
+MONO="$WORK/mono"; repo "$MONO" sub/lib.rs; SUB="$MONO/sub"
+for order in "$MONO $SUB" "$SUB $MONO"; do
+    rm -rf "$MONO/.cursor"
+    { echo "version: 1"; echo "projects:"; for p in $order; do echo "  - path: $p"; done; } > "$WORK/reg2.yaml"
+    out="$(VAULT_CONTEXT_REGISTRY="$WORK/reg2.yaml" sync --host cursor --all-projects 2>&1)"; rc=$?
+    [ "$rc" = 0 ] || fail "nested registry ($order) exited $rc: $out"
+    [ -f "$MONO/.cursor/rules/vault-stack-alpha.mdc" ] || fail "nested registry ($order): no rule at the top level: $out"
+    [ ! -e "$SUB/.cursor" ] || fail "nested registry ($order): a rule folder under the registered subfolder"
+    for p in $order; do
+        printf '%s\n' "$out" | grep -F "$p" >/dev/null || fail "nested registry ($order): $p is dropped with no line: $out"
+    done
+done
+ok "a repo and a registered folder inside it, in either order, each get a line and the repo gets its rule once"
+
+# A refused page: Claude and Cursor sync the rest; Codex is neither changed nor compared.
+snapc() { find "$C" -type f -exec sha256sum {} + | sort; }
+before="$(snapc)"
+printf -- '---\nstack: gamma\npaths: ["**/*.go"]\nbogus: 1\nsources: ["%s"]\nchecked: 2026-11-20\n---\n# G\n' "$ST" > "$ST/gamma.md"
+page alpha '["**/*.rs", "**/build.rs"]' $'# Alpha\n\nAlpha with a refused sibling.\n'
+out="$(sync --host all --all-projects 2>&1)"; rc=$?
+[ "$rc" = 1 ] || fail "a refused page did not exit 1: $out"
+printf '%s\n' "$out" | grep -q 'codex: a stack page was refused, so the Codex home was not changed' \
+    || fail "no codex line for the refused page: $out"
+[ "$(snapc)" = "$before" ] || fail "the Codex home changed while a page was refused"
+grep -q 'Alpha with a refused sibling' "$P1/.cursor/rules/vault-stack-alpha.mdc" || fail "Cursor did not sync the other pages"
+grep -q 'Alpha with a refused sibling' "$R/vault-stack-alpha.md" || fail "Claude did not sync the other pages"
+out="$(sync --check --host codex 2>&1)"
+printf '%s\n' "$out" | grep -q 'orphan' && fail "check calls a refused page's copy an orphan: $out"
+printf '%s\n' "$out" | grep -q 'not compared' || fail "check does not say Codex was not compared: $out"
+lane="$(bash "$VAL" "$P1" --json)"
+printf '%s' "$lane" | jq -e '[.findings[]? | select(.rule | test("^stack-codex"))] | length == 0' >/dev/null \
+    || fail "the lane reports Codex findings the sync cannot clear while a page is refused: $lane"
+printf '%s' "$lane" | jq -e '[.findings[]? | select(.rule == "stack-page-invalid")] | length == 1' >/dev/null \
+    || fail "the lane does not report the refused page: $lane"
+rm "$ST/gamma.md"
+sync --host all --all-projects >/dev/null 2>&1 || fail "sync once the page is gone failed"
+grep -q 'Alpha with a refused sibling' "$C/vault-stacks/alpha.md" || fail "Codex not synced once the page was fixed"
+ok "a refused page: Claude and Cursor sync the rest, Codex is left and not compared, the lane names only the page"
+
+# The lane's refusal codes.
+printf 'owner\n<!-- vault-context:stacks:start -->\n' > "$C/AGENTS.md"
+lane="$(bash "$VAL" "$P1" --json)"
+printf '%s' "$lane" | jq -e '[.findings[]? | select(.rule == "stack-codex-refused" and .severity == "error")] | length >= 1' >/dev/null \
+    || fail "the lane does not report stack-codex-refused: $lane"
+rm "$C/AGENTS.md"; sync --host codex >/dev/null 2>&1 || fail "codex re-sync failed"
+printf 'mine\n' > "$P1/.cursor/rules/vault-stack-zeta.mdc"
+lane="$(bash "$VAL" "$P1" --json)"
+printf '%s' "$lane" | jq -e '[.findings[]? | select(.rule == "stack-rule-foreign" and (.file // .path // "" | tostring | test("zeta")))] | length >= 1' >/dev/null \
+    || printf '%s' "$lane" | grep -q 'vault-stack-zeta.mdc' || fail "the lane does not report a foreign Cursor rule: $lane"
+rm "$P1/.cursor/rules/vault-stack-zeta.mdc"
+rm "$P1/.gitignore"; git -C "$P1" rm -q --cached .gitignore 2>/dev/null
+lane="$(bash "$VAL" "$P1" --json)"
+printf '%s' "$lane" | jq -e '[.findings[]? | select(.rule == "stack-cursor-refused" and .severity == "warn")] | length >= 1' >/dev/null \
+    || fail "the lane does not report stack-cursor-refused: $lane"
+printf '.cursor/\n' > "$P1/.gitignore"
+ok "the lane reports stack-codex-refused, a foreign Cursor rule and stack-cursor-refused"
+
 echo "PASS: test_vault_context_sync_hosts"

@@ -67,17 +67,27 @@ session opened there, and names the applying stacks in each project's sidecar.
   `{a,b}` group is expanded) and `alwaysApply: false`, then the marker, then the page
   body. It removes a rule whose stack no longer applies or whose page is gone. A
   project whose git would commit the rule (`git check-ignore` does not ignore it, or
-  `.cursor` is tracked) is refused with "would be committed" and gets nothing; an
-  area directory (`lib/eligibility.sh`) or a missing folder is skipped with a line;
-  the other projects go on. `tests/live/cursor_rule_loads.sh` proves a rule loads.
+  `.cursor` is tracked), or where git cannot say (a dubious-ownership refusal, a
+  timeout), is refused with the reason, gets nothing, and makes the run exit 1; an
+  area directory (`lib/eligibility.sh`) or a missing folder is skipped with a line
+  and does not change the exit code; a second registered folder in a repo already
+  synced is named ("same rules folder as …") and synced once. The other projects
+  go on. Each rule written, updated or removed is printed as `cursor: <verb> <path>`.
+  `tests/live/cursor_rule_loads.sh` proves a rule loads.
 - **WF-STACK-RULES-008 — Codex.** `sync-stack-rules.py --host codex` writes
   `<codex-home>/vault-stacks/<slug>.md` (the marker, then the page body) and keeps one
   block between `vault-context:stacks:start` / `:end` comments in the AGENTS file
   Codex reads at its home (`AGENTS.override.md` when non-empty, else `AGENTS.md`):
   `## Stack rules`, one instruction line, and per page its patterns and the copy's
-  path. Text outside the block is kept. A start marker without an end, or two blocks,
-  is refused and the file left unchanged. With no pages the block goes, and an
-  `AGENTS.md` left empty is deleted. Codex home: `--codex-home`, else `$CODEX_HOME`,
+  path. Text outside the block is kept byte for byte (the block goes at the start of
+  a file that does not end in a newline). A start marker without an end, two blocks,
+  a marker sharing its line with other text, a symlinked or unreadable AGENTS file, or
+  an unmarked copy is refused and nothing is written. When the tool creates
+  `AGENTS.md` it records that in `vault-stacks/.agents-md-created`; with no pages the
+  block goes, and an `AGENTS.md` left empty is deleted only with that record — an
+  owner's own file is never deleted. While any page is refused, the Codex home is
+  neither changed nor compared (one `codex:` line says so), because the block is
+  written from every page at once. Codex home: `--codex-home`, else `$CODEX_HOME`,
   else `~/.codex`. `tests/live/codex_pointer_followed.sh` proves Codex reads the copy.
 
 ## Invariants
@@ -93,5 +103,7 @@ session opened there, and names the applying stacks in each project's sidecar.
   A vault showing no stack pages while generated or legacy copies exist → exit 2,
   nothing removed — on every host: a Cursor rule and a Codex copy or block stay too.
 - **WF-STACK-RULES-INV-4 — A page that cannot be parsed is refused, never guessed at**
-  (W DEC-002): named with its reason; no copy is written or updated for it.
+  (W DEC-002): named with its reason; no copy is written or updated for it. Claude
+  Code and Cursor keep its old copy and sync the other pages; Codex is left as it is
+  until the page parses (008).
 - **WF-STACK-RULES-INV-5 — Neither hook modifies a file.**

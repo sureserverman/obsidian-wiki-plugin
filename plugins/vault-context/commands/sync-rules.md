@@ -39,7 +39,9 @@ home AGENTS file Codex reads. `--host all` does the three.
    - **"page refused: <page>: <reason>"** (exit 1) — that stack page has a defect (no
      `paths`, an unsupported glob, an unknown frontmatter key, a body over 8,192
      bytes). No copy was written or updated for it; its old copy, if any, stays. The
-     other pages were still synced. Fix the page in the vault, then run this again.
+     other pages were still synced for Claude Code and Cursor; the Codex home was left
+     as it is ("codex: a stack page was refused …"), since its pointer block is written
+     from every page at once. Fix the page in the vault, then run this again.
    - **"refusing: … has no vault-context marker"** (exit 1) — a file named
      `vault-stack-*.md` in the stacks folder or the Claude rules folder was not written
      by this tool. Nothing at all was written. The user renames or removes it; never delete it yourself.
@@ -57,7 +59,8 @@ home AGENTS file Codex reads. `--host all` does the three.
    - **"cursor: … would be committed"** (exit 1) — that project does not ignore
      `.cursor/` (or tracks it), so no rule was written there; the other projects were
      still synced. The user adds `.cursor/` to the project's `.gitignore`.
-   - **"cursor: … area directory" / missing folder** — skipped, with a line; not an error.
+   - **"cursor: skipped …"** (area directory or missing folder) and **"cursor: … same
+     rules folder as …"** (a second registered folder in one repo) — not errors.
    - **"codex: refusing: <file>: <reason>"** (exit 1) — the Codex AGENTS file holds a
      broken block (a start marker without an end, two blocks) or `vault-stacks/` holds
      a file without the marker. Nothing in the Codex home was written. The user fixes
@@ -70,7 +73,9 @@ Only files carrying the `vault-context:stack-rule` marker are changed or removed
 the stacks folder, the Claude rules folder, a project's `.cursor/rules/` and the
 Codex `vault-stacks/` folder — plus the text between the
 `vault-context:stacks:start` / `:end` comments in the Codex AGENTS file, whose other
-bytes are kept. The vault is never modified.
+bytes are kept. When no such file exists the sync creates `AGENTS.md` in the Codex
+home, records that in `vault-stacks/.agents-md-created`, and deletes it later only
+with that record, once it is empty again. The vault is never modified.
 
 **Examples**:
 - `/vault-context:sync-rules` — bring every stack copy in step with the vault

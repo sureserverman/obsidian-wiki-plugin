@@ -10,10 +10,14 @@ Hosts (--host, default claude):
           refused; an area directory or a missing folder is skipped; the rest go on.
   codex   `<codex-home>/vault-stacks/<slug>.md` plus one pointer block in the AGENTS
           file Codex reads (lib/stack_target_codex.py); codex home: --codex-home,
-          else $CODEX_HOME, else ~/.codex
+          else $CODEX_HOME, else ~/.codex. It may create that file (recorded in
+          vault-stacks/.agents-md-created) and deletes it only with that record.
+          While any page is refused, the Codex home is neither changed nor compared.
   all     the three, in that order; needs --project or --all-projects
-With a host other than claude, output lines start `claude: `, `cursor: ` or
-`codex: `, and --json prints {"claude": …, "cursor": [per project], "codex": …}.
+With a host other than claude, the Claude lines on stdout start `claude: ` and
+every Cursor and Codex line starts `cursor: ` or `codex: `; each host's lines
+print as it finishes. --json then prints {"vault", "host", "errors",
+"sources_missing", "claude": …, "cursor": [one per project], "codex": …}.
 --only works with --host claude only. --lint checks the pages whatever the host.
 A vault showing no stack pages removes nothing on any host (exit 2).
 
@@ -201,9 +205,12 @@ def write_atomic(path, data):
 def read_registry(path):
     """Project folders from a portfolio registry: every `path:` entry, in order.
 
-    The same reading as lib/eligibility.sh's `_registry_paths`: a `path:` key on
-    a list item, an inline comment and surrounding quotes dropped, a trailing
-    slash stripped. None when the file cannot be read.
+    Read like lib/eligibility.sh's `_registry_paths`: a `path:` key on a list
+    item, an inline comment and one matched pair of quotes dropped, a trailing
+    slash stripped. Unlike it, an unreadable registry is None (the caller stops
+    with exit 2) rather than "nothing registered": a sync over no projects
+    would look like success. Which folder is a project is still decided by
+    lib/eligibility.sh (W DEC-001).
     """
     try:
         with open(path, encoding="utf-8") as f:
@@ -363,32 +370,48 @@ def cursor_host(projects, pages, errors, present, write_mode):
     """A Cursor rule in each project where a stack applies (lib/stack_target_cursor.py)."""
     import stack_target_cursor as T
     from stack_pages import project_root
-    out, results, rcs, seen = [], [], [], set()
+    out, results, rcs, seen = [], [], [], {}
     refused = [e["slug"] for e in errors]
     for proj in projects:
-        if os.path.isdir(proj):
-            root = project_root(proj)
-            if root in seen:
-                continue  # two registered folders in one repo share one rules folder
-            seen.add(root)
+        root = project_root(proj) if os.path.isdir(proj) else None
+        if root is not None and root in seen:
+            # Two registered folders in one repo share one rules folder: synced once.
+            out.append(("out", f"cursor: {proj}: same rules folder as {seen[root]} "
+                        f"({os.path.join(root, '.cursor', 'rules')}); synced once"))
+            continue
         if write_mode and not present:
             # The vault shows no page at all: never remove a rule on that evidence.
-            rules_dir = os.path.join(project_root(proj), ".cursor", "rules") if os.path.isdir(proj) else None
-            if rules_dir and T.scan_rules(rules_dir)[0]:
+            if root is None:
+                out.append(("out", f"cursor: skipped {proj}: project folder is missing"))
+                continue
+            rules_dir = os.path.join(root, ".cursor", "rules")
+            if T.scan_rules(rules_dir)[0]:
                 out.append(("err", f"cursor: vault not reachable or empty: no stack pages, yet {rules_dir} "
-                            "holds generated rules; removing none"))
+                            "holds generated rules; removing none. Check that the vault is mounted. "
+                            "Only if every page was deleted on purpose, remove the marked "
+                            "vault-stack-*.mdc files there by hand"))
                 rcs.append(2)
             continue
         if write_mode:
             res = T.plan(proj, pages, refused)
             if res["status"] == "ok":
+                planned = [a for a in res["actions"] if a["state"] != "in-sync"]
                 res = T.apply(res)
+                if res["status"] == "ok":
+                    verb = {"missing": "wrote", "stale": "updated", "unused": "removed",
+                            "orphan": "removed"}
+                    for a in planned:
+                        out.append(("out", f"cursor: {verb.get(a['state'], a['state'])} {a['rule']}"))
         else:
             res = T.check(proj, pages, refused)
         status = res["status"]
+        if status != "skipped" and root is not None:
+            seen[root] = proj
+            if root != os.path.abspath(proj):
+                out.append(("out", f"cursor: {proj}: rules folder at its git top level, {root}"))
         stream = "err" if status in ("refused", "error") else "out"
         for m in res["messages"]:
-            out.append((stream, f"cursor: {m}"))
+            out.append((stream, m if m.startswith("cursor") else f"cursor: {m}"))
         rcs.append({"ok": 0, "skipped": 0, "refused": 1, "error": 2}.get(status, 1))
         if not write_mode and status == "ok" and not res.get("in_sync"):
             rcs.append(1)
@@ -408,15 +431,27 @@ def codex_host(codex_home, pages, errors, present, write_mode):
             view = T.check(codex_home, [])
             if not view["in_sync"]:
                 out.append(("err", f"codex: vault not reachable or empty: no stack pages, yet {codex_home} "
-                            "holds generated copies or a block; removing none"))
+                            "holds generated copies or a block; removing none. Check that the vault "
+                            "is mounted. Only if every page was deleted on purpose, remove the marked "
+                            "copies in vault-stacks/ and the block between its markers by hand"))
                 return 2, view, out
             return 0, view, out
-        if write_mode and errors:
-            # A refused page would lose its copy and its line; leave the Codex home as it is.
-            out.append(("err", "codex: a stack page was refused, so the Codex home was not changed"))
+        if errors:
+            # The pointer block is written from every page at once: a refused page would
+            # lose its copy and its line, and --check would call it an orphan. So while a
+            # page is refused, the Codex home is neither changed nor compared.
+            out.append(("err", "codex: a stack page was refused, so the Codex home was "
+                        + ("not changed" if write_mode else "not compared")
+                        + "; fix the page, then run again"))
             return 1, {"codex_home": codex_home, "skipped": "page refused"}, out
         if write_mode:
-            res = T.apply(T.plan(codex_home, pages))
+            pl = T.plan(codex_home, pages)
+            verb = {"missing": "wrote", "stale": "updated"}
+            changed = [(verb[c["state"]], c["path"]) for c in pl.copies if c["state"] in verb]
+            changed += [("removed", o["path"]) for o in pl.orphans]
+            res = T.apply(pl)
+            for v, path in changed:
+                out.append(("out", f"codex: {v} {path}"))
             c = res["copies"]
             out.append(("out", f"codex: copies in {os.path.join(codex_home, 'vault-stacks')}: "
                         f"wrote {c['wrote']}, updated {c['updated']}, removed {c['removed']}, "
@@ -513,39 +548,42 @@ def main(argv=None):
             if not os.path.exists(src):
                 sources_missing.append({"slug": page.stack, "path": src})
 
-    # --- hosts -------------------------------------------------------------
+    # --- hosts, each reported as it finishes --------------------------------
+    def emit(out):
+        if args.json:
+            return
+        for stream, text in out:
+            print(text, file=sys.stderr if stream == "err" else sys.stdout, flush=True)
+
+    if not args.json:
+        for e in errors:
+            print(f"sync-stack-rules: page refused: {e['page']}: {e['reason']}", file=sys.stderr)
+        for m in sources_missing:
+            lvl = "lint error" if args.lint else "warning"
+            print(f"sync-stack-rules: {lvl}: {m['slug']}: sources path does not exist: {m['path']}",
+                  file=sys.stderr)
     pfx = "" if hosts == ("claude",) else "claude: "
-    rcs, lines, combined = [], [], {"vault": vault, "host": args.host, "errors": errors,
-                                    "sources_missing": sources_missing}
+    rcs, combined = [], {"vault": vault, "host": args.host, "errors": errors,
+                         "sources_missing": sources_missing}
     claude_result = None
     if "claude" in hosts:
         rc, claude_result, out = claude_host(args, vault, copies_dir, stacks_dir, present, pages,
                                              errors, sources_missing, write_mode, pfx)
-        rcs.append(rc); lines += out; combined["claude"] = claude_result
+        rcs.append(rc); emit(out); combined["claude"] = claude_result
     if "cursor" in hosts:
         rc, res, out = cursor_host(projects, pages, errors, present, write_mode)
-        rcs.append(rc); lines += out; combined["cursor"] = res
+        rcs.append(rc); emit(out); combined["cursor"] = res
     if "codex" in hosts:
         from stack_target_codex import resolve_codex_home
         rc, res, out = codex_host(resolve_codex_home(args.codex_home), pages, errors, present,
                                   write_mode)
-        rcs.append(rc); lines += out; combined["codex"] = res
+        rcs.append(rc); emit(out); combined["codex"] = res
     if errors and "claude" not in hosts:
         rcs.append(1)
     rc = worst(0, *rcs)
 
-    # --- report ------------------------------------------------------------
     if args.json:
         print(json.dumps(claude_result if hosts == ("claude",) else combined, indent=2))
-        return rc
-    for e in errors:
-        print(f"sync-stack-rules: page refused: {e['page']}: {e['reason']}", file=sys.stderr)
-    for m in sources_missing:
-        lvl = "lint error" if args.lint else "warning"
-        print(f"sync-stack-rules: {lvl}: {m['slug']}: sources path does not exist: {m['path']}",
-              file=sys.stderr)
-    for stream, text in lines:
-        print(text, file=sys.stderr if stream == "err" else sys.stdout)
     return rc
 
 

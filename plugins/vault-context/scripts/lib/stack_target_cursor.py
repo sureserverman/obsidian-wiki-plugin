@@ -37,8 +37,10 @@ Per-project results, never an exception that stops a multi-project run:
            directory (W DEC-001)
   refused  an unmarked vault-stack-*.mdc; or git would commit a rule: the root
            tracks something under .cursor (`git ls-files .cursor`), or
-           `git check-ignore` does not ignore a rule path. Outside a git work
-           tree there is nothing to commit, so the rules are written.
+           `git check-ignore` does not ignore a rule path; or git cannot say
+           (a dubious-ownership refusal, a timeout). Outside a git work tree
+           ("not a git repository") there is nothing to commit, so the rules
+           are written.
   error    a file-system error while applying
   ok       otherwise
 
@@ -118,6 +120,10 @@ def cursor_globs(patterns):
                 alt = alt[1:]
             elif "/" not in alt:
                 alt = "**/" + alt
+            if "," in alt:
+                raise ValueError(
+                    f"pattern {pat!r}: a comma outside braces would split Cursor's "
+                    "comma-separated globs")
             if alt not in out:
                 out.append(alt)
     return ",".join(out)
@@ -184,18 +190,38 @@ def _git(root, *args):
     return subprocess.run(["git", "-C", root, *args], capture_output=True, timeout=30)
 
 
-def _in_work_tree(root):
+def _work_tree(root):
+    """True inside a git work tree, False outside one, else the reason git could not say.
+
+    Only "not a git repository" means outside; any other failure (a dubious-ownership
+    refusal, a timeout, git missing) is a reason to refuse, never a licence to write.
+    """
     try:
         res = _git(root, "rev-parse", "--is-inside-work-tree")
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"git could not be asked about {root}: {e}"
+    if res.returncode == 0:
+        return res.stdout.strip() == b"true"
+    err = res.stderr.decode("utf-8", "replace").strip()
+    if "not a git repository" in err:
         return False
-    return res.returncode == 0 and res.stdout.strip() == b"true"
+    return f"git rev-parse failed in {root}: {err}"
 
 
 def _commit_refusal(root, rel_paths):
-    """A reason git would commit a rule under root, or None."""
-    if not _in_work_tree(root):
+    """A reason git would commit a rule under root (or cannot be asked), or None."""
+    inside = _work_tree(root)
+    if isinstance(inside, str):
+        return inside + ". Nothing was written"
+    if not inside:
         return None
+    try:
+        return _commit_refusal_git(root, rel_paths)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"git failed or timed out in {root}: {e}. Nothing was written"
+
+
+def _commit_refusal_git(root, rel_paths):
     tracked = _git(root, "ls-files", "--", ".cursor")
     if tracked.returncode != 0:
         return (f"git ls-files failed in {root}: "
